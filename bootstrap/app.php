@@ -39,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
         */
         $middleware->alias([
             'permiso' => \App\Http\Middleware\CheckPermiso::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
         ]);
 
         $middleware->api([

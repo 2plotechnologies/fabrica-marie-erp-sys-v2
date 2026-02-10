@@ -3,29 +3,155 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RolController;
+use App\Http\Controllers\Api\UsuarioController;
+use App\Http\Controllers\Api\ProductoController;
+use App\Http\Controllers\Api\RumaController;
+use App\Http\Controllers\Api\StockController;
+use App\Http\Controllers\Api\MovimientoStockController;
+use App\Http\Controllers\Api\RutaController;
+use App\Http\Controllers\Api\ClienteController;
+use App\Http\Controllers\Api\VentaController;
+use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\AbonoController;
 
+/*
+|--------------------------------------------------------------------------
+| Ruta base
+|--------------------------------------------------------------------------
+*/
 Route::get('/', function () {
     return view('welcome');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Autenticación
+|--------------------------------------------------------------------------
+*/
 Route::post('/login', [AuthController::class, 'login']);
 
+/*
+|--------------------------------------------------------------------------
+| Rutas autenticadas
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Sesión
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/usuarios', [UsuarioController::class, 'store']);
-     Route::get('/roles', [RolController::class, 'index'])
-        ->middleware('permiso:ver_roles');
 
-    Route::post('/roles', [RolController::class, 'store'])
-        ->middleware('permiso:crear_rol');
+    /*
+    |--------------------------------------------------------------------------
+    | INVENTARIO (ALMACÉN / ADMIN)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('inventario')
+        ->middleware('role:ADMIN,ALMACEN')
+        ->group(function () {
 
-    Route::get('/roles/{id}', [RolController::class, 'show'])
-        ->middleware('permiso:ver_roles');
+        // Productos
+        Route::get('/productos', [ProductoController::class, 'index']);
+        Route::post('/productos', [ProductoController::class, 'store']);
+        Route::get('/productos/{id}', [ProductoController::class, 'show']);
+        Route::put('/productos/{id}', [ProductoController::class, 'update']);
+        Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
 
-    Route::put('/roles/{id}/permisos', [RolController::class, 'updatePermisos'])
-        ->middleware('permiso:asignar_permisos');
+        // Alertas
+        Route::get('/alertas/stock-minimo',
+            [ProductoController::class, 'stockMinimo']);
 
-    Route::put('/roles/{id}/estado', [RolController::class, 'toggleEstado'])
-        ->middleware('permiso:editar_rol');
+        // Rumas
+        Route::get('/rumas', [RumaController::class, 'index']);
+        Route::post('/rumas', [RumaController::class, 'store']);
+
+        // Stock
+        Route::get('/stock', [StockController::class, 'index']);
+
+        // Movimientos
+        Route::get('/movimientos', [MovimientoStockController::class, 'index']);
+        Route::post('/movimientos', [MovimientoStockController::class, 'store']);
+
+        // Kardex
+        Route::get('/kardex/{productoId}',
+            [MovimientoStockController::class, 'kardex']);
+
+        Route::get('/kardex-valorizado/{productoId}',
+            [MovimientoStockController::class, 'kardexValorizado']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | ROLES Y USUARIOS (SOLO ADMIN)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('admin')
+        ->middleware('role:ADMIN')
+        ->group(function () {
+
+        // Usuarios
+        Route::post('/usuarios', [UsuarioController::class, 'store']);
+
+        // Roles
+        Route::get('/roles', [RolController::class, 'index'])
+            ->middleware('permiso:ver_roles');
+
+        Route::post('/roles', [RolController::class, 'store'])
+            ->middleware('permiso:crear_rol');
+
+        Route::get('/roles/{id}', [RolController::class, 'show'])
+            ->middleware('permiso:ver_roles');
+
+        Route::put('/roles/{id}/permisos', [RolController::class, 'updatePermisos'])
+            ->middleware('permiso:asignar_permisos');
+
+        Route::put('/roles/{id}/estado', [RolController::class, 'toggleEstado'])
+            ->middleware('permiso:editar_rol');
+    });
+
+     /*
+    |--------------------------------------------------------------------------
+    | CLEINTES Y RUTAS
+    |--------------------------------------------------------------------------
+    */
+
+    Route::prefix('clientes')->group(function () {
+
+        // Clientes
+        Route::get('/', [ClienteController::class, 'index']);
+        Route::post('/', [ClienteController::class, 'store']);
+        Route::get('/{id}', [ClienteController::class, 'show']);
+        Route::put('/{id}', [ClienteController::class, 'update']);
+        Route::delete('/{id}', [ClienteController::class, 'destroy']);
+    });
+
+    Route::prefix('rutas')->group(function () {
+
+        // Rutas
+        Route::get('/', [RutaController::class, 'index']);
+        Route::post('/', [RutaController::class, 'store']);
+        Route::get('/{id}', [RutaController::class, 'show']);
+        Route::put('/{id}', [RutaController::class, 'update']);
+        Route::delete('/{id}', [RutaController::class, 'destroy']);
+
+        // Asignar clientes a ruta
+        Route::post('/{rutaId}/clientes',
+            [RutaController::class, 'asignarClientes']);
+    });
+
+     /*
+    |--------------------------------------------------------------------------
+    | VENTAS
+    |--------------------------------------------------------------------------
+    */
+
+     // Ventas
+    Route::get('/ventas', [VentaController::class, 'index']);
+    Route::post('/ventas', [VentaController::class, 'store']);
+
+    // Caja
+    Route::post('/caja/abrir', [CajaController::class, 'abrir']);
+
+    // Abonos
+    Route::post('/abonos', [AbonoController::class, 'store']);
 });
