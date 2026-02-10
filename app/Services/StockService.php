@@ -6,7 +6,7 @@ use App\Models\StockActual;
 use App\Models\MovimientoStock;
 use Carbon\Carbon;
 use Exception;
-use DB;
+use Illuminate\Support\Facades\DB;
 
 class StockService
 {
@@ -71,5 +71,49 @@ class StockService
 
             return $movimiento;
         });
+    }
+
+     public function descontarStock(
+        int $productoId,
+        int $cantidad,
+        int $ventaId,
+        int $userId
+    ) {
+        $stocks = StockActual::where('producto_id', $productoId)
+            ->where('cantidad', '>', 0)
+            ->orderBy('cantidad', 'desc')
+            ->get();
+
+        $faltante = $cantidad;
+
+        foreach ($stocks as $stock) {
+
+            if ($faltante <= 0) break;
+
+            $descuento = min($stock->cantidad, $faltante);
+
+            $stock->cantidad -= $descuento;
+            $stock->fecha_ultimo_mov = now();
+            $stock->save();
+
+            MovimientoStock::create([
+                'tipo' => 'SALIDA',
+                'producto_id' => $productoId,
+                'ruma_id' => $stock->ruma_id,
+                'cantidad' => $descuento,
+                'referencia_tipo' => 'VENTA',
+                'referencia_id' => $ventaId,
+                'motivo' => 'Confirmación de venta',
+                'stock_post_mov' => $stock->cantidad,
+                'user_id' => $userId,
+                'created_at' => now()
+            ]);
+
+            $faltante -= $descuento;
+        }
+
+        if ($faltante > 0) {
+            throw new Exception('Stock insuficiente para el producto ID: ' . $productoId);
+        }
     }
 }

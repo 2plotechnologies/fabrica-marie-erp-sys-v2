@@ -154,4 +154,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Abonos
     Route::post('/abonos', [AbonoController::class, 'store']);
+
+    //Confirmar
+    Route::post('/ventas/{id}/confirmar', [VentaController::class, 'confirmar']);
 });
