@@ -1,9 +1,11 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use App\Models\Caja;
 use Illuminate\Http\Request;
+use App\Services\CajaService;
+use Illuminate\Support\Facades\DB;
 
 class CajaController extends Controller
 {
@@ -16,5 +18,12 @@ class CajaController extends Controller
             'saldo_actual' => $request->saldo_inicial,
             'estado' => 'ABIERTA'
         ]);
+    }
+
+    public function cerrar($id, CajaService $service)
+    {
+        return DB::transaction(function () use ($id, $service) {
+            return $service->cerrarCaja($id);
+        });
     }
 }

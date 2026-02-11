@@ -9,12 +9,15 @@ class Caja extends Model
     protected $table = 'cajas';
     public $timestamps = false;
 
-    protected $fillable = [
+     protected $fillable = [
         'usuario_id',
         'fecha',
         'saldo_inicial',
         'saldo_actual',
-        'estado'
+        'total_ingresos',
+        'total_egresos',
+        'estado',
+        'cerrado_at'
     ];
 
     public function movimientos()

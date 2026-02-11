@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
 
         $middleware->validateCsrfTokens(except: [
-            '/login',
+            '*'
         ]);
 
          /*
@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permiso' => \App\Http\Middleware\CheckPermiso::class,
             'role' => \App\Http\Middleware\CheckRole::class,
+            'caja.abierta' => \App\Http\Middleware\CajaAbierta::class,
         ]);
 
         $middleware->api([

@@ -147,13 +147,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
      // Ventas
     Route::get('/ventas', [VentaController::class, 'index']);
-    Route::post('/ventas', [VentaController::class, 'store']);
+    Route::post('/ventas', [VentaController::class, 'store'])->middleware(['caja.abierta']);
 
     // Caja
     Route::post('/caja/abrir', [CajaController::class, 'abrir']);
+    Route::post('/caja/{id}/cerrar', [CajaController::class, 'cerrar'])
+        ->middleware('permiso:cerrar_caja');
 
     // Abonos
-    Route::post('/abonos', [AbonoController::class, 'store']);
+    Route::post('/abonos', [AbonoController::class, 'store'])->middleware(['caja.abierta']);;
 
     //Confirmar
     Route::post('/ventas/{id}/confirmar', [VentaController::class, 'confirmar']);
