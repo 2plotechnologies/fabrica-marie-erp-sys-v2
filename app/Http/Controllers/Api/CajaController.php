@@ -6,6 +6,7 @@ use App\Models\Caja;
 use Illuminate\Http\Request;
 use App\Services\CajaService;
 use Illuminate\Support\Facades\DB;
+use App\Services\CajaReporteService;
 
 class CajaController extends Controller
 {
@@ -26,4 +27,21 @@ class CajaController extends Controller
             return $service->cerrarCaja($id);
         });
     }
-}
+
+    public function reporte($id, CajaReporteService $service)
+    {
+        return response()->json(
+            $service->generarPorId($id)
+        );
+    }
+
+    public function reportePorFecha(Request $request, CajaReporteService $service)
+    {
+        return response()->json(
+            $service->generarPorUsuarioFecha(
+                auth()->id(),
+                $request->fecha
+            )
+        );
+    }
+    }

@@ -148,14 +148,33 @@ Route::middleware('auth:sanctum')->group(function () {
      // Ventas
     Route::get('/ventas', [VentaController::class, 'index']);
     Route::post('/ventas', [VentaController::class, 'store'])->middleware(['caja.abierta']);
+    Route::put('/ventas/{id}',
+        [VentaController::class, 'update']
+    )->middleware(['auth:sanctum', 'permiso:editar_venta']);
+    Route::delete('/ventas/{id}',
+        [VentaController::class, 'destroy']
+    )->middleware(['auth:sanctum', 'permiso:eliminar_venta']);
+    Route::post('/ventas/{id}/anular',
+        [VentaController::class, 'anular']
+    )->middleware(['auth:sanctum', 'permiso:anular_venta', 'caja.abierta']);
+    Route::get('/ventas/{id}', [VentaController::class, 'show'])
+    ->middleware(['auth:sanctum']);
 
     // Caja
     Route::post('/caja/abrir', [CajaController::class, 'abrir']);
     Route::post('/caja/{id}/cerrar', [CajaController::class, 'cerrar'])
         ->middleware('permiso:cerrar_caja');
+    Route::get('/caja/{id}/reporte', [CajaController::class, 'reporte'])
+        ->middleware('permiso:ver_reporte_caja');
+
+    Route::get('/caja/reporte/fecha', [CajaController::class, 'reportePorFecha'])
+        ->middleware('permiso:ver_reporte_caja');
 
     // Abonos
     Route::post('/abonos', [AbonoController::class, 'store'])->middleware(['caja.abierta']);;
+    Route::post('/abonos/{id}/anular',
+        [AbonoController::class, 'anular']
+    )->middleware(['auth:sanctum', 'permiso:anular_abono']);
 
     //Confirmar
     Route::post('/ventas/{id}/confirmar', [VentaController::class, 'confirmar']);

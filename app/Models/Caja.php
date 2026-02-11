@@ -24,4 +24,9 @@ class Caja extends Model
     {
         return $this->hasMany(MovimientoCaja::class);
     }
+
+    public function usuario()
+{
+    return $this->belongsTo(\App\Models\Usuario::class);
+}
 }

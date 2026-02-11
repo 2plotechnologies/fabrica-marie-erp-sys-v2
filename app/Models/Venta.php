@@ -38,4 +38,16 @@ class Venta extends Model
     {
         return $this->hasOne(CuentaPorCobrar::class);
     }
+
+    public function movimientosStock()
+    {
+        return $this->hasMany(MovimientoStock::class, 'referencia_id')
+            ->where('referencia_tipo', 'VENTA');
+    }
+
+    public function movimientosCaja()
+    {
+        return $this->hasMany(MovimientoCaja::class, 'referencia_id')
+            ->where('referencia_tipo', 'VENTA');
+    }
 }

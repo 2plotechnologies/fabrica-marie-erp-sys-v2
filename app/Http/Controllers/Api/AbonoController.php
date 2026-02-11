@@ -38,4 +38,11 @@ class AbonoController extends Controller
             return $abono;
         });
     }
+
+    use App\Services\AbonoService;
+
+    public function anular($id, AbonoService $service)
+    {
+        return $service->anular($id, auth()->id());
+    }
 }
