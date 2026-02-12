@@ -36,6 +36,18 @@ class StockService
                     break;
 
                 case 'SALIDA':
+                    $permitirNegativo = auth()->user()->can('stock.negativo');
+
+                    if (!$permitirNegativo) {
+
+                        $disponible = $stock->cantidad - $stock->stock_reservado;
+
+                        if ($cantidad > $disponible) {
+                            throw new Exception(
+                                "Stock insuficiente. Disponible: {$disponible}"
+                            );
+                        }
+                    }
                     if ($cantidadActual < $cantidadMov) {
                         throw new Exception('Stock insuficiente');
                     }

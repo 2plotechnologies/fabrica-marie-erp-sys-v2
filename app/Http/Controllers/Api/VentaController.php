@@ -62,19 +62,73 @@ class VentaController extends Controller
     {
         return DB::transaction(function () use ($id, $stockService) {
 
-            $venta = Venta::with('items')->lockForUpdate()->findOrFail($id);
+            $venta = Venta::with('items')
+                ->lockForUpdate()
+                ->findOrFail($id);
 
             if ($venta->estado !== 'BORRADOR') {
                 throw new Exception('Solo se pueden confirmar ventas en borrador');
             }
 
+            $permitirNegativo = auth()->user()->can('stock.negativo');
+
             foreach ($venta->items as $item) {
-                $stockService->descontarStock(
-                    $item->producto_id,
-                    $item->cantidad,
-                    $venta->id,
-                    auth()->id()
-                );
+
+                $stock = StockActual::where('producto_id', $item->producto_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $disponible = $stock->cantidad - $stock->stock_reservado;
+
+                /*
+                ============================================
+                🔒 VALIDACIÓN DE STOCK
+                ============================================
+                */
+
+                if ($stock->stock_reservado < $item->cantidad) {
+
+                    // No estaba correctamente reservado
+                    if (!$permitirNegativo && $item->cantidad > $disponible) {
+                        throw new Exception(
+                            "Stock insuficiente para el producto {$item->producto_id}"
+                        );
+                    }
+                }
+
+                /*
+                ============================================
+                🔁 CONVERTIR RESERVA EN DESCUENTO REAL
+                ============================================
+                */
+
+                $stock->cantidad -= $item->cantidad;
+
+                if ($stock->stock_reservado >= $item->cantidad) {
+                    $stock->stock_reservado -= $item->cantidad;
+                }
+
+                $stock->fecha_ultimo_mov = now();
+                $stock->save();
+
+                /*
+                ============================================
+                🧾 REGISTRAR MOVIMIENTO
+                ============================================
+                */
+
+                MovimientoStock::create([
+                    'tipo' => 'SALIDA',
+                    'producto_id' => $item->producto_id,
+                    'ruma_id' => $stock->ruma_id ?? null,
+                    'cantidad' => $item->cantidad,
+                    'referencia_tipo' => 'VENTA',
+                    'referencia_id' => $venta->id,
+                    'motivo' => 'Confirmación de venta',
+                    'stock_post_mov' => $stock->cantidad,
+                    'user_id' => auth()->id(),
+                    'created_at' => now()
+                ]);
             }
 
             $venta->estado = 'CONFIRMADA';
@@ -85,6 +139,25 @@ class VentaController extends Controller
                 'venta_id' => $venta->id
             ];
         });
+    }
+
+    public function reservarStock(Venta $venta)
+    {
+        foreach ($venta->items as $item) {
+
+            $stock = StockActual::where('producto_id', $item->producto_id)
+                ->lockForUpdate()
+                ->first();
+
+            $disponible = $stock->cantidad - $stock->stock_reservado;
+
+            if ($item->cantidad > $disponible) {
+                throw new Exception('Stock insuficiente para reservar');
+            }
+
+            $stock->stock_reservado += $item->cantidad;
+            $stock->save();
+        }
     }
 
     public function update(Request $request, $id)
@@ -134,7 +207,7 @@ class VentaController extends Controller
         });
     }
 
-    public function destroy($id)
+    public function destroy($id, VentaService $ventaService)
     {
         return DB::transaction(function () use ($id) {
 
@@ -143,6 +216,8 @@ class VentaController extends Controller
             if ($venta->estado !== 'BORRADOR') {
                 throw new Exception('Solo se pueden eliminar ventas en borrador');
             }
+
+            $ventaService->liberarReserva($venta);
 
             // Eliminar items
             $venta->items()->delete();

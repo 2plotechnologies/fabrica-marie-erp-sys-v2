@@ -137,4 +137,26 @@ class VentaService
             ];
         });
     }
+
+    public function liberarReserva(Venta $venta)
+    {
+        foreach ($venta->items as $item) {
+
+            $stock = StockActual::where('producto_id', $item->producto_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$stock) {
+                continue;
+            }
+
+            $stock->stock_reservado -= $item->cantidad;
+
+            if ($stock->stock_reservado < 0) {
+                $stock->stock_reservado = 0;
+            }
+
+            $stock->save();
+        }
+    }
 }
