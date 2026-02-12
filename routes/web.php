@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\VentaController;
 use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\AbonoController;
+use App\Http\Controllers\Api\VehiculoController;
+use App\Http\Controllers\Api\GpsPointController;
 
 /*
 |--------------------------------------------------------------------------
@@ -178,4 +180,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
     //Confirmar
     Route::post('/ventas/{id}/confirmar', [VentaController::class, 'confirmar']);
+
+    // Vehículos
+    Route::prefix('vehiculos')->group(function () {
+        Route::get('/', [VehiculoController::class, 'index']);
+        Route::post('/', [VehiculoController::class, 'store']);
+        Route::get('/{id}', [VehiculoController::class, 'show']);
+        Route::put('/{id}', [VehiculoController::class, 'update']);
+        Route::delete('/{id}', [VehiculoController::class, 'destroy']);
+    });
+
+    // Puntos GPS
+    Route::prefix('gps-points')->group(function () {
+        Route::get('/', [GpsPointController::class, 'index']);
+        Route::post('/', [GpsPointController::class, 'store']);
+        Route::get('/{id}', [GpsPointController::class, 'show']);
+        Route::put('/{id}', [GpsPointController::class, 'update']);
+        Route::delete('/{id}', [GpsPointController::class, 'destroy']);
+    });
 });
