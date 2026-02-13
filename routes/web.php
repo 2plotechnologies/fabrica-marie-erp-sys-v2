@@ -149,6 +149,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
      // Ventas
     Route::get('/ventas', [VentaController::class, 'index']);
+    Route::get('/ventas/reporte/completo', [VentaController::class, 'reporte']);
+    Route::get('/ventas/reporte/excel', [VentaController::class, 'exportarExcel']);
     Route::post('/ventas', [VentaController::class, 'store'])->middleware(['caja.abierta']);
     Route::put('/ventas/{id}',
         [VentaController::class, 'update']
