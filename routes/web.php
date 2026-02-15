@@ -23,13 +23,7 @@ use Illuminate\Support\Facades\Route;
 
 // IMPORTANTE: Esta ruta debe ir AL FINAL de web.php
 // Captura cualquier ruta que no sea /api/* y que no sea un archivo existente
+// Todas las rutas no API van a React
 Route::get('/{any}', function () {
-    $reactBuildPath = public_path('react/index.html');
-
-    if (file_exists($reactBuildPath)) {
-        return file_get_contents($reactBuildPath);
-    }
-
-    // Si no existe el build de React, muestra un error amigable
-    return response()->view('errors.react-not-found', [], 404);
+    return view('welcome'); // Carga el template app.blade.php
 })->where('any', '.*');

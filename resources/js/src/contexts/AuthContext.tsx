@@ -18,7 +18,7 @@ interface AuthContextType {
     permisos: any[];
     loading: boolean;
     error: string | null;
-    login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
     hasPermission: (permisoCodigo: string) => boolean;
     hasRole: (rolNombre: string) => boolean;
@@ -62,12 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkAuth();
     }, []);
 
-    const login = async (username: string, password: string) => {
+    const login = async (email: string, password: string) => {
         setLoading(true);
         setError(null);
 
         try {
-            const response = await authService.login({ username, password });
+            const response = await authService.login({ email, password });
 
             localStorage.setItem('auth_token', response.token);
 

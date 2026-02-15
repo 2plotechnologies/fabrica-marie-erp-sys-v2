@@ -3,9 +3,9 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
     const [formData, setFormData] = useState({
-        username: '',
+        email: '',
         password: '',
-        remember: false
+        //remember: false
     });
 
     const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +22,7 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const result = await login(formData.username, formData.password);
+        const result = await login(formData.email, formData.password);
 
         if (result.success) {
             // Redirigir al dashboard
@@ -67,7 +67,7 @@ const Login = () => {
 
                     {/* Campo Usuario */}
                     <div className="mb-6">
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                             Usuario
                         </label>
                         <div className="relative">
@@ -78,14 +78,14 @@ const Login = () => {
                             </span>
                             <input
                                 type="text"
-                                id="username"
-                                name="username"
-                                value={formData.username}
+                                id="email"
+                                name="email"
+                                value={formData.email}
                                 onChange={handleChange}
                                 required
                                 className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-150"
                                 placeholder="Ingresa tu usuario"
-                                autoComplete="username"
+                                autoComplete="email"
                             />
                         </div>
                     </div>
@@ -138,7 +138,7 @@ const Login = () => {
                                 type="checkbox"
                                 id="remember"
                                 name="remember"
-                                checked={formData.remember}
+                                //checked={formData.remember}
                                 onChange={handleChange}
                                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
