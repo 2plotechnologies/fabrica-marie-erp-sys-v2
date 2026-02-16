@@ -16,7 +16,21 @@ class ClienteController extends Controller
 
     public function store(Request $request)
     {
-        $cliente = Cliente::create($request->all());
+        $validated = $request->validate([
+            'codigo_cliente' => 'required|string|unique:clientes',
+            'razon_social' => 'required|string',
+            'tipo_cliente' => 'nullable|in:TIENDA,DISTRIBUIDOR,MAYORISTA,CONSUMIDOR',
+            'direccion' => 'nullable|string',
+            'telefono' => 'nullable|string',
+            'ruta_id' => 'nullable|exists:rutas,id',
+            'condicion_pago' => 'required|in:CONTADO,CREDITO',
+            'limite_credito' => 'numeric',
+            'dias_credito' => 'numeric',
+            'activo' => 'boolean'
+        ]);
+
+        $cliente = Cliente::create($validated);
+
         return response()->json($cliente, 201);
     }
 

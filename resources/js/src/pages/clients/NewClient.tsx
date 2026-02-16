@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { clienteService } from '@/services/clienteService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -12,320 +13,329 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Phone, Mail, MapPin, CreditCard, Save, ArrowLeft, Search, Navigation } from 'lucide-react';
-import { mockRoutes } from '@/data/mockData';
+import { Building2, Phone, CreditCard, Save, ArrowLeft } from 'lucide-react';
 
-// Mock address suggestions (simulating geocoding API)
-const mockAddressSuggestions = [
-  { address: 'Jr. Real 456, Huancayo, Junín', lat: -12.0651, lng: -75.2048 },
-  { address: 'Av. Giráldez 123, Huancayo, Junín', lat: -12.0680, lng: -75.2100 },
-  { address: 'Calle Ancash 789, El Tambo, Junín', lat: -12.0550, lng: -75.2200 },
-  { address: 'Jr. Puno 321, Chilca, Junín', lat: -12.0750, lng: -75.1950 },
-  { address: 'Av. Huancavelica 555, Huancayo, Junín', lat: -12.0620, lng: -75.2080 },
-];
+interface Ruta {
+  id: number;
+  nombre: string;
+  zona?: string;
+}
 
 const NewClient = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [docType, setDocType] = useState<'ruc' | 'dni'>('ruc');
-  const [addressSearch, setAddressSearch] = useState('');
-  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
-  const [filteredAddresses, setFilteredAddresses] = useState(mockAddressSuggestions);
+
+  const [loading, setLoading] = useState(false);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
+  const [rutas, setRutas] = useState<Ruta[]>([]);
+  const [formErrors, setFormErrors] = useState<any>({});
+
   const [formData, setFormData] = useState({
-    businessName: '',
-    ownerName: '',
-    document: '',
-    address: '',
-    latitude: '',
-    longitude: '',
-    phone: '',
-    email: '',
-    routeId: '',
-    creditLimit: '',
+    codigo_cliente: '',
+    razon_social: '',
+    tipo_cliente: '',
+    direccion: '',
+    telefono: '',
+    ruta_id: '',
+    condicion_pago: 'CONTADO',
+    limite_credito: '',
+    dias_credito: '',
+    activo: true,
   });
 
-  useEffect(() => {
-    if (addressSearch.length > 2) {
-      const filtered = mockAddressSuggestions.filter(s => 
-        s.address.toLowerCase().includes(addressSearch.toLowerCase())
-      );
-      setFilteredAddresses(filtered.length > 0 ? filtered : mockAddressSuggestions);
-    }
-  }, [addressSearch]);
-
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddressSelect = (suggestion: typeof mockAddressSuggestions[0]) => {
-    setFormData(prev => ({
-      ...prev,
-      address: suggestion.address,
-      latitude: suggestion.lat.toString(),
-      longitude: suggestion.lng.toString(),
-    }));
-    setAddressSearch(suggestion.address);
-    setShowAddressSuggestions(false);
-  };
+  // 🔹 Cargar rutas
+  useEffect(() => {
+    const fetchRutas = async () => {
+      try {
+        const data = await clienteService.getRutas();
+        setRutas(data);
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error?.message || "No se pudieron cargar las rutas.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingRoutes(false);
+      }
+    };
 
-  const handleSubmit = (e: React.FormEvent) => {
+    fetchRutas();
+  }, []);
+
+  // 🔹 Crear cliente
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Cliente registrado",
-      description: `${formData.businessName} ha sido registrado exitosamente.`,
-    });
-    navigate('/clientes/lista');
+    setLoading(true);
+    setFormErrors({});
+
+    try {
+      const payload = {
+        ...formData,
+        ruta_id: formData.ruta_id ? Number(formData.ruta_id) : null,
+        limite_credito:
+          formData.condicion_pago === 'CREDITO'
+            ? Number(formData.limite_credito || 0)
+            : 0,
+        dias_credito:
+          formData.condicion_pago === 'CREDITO'
+            ? Number(formData.dias_credito || 0)
+            : 0,
+        activo: true,
+      };
+
+      const data = await clienteService.create(payload);
+
+      toast({
+        title: "Cliente creado",
+        description: `${data.razon_social} fue registrado correctamente.`,
+      });
+
+      navigate('/clientes/lista');
+
+    } catch (error: any) {
+
+      // 🔹 Error de validación Laravel (422)
+      if (error?.errors) {
+        setFormErrors(error.errors);
+
+        toast({
+          title: "Error de validación",
+          description: "Revisa los campos del formulario.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error?.message || "No se pudo registrar el cliente.",
+          variant: "destructive",
+        });
+      }
+
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">
-            Nuevo Cliente
-          </h1>
-          <p className="text-muted-foreground">
-            Registra un nuevo cliente en el sistema
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold">Nuevo Cliente</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Información del Negocio */}
-          <Card className="shadow-card">
+
+          {/* Información */}
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-primary" />
-                Información del Negocio
+                Información
               </CardTitle>
-              <CardDescription>
-                Datos generales del establecimiento
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+
               <div className="space-y-2">
-                <Label htmlFor="businessName">Nombre del Negocio *</Label>
+                <Label>Código Cliente *</Label>
                 <Input
-                  id="businessName"
-                  placeholder="Ej: Bodega Don Pedro"
-                  value={formData.businessName}
-                  onChange={(e) => handleInputChange('businessName', e.target.value)}
-                  required
+                  value={formData.codigo_cliente}
+                  onChange={(e) =>
+                    handleInputChange('codigo_cliente', e.target.value)
+                  }
                 />
+                {formErrors.codigo_cliente && (
+                  <p className="text-sm text-red-500">
+                    {formErrors.codigo_cliente[0]}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ownerName">Nombre del Propietario *</Label>
+                <Label>Razón Social *</Label>
                 <Input
-                  id="ownerName"
-                  placeholder="Ej: Pedro García"
-                  value={formData.ownerName}
-                  onChange={(e) => handleInputChange('ownerName', e.target.value)}
-                  required
+                  value={formData.razon_social}
+                  onChange={(e) =>
+                    handleInputChange('razon_social', e.target.value)
+                  }
                 />
+                {formErrors.razon_social && (
+                  <p className="text-sm text-red-500">
+                    {formErrors.razon_social[0]}
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo Doc.</Label>
-                  <Select value={docType} onValueChange={(v: 'ruc' | 'dni') => setDocType(v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ruc">RUC</SelectItem>
-                      <SelectItem value="dni">DNI</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="document">
-                    {docType === 'ruc' ? 'RUC' : 'DNI'} *
-                  </Label>
-                  <Input
-                    id="document"
-                    placeholder={docType === 'ruc' ? '20XXXXXXXXX' : 'XXXXXXXX'}
-                    maxLength={docType === 'ruc' ? 11 : 8}
-                    value={formData.document}
-                    onChange={(e) => handleInputChange('document', e.target.value)}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Tipo Cliente</Label>
+                <Select
+                  value={formData.tipo_cliente}
+                  onValueChange={(v) =>
+                    handleInputChange('tipo_cliente', v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TIENDA">TIENDA</SelectItem>
+                    <SelectItem value="DISTRIBUIDOR">DISTRIBUIDOR</SelectItem>
+                    <SelectItem value="MAYORISTA">MAYORISTA</SelectItem>
+                    <SelectItem value="CONSUMIDOR">CONSUMIDOR</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
             </CardContent>
           </Card>
 
           {/* Contacto */}
-          <Card className="shadow-card">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Phone className="h-5 w-5 text-primary" />
-                Información de Contacto
+                Contacto
               </CardTitle>
-              <CardDescription>
-                Datos para comunicación
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+
               <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono *</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    placeholder="987654321"
-                    className="pl-10"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    required
-                  />
-                </div>
+                <Label>Teléfono</Label>
+                <Input
+                  value={formData.telefono}
+                  onChange={(e) =>
+                    handleInputChange('telefono', e.target.value)
+                  }
+                />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="cliente@email.com"
-                    className="pl-10"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                  />
-                </div>
+                <Label>Dirección</Label>
+                <Input
+                  value={formData.direccion}
+                  onChange={(e) =>
+                    handleInputChange('direccion', e.target.value)
+                  }
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Dirección *</Label>
-                <Popover open={showAddressSuggestions} onOpenChange={setShowAddressSuggestions}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="address"
-                        placeholder="Buscar dirección..."
-                        className="pl-10"
-                        value={addressSearch}
-                        onChange={(e) => {
-                          setAddressSearch(e.target.value);
-                          setShowAddressSuggestions(true);
-                        }}
-                        onFocus={() => setShowAddressSuggestions(true)}
-                      />
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Buscar dirección..." value={addressSearch} onValueChange={setAddressSearch} />
-                      <CommandList>
-                        <CommandEmpty>No se encontraron direcciones</CommandEmpty>
-                        <CommandGroup heading="Sugerencias">
-                          {filteredAddresses.map((suggestion, idx) => (
-                            <CommandItem 
-                              key={idx} 
-                              onSelect={() => handleAddressSelect(suggestion)}
-                              className="cursor-pointer"
-                            >
-                              <MapPin className="mr-2 h-4 w-4" />
-                              <span>{suggestion.address}</span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                {formData.address && (
-                  <div className="mt-2 p-3 bg-muted rounded-lg">
-                    <p className="text-sm font-medium flex items-center gap-2">
-                      <Navigation className="h-4 w-4 text-primary" />
-                      {formData.address}
-                    </p>
-                    <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                      <span>Lat: {formData.latitude}</span>
-                      <span>Lng: {formData.longitude}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
 
           {/* Configuración Comercial */}
-          <Card className="shadow-card lg:col-span-2">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-primary" />
                 Configuración Comercial
               </CardTitle>
-              <CardDescription>
-                Asignación de ruta y límites de crédito
-              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="route">Ruta Asignada</Label>
-                  <Select 
-                    value={formData.routeId} 
-                    onValueChange={(v) => handleInputChange('routeId', v)}
-                  >
-                    <SelectTrigger>
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <SelectValue placeholder="Seleccionar ruta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockRoutes.map((route) => (
-                        <SelectItem key={route.id} value={route.id}>
-                          {route.name} - {route.zone}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="creditLimit">Límite de Crédito (S/)</Label>
-                  <Input
-                    id="creditLimit"
-                    type="number"
-                    placeholder="5000"
-                    min="0"
-                    step="100"
-                    value={formData.creditLimit}
-                    onChange={(e) => handleInputChange('creditLimit', e.target.value)}
-                  />
-                </div>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+
+              <div className="space-y-2">
+                <Label>Ruta</Label>
+                <Select
+                  value={formData.ruta_id}
+                  onValueChange={(v) =>
+                    handleInputChange('ruta_id', v)
+                  }
+                  disabled={loadingRoutes}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        loadingRoutes
+                          ? "Cargando rutas..."
+                          : "Seleccionar ruta"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rutas.map((ruta) => (
+                      <SelectItem
+                        key={ruta.id}
+                        value={ruta.id.toString()}
+                      >
+                        {ruta.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Condición de Pago *</Label>
+                <Select
+                  value={formData.condicion_pago}
+                  onValueChange={(v) =>
+                    handleInputChange('condicion_pago', v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CONTADO">CONTADO</SelectItem>
+                    <SelectItem value="CREDITO">CRÉDITO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formData.condicion_pago === 'CREDITO' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Límite Crédito</Label>
+                    <Input
+                      type="number"
+                      value={formData.limite_credito}
+                      onChange={(e) =>
+                        handleInputChange('limite_credito', e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Días Crédito</Label>
+                    <Input
+                      type="number"
+                      value={formData.dias_credito}
+                      onChange={(e) =>
+                        handleInputChange('dias_credito', e.target.value)
+                      }
+                    />
+                  </div>
+                </>
+              )}
+
             </CardContent>
           </Card>
+
         </div>
 
-        {/* Actions */}
+        {/* Acciones */}
         <div className="flex justify-end gap-4 mt-6">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(-1)}
+          >
             Cancelar
           </Button>
-          <Button type="submit" className="bg-gradient-warm hover:opacity-90">
+
+          <Button type="submit" disabled={loading}>
             <Save className="h-4 w-4 mr-2" />
-            Guardar Cliente
+            {loading ? "Guardando..." : "Guardar Cliente"}
           </Button>
         </div>
       </form>
