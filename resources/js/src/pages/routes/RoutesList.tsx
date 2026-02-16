@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { 
-  MapPin, 
-  Users, 
+import {
+  MapPin,
+  Users,
   Truck,
   CheckCircle,
   Clock,
@@ -98,7 +99,7 @@ const RoutesList = () => {
             {routes.map((route, index) => {
               const seller = getAssignedSeller(route.assignedSellerId);
               const coverage = 75 + Math.random() * 20;
-              
+
               return (
                 <div
                   key={route.id}
@@ -189,8 +190,8 @@ const RoutesList = () => {
                           {Math.round(coverage)}%
                         </span>
                       </div>
-                      <Progress 
-                        value={coverage} 
+                      <Progress
+                        value={coverage}
                         className={cn(
                           "h-2",
                           coverage >= 80 && '[&>div]:bg-success',
@@ -202,10 +203,10 @@ const RoutesList = () => {
 
                     {/* Status */}
                     <div className="flex items-center justify-between pt-2 border-t">
-                      <Badge 
+                      <Badge
                         variant="outline"
                         className={cn(
-                          route.status === 'ACTIVA' 
+                          route.status === 'ACTIVA'
                             ? 'border-success/30 text-success bg-success/10'
                             : 'border-muted text-muted-foreground'
                         )}
@@ -231,8 +232,8 @@ const RoutesList = () => {
       </Tabs>
 
       {/* New Route Dialog */}
-      <NewRouteDialog 
-        open={showNewRouteDialog} 
+      <NewRouteDialog
+        open={showNewRouteDialog}
         onOpenChange={setShowNewRouteDialog}
         onRouteCreated={handleRouteCreated}
       />

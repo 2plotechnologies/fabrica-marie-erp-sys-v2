@@ -100,7 +100,7 @@ const RootHandler = () => {
   // Si está autenticado, va al dashboard
   // Si no, va al login
   return isAuthenticated()
-    ? <Navigate to="/" replace />
+    ? <Navigate to="/dashboard" replace />
     : <Navigate to="/login" replace />;
 };
 
