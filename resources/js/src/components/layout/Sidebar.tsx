@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItemProps {
   to: string;
@@ -197,6 +198,14 @@ interface SidebarProps {
 
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { currentRole, rolePermissions, roleLabels } = useRole();
+  const { user } = useAuth();
+  const userDisplayName = user?.nombre || user?.username || 'Usuario';
+  const initials = userDisplayName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(name => name[0]?.toUpperCase() ?? '')
+    .join('') || 'US';
   
   // Filtrar navegación según permisos del rol
   const filteredNavigation = navigation.filter(item => 
@@ -254,11 +263,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-full bg-sidebar-accent flex items-center justify-center">
-              <span className="text-sm font-medium text-sidebar-foreground">JD</span>
+              <span className="text-sm font-medium text-sidebar-foreground">{initials}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-sidebar-foreground truncate">
-                Juan Domínguez
+                {userDisplayName}
               </p>
               <p className="text-xs text-sidebar-foreground/60">{roleLabels[currentRole]}</p>
             </div>
