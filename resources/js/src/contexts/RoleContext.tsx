@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { UserRole } from '@/types';
+import { useAuth } from './AuthContext';
 
 interface RoleContextType {
   currentRole: UserRole;
-  setCurrentRole: (role: UserRole) => void;
   roleLabels: Record<UserRole, string>;
   rolePermissions: Record<UserRole, string[]>;
 }
@@ -35,11 +35,23 @@ const rolePermissions: Record<UserRole, string[]> = {
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);
 
+const DEFAULT_ROLE: UserRole = 'VENDEDOR';
+
+const isUserRole = (role: string): role is UserRole => {
+  return role in roleLabels;
+};
+
+const getAuthenticatedRole = (roles: Array<{ nombre?: string }>): UserRole => {
+  const firstRole = roles[0]?.nombre?.toUpperCase();
+  return firstRole && isUserRole(firstRole) ? firstRole : DEFAULT_ROLE;
+};
+
 export const RoleProvider = ({ children }: { children: ReactNode }) => {
-  const [currentRole, setCurrentRole] = useState<UserRole>('ADMIN');
+  const { roles } = useAuth();
+  const currentRole = getAuthenticatedRole(roles);
 
   return (
-    <RoleContext.Provider value={{ currentRole, setCurrentRole, roleLabels, rolePermissions }}>
+    <RoleContext.Provider value={{ currentRole, roleLabels, rolePermissions }}>
       {children}
     </RoleContext.Provider>
   );
