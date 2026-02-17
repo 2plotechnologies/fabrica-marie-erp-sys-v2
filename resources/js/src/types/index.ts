@@ -8,6 +8,9 @@ export interface Product {
   price: number;
   costPrice: number;
   category: string;
+  peso?: number; // Peso en gramos
+  presentacion?: string; // Tipo de presentación (bolsa, caja, paquete, etc.)
+  marca?: string;
   imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -39,19 +42,14 @@ export interface StockMovement {
 
 export interface Client {
   id: string;
-  businessName: string;
-  ownerName: string;
-  ruc?: string;
-  dni?: string;
+  codigo: string;
+  razon_social: string;
   address: string;
   phone: string;
-  email?: string;
   routeId?: string;
   creditLimit: number;
   currentDebt: number;
   status: 'ACTIVO' | 'INACTIVO' | 'MOROSO';
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface Sale {
@@ -206,13 +204,13 @@ export interface User {
   updatedAt: Date;
 }
 
-export type UserRole = 
-  | 'ADMIN' 
-  | 'GERENTE' 
-  | 'SUPERVISOR' 
-  | 'VENDEDOR' 
-  | 'ALMACENERO' 
-  | 'CAJERO' 
+export type UserRole =
+  | 'ADMIN'
+  | 'GERENTE'
+  | 'SUPERVISOR'
+  | 'VENDEDOR'
+  | 'ALMACENERO'
+  | 'CAJERO'
   | 'RRHH'
   | 'FIDELIZACION'
   | 'MANTENIMIENTO';

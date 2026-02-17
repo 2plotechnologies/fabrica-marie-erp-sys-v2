@@ -11,7 +11,9 @@ export interface ClientePayload {
   condicion_pago: string;
   limite_credito: number;
   dias_credito: number;
+  deuda_actual: number;
   activo: boolean;
+  status: string;
 }
 
 export const clienteService = {

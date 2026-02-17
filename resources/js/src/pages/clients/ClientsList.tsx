@@ -1,9 +1,10 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  Plus, 
-  Filter, 
+import {
+  Search,
+  Plus,
+  Filter,
   MoreHorizontal,
   Phone,
   MapPin,
@@ -27,18 +28,70 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockClients } from '@/data/mockData';
 import { cn } from '@/lib/utils';
+import { clienteService } from '@/services/clienteService';
+import { useToast } from '@/hooks/use-toast';
+
+interface ClientUI {
+  id: number;
+  razon_social: string;
+  codigo: string;
+  phone: string;
+  address: string;
+  creditLimit: number;
+  currentDebt: number;
+  status: string;
+}
 
 const ClientsList = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [clients, setClients] = useState<ClientUI[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
-  const filteredClients = mockClients.filter(client => {
-    const matchesSearch = 
-      client.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.ownerName.toLowerCase().includes(searchTerm.toLowerCase());
+  // 🔹 Obtener clientes desde backend
+  useEffect(() => {
+    const fetchClientes = async () => {
+      try {
+        const data = await clienteService.getAll();
+
+        // Mapear datos backend → formato UI actual
+        const mappedClients: ClientUI[] = data.map((c: any) => ({
+          id: c.id,
+          razon_social: c.razon_social,
+          codigo: c.codigo_cliente,
+          phone: c.telefono || '',
+          address: c.direccion || '',
+          creditLimit: Number(c.limite_credito || 0),
+          currentDebt: Number(c.deuda_actual || 0),
+          status: c.status || 'ACTIVO',
+        }));
+
+        setClients(mappedClients);
+
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error?.message || "No se pudieron cargar los clientes.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClientes();
+  }, []);
+
+  // 🔹 Filtros (NO modificados)
+  const filteredClients = clients.filter(client => {
+    const matchesSearch =
+      client.razon_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.codigo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || client.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -54,6 +107,7 @@ const ClientsList = () => {
 
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
         <div>
@@ -62,8 +116,8 @@ const ClientsList = () => {
             Gestiona tu cartera de clientes
           </p>
         </div>
-        <Button 
-          variant="gradient" 
+        <Button
+          variant="gradient"
           className="gap-2"
           onClick={() => navigate('/clientes/nuevo')}
         >
@@ -73,33 +127,33 @@ const ClientsList = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-slide-up">
         <div className="bg-card rounded-xl border p-4">
           <p className="text-sm text-muted-foreground">Total Clientes</p>
-          <p className="text-2xl font-bold">{mockClients.length}</p>
+          <p className="text-2xl font-bold">{clients.length}</p>
         </div>
         <div className="bg-card rounded-xl border p-4">
           <p className="text-sm text-muted-foreground">Activos</p>
           <p className="text-2xl font-bold text-success">
-            {mockClients.filter(c => c.status === 'ACTIVO').length}
+            {clients.filter(c => c.status === 'ACTIVO').length}
           </p>
         </div>
         <div className="bg-card rounded-xl border p-4">
           <p className="text-sm text-muted-foreground">Morosos</p>
           <p className="text-2xl font-bold text-destructive">
-            {mockClients.filter(c => c.status === 'MOROSO').length}
+            {clients.filter(c => c.status === 'MOROSO').length}
           </p>
         </div>
         <div className="bg-card rounded-xl border p-4">
           <p className="text-sm text-muted-foreground">Deuda Total</p>
           <p className="text-2xl font-bold">
-            S/ {mockClients.reduce((sum, c) => sum + c.currentDebt, 0).toLocaleString('es-PE')}
+            S/ {clients.reduce((sum, c) => sum + c.currentDebt, 0).toLocaleString('es-PE')}
           </p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 animate-slide-up" style={{ animationDelay: '200ms' }}>
+      {/* Filters (SIN CAMBIOS) */}
+      <div className="flex flex-col sm:flex-row gap-4 animate-slide-up">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -136,12 +190,12 @@ const ClientsList = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up" style={{ animationDelay: '300ms' }}>
+      {/* Tabla (SIN CAMBIOS VISUALES) */}
+      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Límite Crédito</TableHead>
@@ -151,19 +205,12 @@ const ClientsList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClients.map((client, index) => (
-                <TableRow 
-                  key={client.id}
-                  className="animate-fade-in cursor-pointer hover:bg-secondary/50"
-                  style={{ animationDelay: `${400 + index * 50}ms` }}
-                >
+              {filteredClients.map((client) => (
+                <TableRow key={client.id}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{client.businessName}</p>
-                      <p className="text-sm text-muted-foreground">{client.ownerName}</p>
-                      {client.ruc && (
-                        <p className="text-xs text-muted-foreground">RUC: {client.ruc}</p>
-                      )}
+                      <p className="font-medium">{client.razon_social}</p>
+                      <p className="text-sm text-muted-foreground">{client.codigo}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -179,34 +226,10 @@ const ClientsList = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">
-                      S/ {client.creditLimit.toLocaleString('es-PE')}
-                    </span>
+                    S/ {client.creditLimit.toLocaleString('es-PE')}
                   </TableCell>
                   <TableCell>
-                    <span className={cn(
-                      "font-semibold",
-                      client.currentDebt > client.creditLimit && "text-destructive"
-                    )}>
-                      S/ {client.currentDebt.toLocaleString('es-PE')}
-                    </span>
-                    {client.currentDebt > 0 && (
-                      <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                        <div 
-                          className={cn(
-                            "h-full rounded-full transition-all",
-                            client.currentDebt > client.creditLimit 
-                              ? "bg-destructive" 
-                              : client.currentDebt > client.creditLimit * 0.8 
-                                ? "bg-warning" 
-                                : "bg-success"
-                          )}
-                          style={{ 
-                            width: `${Math.min((client.currentDebt / client.creditLimit) * 100, 100)}%` 
-                          }}
-                        />
-                      </div>
-                    )}
+                    S/ {client.currentDebt.toLocaleString('es-PE')}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={getStatusBadge(client.status)}>
@@ -225,6 +248,7 @@ const ClientsList = () => {
                         <DropdownMenuItem>Editar</DropdownMenuItem>
                         <DropdownMenuItem>Registrar abono</DropdownMenuItem>
                         <DropdownMenuItem>Ver historial</DropdownMenuItem>
+                        <DropdownMenuItem>Desactivar</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

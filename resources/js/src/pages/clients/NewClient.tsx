@@ -41,7 +41,9 @@ const NewClient = () => {
     condicion_pago: 'CONTADO',
     limite_credito: '',
     dias_credito: '',
+    deuda_actual: '',
     activo: true,
+    status: 'ACTIVO'
   });
 
   const handleInputChange = (field: string, value: any) => {
@@ -86,6 +88,7 @@ const NewClient = () => {
           formData.condicion_pago === 'CREDITO'
             ? Number(formData.dias_credito || 0)
             : 0,
+        deuda_actual: 0,
         activo: true,
       };
 

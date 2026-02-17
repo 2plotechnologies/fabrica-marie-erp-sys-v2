@@ -18,7 +18,9 @@ class Cliente extends Model
         'condicion_pago',
         'limite_credito',
         'dias_credito',
-        'activo'
+        'deuda_actual',
+        'activo',
+        'status'
     ];
 
     public $timestamps = false;

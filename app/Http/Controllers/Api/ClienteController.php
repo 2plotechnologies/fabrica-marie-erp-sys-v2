@@ -26,7 +26,9 @@ class ClienteController extends Controller
             'condicion_pago' => 'required|in:CONTADO,CREDITO',
             'limite_credito' => 'numeric',
             'dias_credito' => 'numeric',
-            'activo' => 'boolean'
+            'deuda_actual' => 'numeric',
+            'activo' => 'boolean',
+            'status' => 'required|string',
         ]);
 
         $cliente = Cliente::create($validated);
