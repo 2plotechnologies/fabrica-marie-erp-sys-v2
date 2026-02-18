@@ -1,242 +1,261 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader,
+  DialogTitle, DialogTrigger, DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Cookie, Pencil, Trash2, Package } from 'lucide-react';
-import { mockProducts } from '@/data/mockData';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Search, Plus, Cookie, Package } from 'lucide-react';
+import { productoService } from '@/services/productoService';
+import { toast, useToast } from '@/hooks/use-toast';
 
 const ProductsList = () => {
+
+  const [productos, setProductos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredProducts = mockProducts.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [form, setForm] = useState({
+    sku: '',
+    categoria: '',
+    nombre: '',
+    descripcion: '',
+    presentacion: '',
+    marca: '',
+    unidad_medida: '',
+    precio_base: '',
+    costo: '',
+    stock_minimo: '',
+    activo: true,
+  });
 
-  const categories = [...new Set(mockProducts.map(p => p.category))];
+  /* =========================
+     OBTENER PRODUCTOS
+  ========================= */
+
+  const fetchProductos = async () => {
+    try {
+      setIsLoading(true);
+      const data = await productoService.getAll();
+      console.log('Productos:', data);
+      setProductos(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener productos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProductos();
+  }, []);
+
+  /* =========================
+     CREAR PRODUCTO
+  ========================= */
+
+  const handleCreate = async () => {
+    if (!form.sku || !form.nombre) return;
+
+    try {
+      await productoService.create({
+        sku: form.sku,
+        categoria: form.categoria,
+        nombre: form.nombre,
+        descripcion: form.descripcion || undefined,
+        presentacion: form.presentacion || undefined,
+        marca: form.marca || undefined,
+        unidad_medida: form.unidad_medida,
+        precio_base: Number(form.precio_base),
+        costo: Number(form.costo),
+        stock_minimo: Number(form.stock_minimo),
+        activo: form.activo,
+      });
+
+      await fetchProductos();
+
+      setForm({
+        sku: '',
+        categoria: '',
+        nombre: '',
+        descripcion: '',
+        presentacion: '',
+        marca: '',
+        unidad_medida: '',
+        precio_base: '',
+        costo: '',
+        stock_minimo: '',
+        activo: true,
+      });
+
+      setIsAddDialogOpen(false);
+
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+          title: "Error",
+          description: err?.message || "No se pudo registrar el producto.",
+          variant: "destructive",
+       });
+    }
+  };
+
+  /* =========================
+     FILTROS
+  ========================= */
+
+ const filteredProducts = productos.filter((p) =>
+    (p.nombre ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.sku ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  const categories = [...new Set(productos.map(p => p.categoria))];
+
+  /* =========================
+     RENDER
+  ========================= */
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-destructive">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">
-            Catálogo de Productos
-          </h1>
-          <p className="text-muted-foreground">
-            Gestiona el catálogo de galletas y productos
-          </p>
+          <h1 className="text-2xl font-bold">Catálogo de Productos</h1>
+          <p className="text-muted-foreground">Gestiona el catálogo</p>
         </div>
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-warm hover:opacity-90">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Producto
-            </Button>
+            <Button className="bg-gradient-warm hover:opacity-90"><Plus className="h-4 w-4 mr-2" />Nuevo Producto</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Cookie className="h-5 w-5 text-primary" />
-                Nuevo Producto
-              </DialogTitle>
-              <DialogDescription>
-                Agrega un nuevo producto al catálogo
-              </DialogDescription>
+              <DialogTitle className="flex items-center gap-2"><Cookie className="h-5 w-5 text-primary" />Nuevo Producto</DialogTitle>
+              <DialogDescription>Agrega un nuevo producto al catálogo</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sku">SKU</Label>
-                  <Input id="sku" placeholder="GAL-XXX" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Categoría</Label>
-                  <Input id="category" placeholder="Premium" />
-                </div>
+                <div className="space-y-2"><Label>SKU *</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="GAL-XXX" /></div>
+                <div className="space-y-2"><Label>Categoría</Label><Input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} placeholder="general" /></div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre del Producto</Label>
-                <Input id="name" placeholder="Galletas de..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea id="description" placeholder="Describe el producto..." />
-              </div>
+              <div className="space-y-2"><Label>Nombre *</Label><Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Galletas de..." /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="costPrice">Precio de Costo (S/)</Label>
-                  <Input id="costPrice" type="number" step="0.01" placeholder="0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Precio de Venta (S/)</Label>
-                  <Input id="price" type="number" step="0.01" placeholder="0.00" />
-                </div>
+                <div className="space-y-2"><Label>Marca</Label><Input value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Rey del Centro" /></div>
+                <div className="space-y-2"><Label>Presentación</Label><Input value={form.presentacion} onChange={(e) => setForm({ ...form, presentacion: e.target.value })} placeholder="5x800, 5x900..." /></div>
+              </div>
+              <div className="space-y-2"><Label>Descripción</Label><Textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Describe el producto..." /></div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2"><Label>Unidad Medida</Label><Input value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Stock Mínimo </Label><Input type="number" value={form.stock_minimo} onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Costo (S/)</Label><Input type="number" step="0.01" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Venta (S/)</Label><Input type="number" step="0.01" value={form.precio_base} onChange={(e) => setForm({ ...form, precio_base: e.target.value })} /></div>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button className="bg-gradient-warm hover:opacity-90">
-                Guardar Producto
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
+              <Button className="bg-gradient-warm hover:opacity-90" onClick={handleCreate}>
+                {'Guardar Producto'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="shadow-card">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Package className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Productos</p>
-                <p className="text-2xl font-bold text-foreground">{mockProducts.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        {categories.map((category) => (
-          <Card key={category} className="shadow-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-cookie-100 dark:bg-cookie-900/30 flex items-center justify-center">
-                  <Cookie className="h-6 w-6 text-cookie-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{category}</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {mockProducts.filter(p => p.category === category).length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Card className="shadow-card"><CardContent className="pt-6"><div className="flex items-center gap-4"><div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center"><Package className="h-6 w-6 text-primary" /></div><div><p className="text-sm text-muted-foreground">Total Productos</p><p className="text-2xl font-bold text-foreground">{productos.length}</p></div></div></CardContent></Card>
+        {categories.slice(0, 3).map((cat) => (
+          <Card key={cat} className="shadow-card"><CardContent className="pt-6"><div className="flex items-center gap-4"><div className="h-12 w-12 rounded-xl bg-cookie-100 dark:bg-cookie-900/30 flex items-center justify-center"><Cookie className="h-6 w-6 text-cookie-600" /></div><div><p className="text-sm text-muted-foreground">{cat}</p><p className="text-2xl font-bold text-foreground">{productos.filter(p => p.categoria === cat).length}</p></div></div></CardContent></Card>
         ))}
       </div>
 
-      {/* Search */}
-      <Card className="shadow-card">
+      {/* BUSCADOR */}
+      <Card>
         <CardContent className="pt-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nombre o SKU..."
+              className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
             />
           </div>
         </CardContent>
       </Card>
 
-      {/* Products Table */}
-      <Card className="shadow-card">
+      {/* TABLA */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Cookie className="h-5 w-5 text-primary" />
-            Lista de Productos
-          </CardTitle>
+          <CardTitle>Lista de Productos</CardTitle>
         </CardHeader>
+
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>SKU</TableHead>
-                <TableHead>Producto</TableHead>
+                <TableHead>Nombre</TableHead>
                 <TableHead>Categoría</TableHead>
-                <TableHead className="text-right">Costo</TableHead>
-                <TableHead className="text-right">Precio</TableHead>
-                <TableHead className="text-right">Margen</TableHead>
-                <TableHead>Actualizado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                <TableHead>Presentación</TableHead>
+                <TableHead>Precio Base</TableHead>
+                <TableHead>Costo</TableHead>
+                <TableHead>Stock Mínimo</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {filteredProducts.map((product) => {
-                const margin = ((product.price - product.costPrice) / product.price * 100).toFixed(1);
-                return (
-                  <TableRow key={product.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {product.sku}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        {product.description && (
-                          <p className="text-xs text-muted-foreground truncate max-w-xs">
-                            {product.description}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{product.category}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      S/ {product.costPrice.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      S/ {product.price.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge 
-                        variant={parseFloat(margin) > 30 ? 'default' : 'secondary'}
-                        className={parseFloat(margin) > 30 ? 'bg-emerald-500' : ''}
-                      >
-                        {margin}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {format(product.updatedAt, "dd MMM yyyy", { locale: es })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {filteredProducts.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>{p.sku}</TableCell>
+                  <TableCell>{p.nombre}</TableCell>
+                  <TableCell>{p.categoria}</TableCell>
+                  <TableCell>{p.presentacion}</TableCell>
+                  <TableCell>S/ {Number(p.precio_base).toFixed(2)}</TableCell>
+                  <TableCell>S/ {Number(p.costo).toFixed(2)}</TableCell>
+                  <TableCell>{p.stock_minimo}</TableCell>
+                </TableRow>
+              ))}
+
+              {filteredProducts.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-6">
+                    No hay productos registrados
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
+
     </div>
   );
 };

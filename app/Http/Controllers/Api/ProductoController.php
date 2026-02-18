@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Models\Producto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 
 
 class ProductoController extends Controller
@@ -18,7 +20,24 @@ class ProductoController extends Controller
 
     public function store(Request $request)
     {
-        $producto = Producto::create($request->all());
+        $validated = $request->validate([
+            'sku' => 'required|string|max:50|unique:productos,sku',
+            'categoria' => 'required|string|max:100',
+            'nombre' => 'required|string|max:150',
+            'descripcion' => 'nullable|string',
+            'presentacion' => 'nullable|string|max:100',
+            'marca' => 'required|string|max:100',
+            'unidad_medida' => 'required|string|max:50',
+            'precio_base' => 'required|numeric|min:0',
+            'costo' => 'required|numeric|min:0',
+            'stock_minimo' => 'required|integer|min:0',
+            'activo' => 'required|boolean',
+        ]);
+
+        $validated['created_at'] = Carbon::now();
+        $validated['created_by'] = Auth::id();
+
+        $producto = Producto::create($validated);
 
         return response()->json($producto, 201);
     }
