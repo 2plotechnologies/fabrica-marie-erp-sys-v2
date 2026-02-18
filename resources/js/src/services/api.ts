@@ -35,9 +35,12 @@ export const authService = {
         }
     },
 
-    logout: () => {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
+    logout: async () => {
+        try {
+            await api.post('/logout');
+        } catch (error) {
+            throw error.response?.data || { message: 'Error de conexión' };
+        }
     },
 
     isAuthenticated: () => {

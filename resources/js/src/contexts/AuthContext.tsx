@@ -19,7 +19,7 @@ interface AuthContextType {
     loading: boolean;
     error: string | null;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    logout: () => void;
+    logout: () => Promise<{ success: boolean; error?: string }>;
     hasPermission: (permisoCodigo: string) => boolean;
     hasRole: (rolNombre: string) => boolean;
     isAuthenticated: () => boolean;
@@ -91,12 +91,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_data');
-        setUser(null);
-        setRoles([]);
-        setPermisos([]);
+    const logout = async () => {
+        let logoutError: string | null = null;
+
+        try {
+            await authService.logout();
+        } catch (err: any) {
+            // Se limpia sesión local incluso si el backend falla
+            logoutError = err.message || 'Error al cerrar sesión';
+            setError(logoutError);
+        } finally {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            setUser(null);
+            setRoles([]);
+            setPermisos([]);
+        }
+
+        if (logoutError) {
+            return { success: false, error: logoutError };
+        }
+
+        return { success: true };
     };
 
     const hasPermission = (permisoCodigo: string) => {
