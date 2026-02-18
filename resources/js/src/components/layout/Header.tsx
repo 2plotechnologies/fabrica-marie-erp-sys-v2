@@ -1,20 +1,36 @@
 import { Bell, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { MobileMenuButton } from './Sidebar';
 import { RoleSelector } from './RoleSelector';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export const Header = ({ onMenuClick }: HeaderProps) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
   const currentDate = new Date().toLocaleDateString('es-PE', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-card/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 lg:px-6">
@@ -49,11 +65,18 @@ export const Header = ({ onMenuClick }: HeaderProps) => {
         </Button>
 
         {/* User */}
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <div className="h-8 w-8 rounded-full bg-gradient-warm flex items-center justify-center">
-            <User className="h-4 w-4 text-primary-foreground" />
-          </div>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <div className="h-8 w-8 rounded-full bg-gradient-warm flex items-center justify-center">
+                <User className="h-4 w-4 text-primary-foreground" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={handleLogout}>Cerrar sesión</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
