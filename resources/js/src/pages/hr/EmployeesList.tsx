@@ -219,7 +219,7 @@ const EmployeesList = () => {
     const matchesSearch =
       fullName.includes(searchTerm.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || employee.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || employee.roles[0]?.nombre === roleFilter;
     const matchesStatus = statusFilter === 'all' || employee.status === statusFilter;
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -249,8 +249,8 @@ const EmployeesList = () => {
 
   const stats = {
     total: employees.length,
-    active: employees.filter(e => e.delete === '0').length,
-    sellers: employees.filter(e => e.role === 'VENDEDOR').length,
+    active: employees.filter(e => e.deleted === 0).length,
+    sellers: employees.filter(e => e.roles[0]?.nombre === 'VENDEDOR').length,
   };
 
   //const roles = Object.keys(roleLabels) as UserRole[];
@@ -507,12 +507,12 @@ const EmployeesList = () => {
                   </TableCell>
                   <TableCell>{getRoleBadge(employee.roles[0]?.nombre)}</TableCell>
                   <TableCell>
-                    <Badge variant={employee.deleted === '0' ? 'default' : 'secondary'}>
-                      {employee.deleted === '0' ? (
-                        <><UserCheck className="h-3 w-3 mr-1" /> Activo</>
-                      ) : (
-                        <><UserX className="h-3 w-3 mr-1" /> Inactivo</>
-                      )}
+                    <Badge variant={!employee.deleted ? 'default' : 'secondary'}>
+                        {!employee.deleted ? (
+                         <><UserCheck className="h-3 w-3 mr-1" /> Activo</>
+                        ) : (
+                         <><UserX className="h-3 w-3 mr-1" /> Inactivo</>
+                        )}
                     </Badge>
                   </TableCell>
                  <TableCell className="text-muted-foreground">
