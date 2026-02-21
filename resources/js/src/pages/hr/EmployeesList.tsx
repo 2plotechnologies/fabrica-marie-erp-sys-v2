@@ -1,4 +1,5 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,10 +30,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { 
-  Search, 
-  UserCog, 
-  Plus, 
+import {
+  Search,
+  UserCog,
+  Plus,
   Mail,
   Phone,
   Users,
@@ -42,10 +43,14 @@ import {
   Pencil,
 } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { User, UserRole } from '@/types';
+import { empleadoService, Role } from '@/services/empleadoService';
+import { toast, useToast } from '@/hooks/use-toast';
 
+
+/*
 // Extended mock users for HR
 const mockEmployees: User[] = [
   ...mockUsers,
@@ -95,6 +100,8 @@ const mockEmployees: User[] = [
   },
 ];
 
+*/
+
 const roleLabels: Record<UserRole, string> = {
   ADMIN: 'Administrador',
   GERENTE: 'Gerente',
@@ -108,14 +115,108 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 const EmployeesList = () => {
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  const filteredEmployees = mockEmployees.filter((employee) => {
+    const [form, setForm] = useState({
+        username: '',
+        email: '',
+        password: '',
+        nombre: '',
+        rol: '',
+        sueldo_base: '',
+        horas_extra: '',
+        afp: '',
+    });
+
+   /* =========================
+       OBTENER empleados
+    ========================= */
+
+    const fetchEmployees = async () => {
+      try {
+        setIsLoading(true);
+        const data = await empleadoService.getAll();
+        console.log('Usuarios:', data);
+        setEmployees(data);
+      } catch (err: any) {
+        setError(err?.message || 'Error al obtener productos');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      fetchEmployees();
+    }, []);
+
+    useEffect(() => {
+        const fetchRoles = async () => {
+            try {
+                const data = await empleadoService.getRoles();
+                setRoles(data);
+            } catch (error) {
+                console.log(error);
+            }
+        };
+
+        fetchRoles();
+    }, []);
+
+      /* =========================
+        CREAR Usuario/empleado
+    ========================= */
+
+    const handleCreate = async () => {
+        if (!form.username || !form.nombre) return;
+
+        try {
+        await empleadoService.create({
+            username: form.username,
+            email: form.email,
+            password: form.password,
+            nombre: form.nombre,
+            rol: Number(form.rol),
+            sueldo_base: Number(form.sueldo_base),
+            horas_extra: Number(form.horas_extra),
+            afp: Number(form.afp),
+        });
+
+        await fetchEmployees();
+
+        setForm({
+            username: '',
+            email: '',
+            password: '',
+            nombre: '',
+            rol: '',
+            sueldo_base: '',
+            horas_extra: '',
+            afp: '',
+        });
+
+        setIsAddDialogOpen(false);
+
+        } catch (err: any) {
+            console.log("ERROR COMPLETO:", err);
+            console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+            toast({
+                title: "Error",
+                description: err?.message || "No se pudo registrar el usuario.",
+                variant: "destructive",
+            });
+        }
+    };
+
+  const filteredEmployees = employees.filter((employee) => {
     const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       fullName.includes(searchTerm.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || employee.role === roleFilter;
@@ -142,17 +243,17 @@ const EmployeesList = () => {
     );
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const getInitials = (username: string) => {
+    return username.charAt(0).toUpperCase();
   };
 
   const stats = {
-    total: mockEmployees.length,
-    active: mockEmployees.filter(e => e.status === 'ACTIVO').length,
-    sellers: mockEmployees.filter(e => e.role === 'VENDEDOR').length,
+    total: employees.length,
+    active: employees.filter(e => e.delete === '0').length,
+    sellers: employees.filter(e => e.role === 'VENDEDOR').length,
   };
 
-  const roles = Object.keys(roleLabels) as UserRole[];
+  //const roles = Object.keys(roleLabels) as UserRole[];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -183,55 +284,75 @@ const EmployeesList = () => {
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input placeholder="Juan" />
+                  <Label>Nombres</Label>
+                  <Input placeholder="Juan Quispe"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>
                 </div>
                 <div className="space-y-2">
-                  <Label>Apellido</Label>
-                  <Input placeholder="Pérez" />
+                    <Label>Nombre de Usuario</Label>
+                    <Input type="email" placeholder="juanquispe02"
+                    value={form.username}
+                    onChange={(e) => setForm({ ...form, username: e.target.value })}/>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Correo Electrónico</Label>
-                <Input type="email" placeholder="juan.perez@fabrica.com" />
+                <Input type="email" placeholder="juan.quispe@fabrica.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}/>
+              </div>
+              <div className="space-y-2">
+                <Label>Password</Label>
+                <Input type="password" placeholder="******"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}/>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Teléfono</Label>
-                  <Input placeholder="999888777" />
-                </div>
-                <div className="space-y-2">
                   <Label>Rol</Label>
-                  <Select>
+                  <Select
+                    value={form.rol}
+                    onValueChange={(v) =>
+                        setForm({ ...form, rol: v })
+                    }
+                    >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                        <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
+
                     <SelectContent>
-                      {roles.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {roleLabels[role]}
+                        {roles.map((role) => (
+                        <SelectItem
+                            key={role.id}
+                            value={role.id.toString()} // 👈 convertir a string
+                        >
+                            {role.nombre}
                         </SelectItem>
-                      ))}
+                        ))}
                     </SelectContent>
-                  </Select>
+                    </Select>
                 </div>
               </div>
-              
+
               {/* Campos de salario */}
               <div className="border-t pt-4 mt-2">
                 <h4 className="text-sm font-medium mb-3">Información Salarial</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Sueldo Base (S/)</Label>
-                    <Input type="number" placeholder="1500" min="0" />
+                    <Input type="number" placeholder="1500" min="0"
+                    onChange={(e) => setForm({ ...form, sueldo_base: e.target.value })}/>
                   </div>
                   <div className="space-y-2">
                     <Label>Hora Extra (S/)</Label>
-                    <Input type="number" placeholder="15" min="0" />
+                    <Input type="number" placeholder="15" min="0"
+                    onChange={(e) => setForm({ ...form, horas_extra: e.target.value })}/>
                   </div>
                   <div className="space-y-2">
                     <Label>AFP (%)</Label>
-                    <Input type="number" placeholder="13" min="0" max="100" />
+                    <Input type="number" placeholder="13" min="0" max="100"
+                    onChange={(e) => setForm({ ...form, afp: e.target.value })}/>
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -243,7 +364,7 @@ const EmployeesList = () => {
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="bg-gradient-warm hover:opacity-90">
+              <Button className="bg-gradient-warm hover:opacity-90" onClick={handleCreate}>
                 Guardar
               </Button>
             </DialogFooter>
@@ -316,8 +437,8 @@ const EmployeesList = () => {
               <SelectContent>
                 <SelectItem value="all">Todos los roles</SelectItem>
                 {roles.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {roleLabels[role]}
+                  <SelectItem key={role.id} value={role.nombre}>
+                    {roleLabels[role.nombre]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -363,15 +484,15 @@ const EmployeesList = () => {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-primary/10 text-primary">
-                          {getInitials(employee.firstName, employee.lastName)}
+                          {getInitials(employee.username)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium">
-                          {employee.firstName} {employee.lastName}
+                          {employee.nombre}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          ID: {employee.id}
+                          Username: {employee.username}
                         </p>
                       </div>
                     </div>
@@ -382,27 +503,23 @@ const EmployeesList = () => {
                         <Mail className="h-3 w-3 text-muted-foreground" />
                         {employee.email}
                       </div>
-                      {employee.phone && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {employee.phone}
-                        </div>
-                      )}
                     </div>
                   </TableCell>
-                  <TableCell>{getRoleBadge(employee.role)}</TableCell>
+                  <TableCell>{getRoleBadge(employee.roles[0]?.nombre)}</TableCell>
                   <TableCell>
-                    <Badge variant={employee.status === 'ACTIVO' ? 'default' : 'secondary'}>
-                      {employee.status === 'ACTIVO' ? (
+                    <Badge variant={employee.deleted === '0' ? 'default' : 'secondary'}>
+                      {employee.deleted === '0' ? (
                         <><UserCheck className="h-3 w-3 mr-1" /> Activo</>
                       ) : (
                         <><UserX className="h-3 w-3 mr-1" /> Inactivo</>
                       )}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {format(employee.createdAt, "dd MMM yyyy", { locale: es })}
-                  </TableCell>
+                 <TableCell className="text-muted-foreground">
+                    {employee.created_at && !isNaN(new Date(employee.created_at).getTime())
+                        ? format(new Date(employee.created_at.replace(" ", "T")), "dd MMM yyyy", { locale: es })
+                        : "—"}
+                </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="ghost" size="icon">

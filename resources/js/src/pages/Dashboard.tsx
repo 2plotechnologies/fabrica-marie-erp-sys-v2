@@ -1,8 +1,8 @@
-import { 
-  DollarSign, 
-  ShoppingCart, 
-  TrendingUp, 
-  Users, 
+import {
+  DollarSign,
+  ShoppingCart,
+  TrendingUp,
+  Users,
   Package,
   MapPin,
   Truck,
@@ -18,17 +18,20 @@ import { StockAlerts } from '@/components/dashboard/StockAlerts';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { ClientsOverview } from '@/components/dashboard/ClientsOverview';
 import { useRole } from '@/contexts/RoleContext';
-import { 
-  mockDashboardKPIs, 
-  mockSales, 
-  mockStock, 
-  mockClients 
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  mockDashboardKPIs,
+  mockSales,
+  mockStock,
+  mockClients
 } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 const Dashboard = () => {
   const { currentRole, roleLabels } = useRole();
+  const { user } = useAuth();
+  const userDisplayName = user?.nombre || user?.username || 'Usuario';
   const kpis = mockDashboardKPIs;
   const lowStockItems = mockStock.filter(s => s.quantity < s.minStock);
 
@@ -470,7 +473,7 @@ const Dashboard = () => {
                       <span className="font-bold">{todayRoute.progress}%</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all"
                         style={{ width: `${todayRoute.progress}%` }}
                       />
@@ -773,7 +776,7 @@ const Dashboard = () => {
       {/* Page Header */}
       <div className="animate-fade-in">
         <h1 className="text-2xl lg:text-3xl font-display font-bold">
-          Buenos días, Juan
+          Buenos días, {userDisplayName}
         </h1>
         <p className="text-muted-foreground mt-1">
           Vista de {roleLabels[currentRole]} - Aquí está tu resumen del día

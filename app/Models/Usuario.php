@@ -39,6 +39,11 @@ class Usuario extends Authenticatable
         return $this->belongsToMany(Rol::class, 'usuario_rol');
     }
 
+    public function informacionSalarial()
+    {
+        return $this->hasOne(InformacionSalarialEmp::class, 'id_usuario', 'id');
+    }
+
     public function permisos()
     {
         return $this->roles()

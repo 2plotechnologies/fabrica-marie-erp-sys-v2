@@ -54,7 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('inventario')
-        ->middleware('role:ADMIN,ALMACEN')
+        ->middleware('role:ADMIN,ALMACENERO')
         ->group(function () {
 
         // Productos
@@ -97,6 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->group(function () {
 
         // Usuarios
+        Route::get('/usuarios', [UsuarioController::class, 'index']);
         Route::post('/usuarios', [UsuarioController::class, 'store']);
 
         // Roles
