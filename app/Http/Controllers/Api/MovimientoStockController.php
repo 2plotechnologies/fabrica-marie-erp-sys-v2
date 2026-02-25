@@ -20,7 +20,7 @@ class MovimientoStockController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'tipo' => 'required|in:INGRESO,SALIDA,AJUSTE,DEVOLUCION',
+            'tipo' => 'required|in:INGRESO,SALIDA,AJUSTE,DEVOLUCION_BUENA,DEVOLUCION_MALA,DESECHO',
             'producto_id' => 'required|integer',
             'ruma_id' => 'required|integer',
             'cantidad' => 'required|integer|min:1',

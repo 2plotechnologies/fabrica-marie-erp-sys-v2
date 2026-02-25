@@ -17,7 +17,8 @@ class MovimientoStock extends Model
         'referencia_id',
         'motivo',
         'stock_post_mov',
-        'user_id'
+        'user_id',
+        'created_at'
     ];
 
     public $timestamps = false;

@@ -30,27 +30,27 @@ class StockService
 
             // 2. Calcular nuevo stock según tipo
             switch ($data['tipo']) {
+
                 case 'INGRESO':
-                case 'DEVOLUCION':
+                case 'DEVOLUCION_BUENA':
                     $nuevoStock = $cantidadActual + $cantidadMov;
                     break;
 
                 case 'SALIDA':
-                    $permitirNegativo = auth()->user()->can('stock.negativo');
+                case 'DESECHO':
+                case 'DEVOLUCION_MALA':
+                    $permitirNegativo = auth()->user()?->can('stock.negativo') ?? false;
 
-                    if (!$permitirNegativo) {
+                    $disponible = $stock->cantidad - ($stock->stock_reservado ?? 0);
 
-                        $disponible = $stock->cantidad - $stock->stock_reservado;
-
-                        if ($cantidad > $disponible) {
-                            throw new Exception(
-                                "Stock insuficiente. Disponible: {$disponible}"
-                            );
-                        }
+                    if (!$permitirNegativo && $cantidadMov > $disponible) {
+                        throw new Exception("Stock insuficiente. Disponible: {$disponible}");
                     }
+
                     if ($cantidadActual < $cantidadMov) {
                         throw new Exception('Stock insuficiente');
                     }
+
                     $nuevoStock = $cantidadActual - $cantidadMov;
                     break;
 
@@ -76,6 +76,7 @@ class StockService
                 'referencia_tipo' => $data['referencia_tipo'] ?? null,
                 'referencia_id' => $data['referencia_id'] ?? null,
                 'motivo' => $data['motivo'] ?? null,
+                'stock_anterior' => $cantidadActual,
                 'stock_post_mov' => $nuevoStock,
                 'user_id' => $data['user_id'] ?? null,
                 'created_at' => Carbon::now()
@@ -116,6 +117,7 @@ class StockService
                 'referencia_tipo' => 'VENTA',
                 'referencia_id' => $ventaId,
                 'motivo' => 'Confirmación de venta',
+                'stock_anterior' => $stock->cantidad += $descuento,
                 'stock_post_mov' => $stock->cantidad,
                 'user_id' => $userId,
                 'created_at' => now()
