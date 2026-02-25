@@ -71,6 +71,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Rumas
         Route::get('/rumas', [RumaController::class, 'index']);
         Route::post('/rumas', [RumaController::class, 'store']);
+        Route::get('/rumas/{id}', [RumaController::class, 'show']);
+        Route::put('/rumas/{id}', [RumaController::class, 'update']);
+        Route::delete('/rumas/{id}', [RumaController::class, 'destroy']);
 
         // Stock
         Route::get('/stock', [StockController::class, 'index']);

@@ -10,9 +10,12 @@ class Ruma extends Model
 
     protected $fillable = [
         'codigo',
+        'nombre',
         'descripcion',
+        'condiciones',
         'capacidad_unidades',
-        'ubicacion_fisica'
+        'ubicacion_fisica',
+        'estado'
     ];
 
     public $timestamps = false;

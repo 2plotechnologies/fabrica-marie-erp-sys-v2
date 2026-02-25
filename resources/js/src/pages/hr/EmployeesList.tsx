@@ -177,31 +177,31 @@ const EmployeesList = () => {
         if (!form.username || !form.nombre) return;
 
         try {
-        await empleadoService.create({
-            username: form.username,
-            email: form.email,
-            password: form.password,
-            nombre: form.nombre,
-            rol: Number(form.rol),
-            sueldo_base: Number(form.sueldo_base),
-            horas_extra: Number(form.horas_extra),
-            afp: Number(form.afp),
-        });
+            await empleadoService.create({
+                username: form.username,
+                email: form.email,
+                password: form.password,
+                nombre: form.nombre,
+                rol: Number(form.rol),
+                sueldo_base: Number(form.sueldo_base),
+                horas_extra: Number(form.horas_extra),
+                afp: Number(form.afp),
+            });
 
-        await fetchEmployees();
+            await fetchEmployees();
 
-        setForm({
-            username: '',
-            email: '',
-            password: '',
-            nombre: '',
-            rol: '',
-            sueldo_base: '',
-            horas_extra: '',
-            afp: '',
-        });
+            setForm({
+                username: '',
+                email: '',
+                password: '',
+                nombre: '',
+                rol: '',
+                sueldo_base: '',
+                horas_extra: '',
+                afp: '',
+            });
 
-        setIsAddDialogOpen(false);
+            setIsAddDialogOpen(false);
 
         } catch (err: any) {
             console.log("ERROR COMPLETO:", err);

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,9 +31,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  Package, 
-  Plus, 
+import {
+  Package,
+  Plus,
   Search,
   Box,
   Thermometer,
@@ -45,115 +46,75 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { rumaService } from '@/services/rumaService';
 
 interface Ruma {
   id: string;
-  code: string;
-  name: string;
-  location: string;
-  capacity: number;
-  currentStock: number;
-  temperature?: string;
-  humidity?: string;
-  status: 'ACTIVA' | 'LLENA' | 'MANTENIMIENTO' | 'INACTIVA';
+  codigo: string;
+  nombre: string;
+  ubicacion_fisica: string;
+  capacidad: number;
+  stockActual: number;
+  condiciones:string;
+  estado: 'ACTIVA' | 'LLENA' | 'MANTENIMIENTO' | 'INACTIVA';
   products: RumaProduct[];
-  lastUpdated: Date;
-  notes?: string;
+  descripcion: string;
 }
 
 interface RumaProduct {
-  productId: string;
-  productName: string;
-  quantity: number;
-  lotNumber?: string;
-  expirationDate?: Date;
+  id: string;
+  sku:string;
+  nombre: string;
+  cantidad: number;
 }
-
-// Mock data
-const mockRumas: Ruma[] = [
-  {
-    id: '1',
-    code: 'R-001',
-    name: 'Ruma Principal A',
-    location: 'Almacén Central - Zona A',
-    capacity: 5000,
-    currentStock: 3250,
-    temperature: '18-22°C',
-    humidity: '45-55%',
-    status: 'ACTIVA',
-    products: [
-      { productId: '1', productName: 'Galleta Soda Premium', quantity: 1500, lotNumber: 'L2024-001', expirationDate: new Date('2025-06-15') },
-      { productId: '2', productName: 'Galleta Vainilla Clásica', quantity: 1000, lotNumber: 'L2024-002', expirationDate: new Date('2025-07-20') },
-      { productId: '3', productName: 'Galleta Chocolate Intenso', quantity: 750, lotNumber: 'L2024-003', expirationDate: new Date('2025-05-30') },
-    ],
-    lastUpdated: new Date(),
-    notes: 'Ruma principal para productos de alta rotación',
-  },
-  {
-    id: '2',
-    code: 'R-002',
-    name: 'Ruma Secundaria B',
-    location: 'Almacén Central - Zona B',
-    capacity: 3000,
-    currentStock: 2800,
-    temperature: '18-22°C',
-    humidity: '45-55%',
-    status: 'LLENA',
-    products: [
-      { productId: '4', productName: 'Galleta Integral', quantity: 1200, lotNumber: 'L2024-010', expirationDate: new Date('2025-08-10') },
-      { productId: '5', productName: 'Galleta Animalitos', quantity: 1600, lotNumber: 'L2024-011', expirationDate: new Date('2025-09-05') },
-    ],
-    lastUpdated: new Date(),
-  },
-  {
-    id: '3',
-    code: 'R-003',
-    name: 'Ruma Refrigerada C',
-    location: 'Almacén Central - Zona C',
-    capacity: 2000,
-    currentStock: 450,
-    temperature: '4-8°C',
-    humidity: '60-70%',
-    status: 'ACTIVA',
-    products: [
-      { productId: '6', productName: 'Galleta Rellena Fresa', quantity: 450, lotNumber: 'L2024-020', expirationDate: new Date('2025-03-15') },
-    ],
-    lastUpdated: new Date(),
-    notes: 'Productos que requieren refrigeración',
-  },
-  {
-    id: '4',
-    code: 'R-004',
-    name: 'Ruma Mantenimiento D',
-    location: 'Almacén Secundario',
-    capacity: 4000,
-    currentStock: 0,
-    status: 'MANTENIMIENTO',
-    products: [],
-    lastUpdated: new Date(),
-    notes: 'En reparación de estantería hasta el 25/12',
-  },
-];
 
 const RumaManagement = () => {
   const { toast } = useToast();
+  const [rumas, setRumas] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedRuma, setSelectedRuma] = useState<Ruma | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
-  const filteredRumas = mockRumas.filter((ruma) => {
-    const matchesSearch = 
-      ruma.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ruma.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ruma.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || ruma.status === statusFilter;
+  const fetchRumas = async () => {
+        try {
+          setIsLoading(true);
+          const data = await rumaService.getAll();
+          console.log('Rumas:', data);
+          setRumas(data);
+        } catch (err: any) {
+          setError(err?.message || 'Error al obtener rumas');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+    useEffect(() => {
+        fetchRumas();
+    }, []);
+  const [form, setForm] = useState({
+        codigo: '',
+        nombre: '',
+        descripcion: '',
+        condiciones: '',
+        capacidad_unidades: '',
+        ubicacion_fisica: '',
+        estado: 'ACTIVA',
+    });
+
+  const filteredRumas = rumas.filter((ruma) => {
+    const matchesSearch =
+      ruma.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ruma.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ruma.ubicacion_fisica.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || ruma.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: Ruma['status']) => {
-    const variants: Record<Ruma['status'], { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+  const getStatusBadge = (status: Ruma['estado']) => {
+    const variants: Record<Ruma['estado'], { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
       ACTIVA: { variant: 'default', label: 'Activa' },
       LLENA: { variant: 'secondary', label: 'Llena' },
       MANTENIMIENTO: { variant: 'destructive', label: 'Mantenimiento' },
@@ -169,10 +130,10 @@ const RumaManagement = () => {
   };
 
   const stats = {
-    totalRumas: mockRumas.length,
-    activeRumas: mockRumas.filter(r => r.status === 'ACTIVA').length,
-    totalCapacity: mockRumas.reduce((sum, r) => sum + r.capacity, 0),
-    totalStock: mockRumas.reduce((sum, r) => sum + r.currentStock, 0),
+    totalRumas: rumas.length,
+    activeRumas: rumas.filter(r => r.estado === 'ACTIVA').length,
+    totalCapacity: rumas.reduce((sum, r) => sum + (Number(r.capacidad) || 0), 0),
+    totalStock: rumas.reduce((sum, r) => sum + (Number(r.stockActual) || 0), 0),
   };
 
   const handleViewDetails = (ruma: Ruma) => {
@@ -180,12 +141,49 @@ const RumaManagement = () => {
     setIsDetailDialogOpen(true);
   };
 
-  const handleCreateRuma = () => {
-    toast({
-      title: "Ruma creada",
-      description: "La nueva ruma ha sido registrada exitosamente.",
-    });
-    setIsAddDialogOpen(false);
+  const handleCreateRuma = async () => {
+    if (!form.codigo || !form.nombre) return;
+
+        try {
+            await rumaService.create({
+                codigo: form.codigo,
+                nombre: form.nombre,
+                descripcion: form.descripcion,
+                condiciones: form.condiciones,
+                capacidad_unidades: Number(form.capacidad_unidades),
+                ubicacion_fisica: form.ubicacion_fisica,
+                estado: form.estado,
+            });
+
+            await fetchRumas();
+
+            setForm({
+                codigo: '',
+                nombre: '',
+                descripcion: '',
+                condiciones: '',
+                capacidad_unidades: '',
+                ubicacion_fisica: '',
+                estado: 'ACTIVA',
+            });
+
+            setIsAddDialogOpen(false);
+
+            toast({
+                title: "Ruma creada",
+                description: "La nueva ruma ha sido registrada exitosamente.",
+            });
+
+        } catch (err: any) {
+            setIsAddDialogOpen(false);
+            console.log("ERROR COMPLETO:", err);
+            console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+            toast({
+                title: "Error",
+                description: err?.message || "No se pudo registrar la ruma.",
+                variant: "destructive",
+            });
+        }
   };
 
   return (
@@ -218,25 +216,35 @@ const RumaManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código</Label>
-                  <Input placeholder="R-005" />
+                  <Input placeholder="R-005"
+                  value={form.codigo}
+                  onChange={(e) => setForm({ ...form, codigo: e.target.value })}/>
                 </div>
                 <div className="space-y-2">
                   <Label>Nombre</Label>
-                  <Input placeholder="Ruma E" />
+                  <Input placeholder="Ruma E"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Ubicación</Label>
-                <Input placeholder="Almacén Central - Zona E" />
+                <Input placeholder="Almacén Central - Zona E"
+                value={form.ubicacion_fisica}
+                onChange={(e) => setForm({ ...form, ubicacion_fisica: e.target.value })}/>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Capacidad (unidades)</Label>
-                  <Input type="number" placeholder="5000" min="0" />
+                  <Input type="number" placeholder="5000" min="0"
+                  value={form.capacidad_unidades}
+                  onChange={(e) => setForm({ ...form, capacidad_unidades: e.target.value })}/>
                 </div>
                 <div className="space-y-2">
                   <Label>Estado</Label>
-                  <Select defaultValue="ACTIVA">
+                  <Select defaultValue="ACTIVA"
+                  value={form.estado}
+                  onValueChange={(v) => setForm({...form, estado: v})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -250,17 +258,17 @@ const RumaManagement = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Temperatura</Label>
-                  <Input placeholder="18-22°C" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Humedad</Label>
-                  <Input placeholder="45-55%" />
+                  <Label>Condiciones</Label>
+                  <Input placeholder="18-22°C, 45-55%"
+                  value={form.condiciones}
+                  onChange={(e) => setForm({ ...form, condiciones: e.target.value })}/>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Notas</Label>
-                <Textarea placeholder="Observaciones adicionales..." />
+                <Textarea placeholder="Observaciones adicionales..."
+                value={form.descripcion}
+                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}/>
               </div>
             </div>
             <DialogFooter>
@@ -313,7 +321,7 @@ const RumaManagement = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Capacidad Total</p>
-                <p className="text-2xl font-bold text-foreground">{stats.totalCapacity.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">{Number(stats.totalCapacity || 0).toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -327,7 +335,7 @@ const RumaManagement = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Stock Actual</p>
-                <p className="text-2xl font-bold text-foreground">{stats.totalStock.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-foreground">{Number(stats.totalStock || 0).toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -386,20 +394,20 @@ const RumaManagement = () => {
             </TableHeader>
             <TableBody>
               {filteredRumas.map((ruma) => {
-                const percentage = (ruma.currentStock / ruma.capacity) * 100;
+                const percentage = (Number(ruma.stockActual)||0 / Number(ruma.capacidad)||0) * 100;
                 return (
                   <TableRow key={ruma.id} className="hover:bg-muted/50">
-                    <TableCell className="font-mono font-medium">{ruma.code}</TableCell>
+                    <TableCell className="font-mono font-medium">{ruma.codigo}</TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{ruma.name}</p>
-                        <p className="text-xs text-muted-foreground">{ruma.location}</p>
+                        <p className="font-medium">{ruma.nombre}</p>
+                        <p className="text-xs text-muted-foreground">{ruma.ubicacion_fisica}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <span className="font-medium">{ruma.currentStock.toLocaleString()}</span>
-                        <span className="text-muted-foreground"> / {ruma.capacity.toLocaleString()}</span>
+                        <span className="font-medium">{ruma.stockActual.toLocaleString()}</span>
+                        <span className="text-muted-foreground"> / {ruma.capacidad.toLocaleString()}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -412,15 +420,15 @@ const RumaManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {ruma.temperature && (
+                        {ruma.condiciones && (
                           <span className="flex items-center gap-1">
                             <Thermometer className="h-3 w-3" />
-                            {ruma.temperature}
+                            {ruma.condiciones}
                           </span>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(ruma.status)}</TableCell>
+                    <TableCell>{getStatusBadge(ruma.estado)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => handleViewDetails(ruma)}>
@@ -447,10 +455,10 @@ const RumaManagement = () => {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Archive className="h-5 w-5 text-primary" />
-                  {selectedRuma.name} ({selectedRuma.code})
+                  {selectedRuma.nombre} ({selectedRuma.codigo})
                 </DialogTitle>
                 <DialogDescription>
-                  {selectedRuma.location}
+                  {selectedRuma.ubicacion_fisica}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -458,19 +466,15 @@ const RumaManagement = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground">Capacidad</p>
-                    <p className="font-semibold">{selectedRuma.capacity.toLocaleString()}</p>
+                    <p className="font-semibold">{selectedRuma.capacidad.toLocaleString()}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs text-muted-foreground">Stock Actual</p>
-                    <p className="font-semibold">{selectedRuma.currentStock.toLocaleString()}</p>
+                    <p className="font-semibold">{selectedRuma.stockActual.toLocaleString()}</p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs text-muted-foreground">Temperatura</p>
-                    <p className="font-semibold">{selectedRuma.temperature || 'Ambiente'}</p>
-                  </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs text-muted-foreground">Humedad</p>
-                    <p className="font-semibold">{selectedRuma.humidity || 'Normal'}</p>
+                    <p className="text-xs text-muted-foreground">Condiciones</p>
+                    <p className="font-semibold">{selectedRuma.condiciones || 'Ambiente'}</p>
                   </div>
                 </div>
 
@@ -493,17 +497,9 @@ const RumaManagement = () => {
                       <TableBody>
                         {selectedRuma.products.map((product, idx) => (
                           <TableRow key={idx}>
-                            <TableCell className="font-medium">{product.productName}</TableCell>
-                            <TableCell>{product.quantity.toLocaleString()}</TableCell>
-                            <TableCell className="font-mono text-sm">{product.lotNumber || '-'}</TableCell>
-                            <TableCell>
-                              {product.expirationDate ? (
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {format(product.expirationDate, 'dd/MM/yyyy', { locale: es })}
-                                </span>
-                              ) : '-'}
-                            </TableCell>
+                            <TableCell className="font-medium">{product.nombre}</TableCell>
+                            <TableCell>{product.cantidad.toLocaleString()}</TableCell>
+                            <TableCell className="font-mono text-sm">{product.sku || '-'}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -511,12 +507,12 @@ const RumaManagement = () => {
                   </div>
                 )}
 
-                {selectedRuma.notes && (
+                {selectedRuma.descripcion && (
                   <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Notas</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-300">{selectedRuma.notes}</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">{selectedRuma.descripcion}</p>
                     </div>
                   </div>
                 )}
@@ -535,3 +531,14 @@ const RumaManagement = () => {
 };
 
 export default RumaManagement;
+/*
+
+function setIsLoading(arg0: boolean) {
+    throw new Error('Function not implemented.');
+}
+
+function setError(arg0: any) {
+    throw new Error('Function not implemented.');
+}
+
+*/
