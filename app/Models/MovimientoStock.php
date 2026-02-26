@@ -18,6 +18,7 @@ class MovimientoStock extends Model
         'motivo',
         'stock_post_mov',
         'user_id',
+        'estado',
         'created_at'
     ];
 

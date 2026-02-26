@@ -32,7 +32,7 @@ const StockMovements = () => {
           console.log('Movimientos:', data);
           setMovimientos(data);
         } catch (err: any) {
-          setError(err?.message || 'Error al obtener productos');
+          setError(err?.message || 'Error al obtener movimientos');
         } finally {
           setIsLoading(false);
         }
@@ -97,7 +97,7 @@ const StockMovements = () => {
             console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
             toast({
                 title: "Error",
-                description: err?.message || "No se pudo registrar el usuario.",
+                description: err?.message || "No se pudo registrar el movimiento.",
                 variant: "destructive",
             });
         }
@@ -233,7 +233,7 @@ const StockMovements = () => {
                   <TableCell><div className="flex items-center gap-2">{getTypeIcon(m.tipo)}{getTypeBadge(m.tipo)}</div></TableCell>
                   <TableCell>{m.producto?.nombre}</TableCell>
                   <TableCell>{m.ruma?.codigo || '-'}</TableCell>
-                  <TableCell className="text-center font-semibold"><span className={m.tipo === 'SALIDA' || m.tipo === 'DESECHO' || m.tipo === 'DEVOLUCION_MALA' ? 'text-red-500' : 'text-emerald-500'}>{m.tipo === 'SALIDA' || m.tipo === 'DESECHO' || m.tipo === 'DEVOLUCION_BUENA' ? '-' : '+'}{Number(m.cantidad)}</span></TableCell>
+                  <TableCell className="text-center font-semibold"><span className={m.tipo === 'SALIDA' || m.tipo === 'DESECHO' || m.tipo === 'DEVOLUCION_MALA' ? 'text-red-500' : 'text-emerald-500'}>{m.tipo === 'SALIDA' || m.tipo === 'DESECHO' || m.tipo === 'DEVOLUCION_MALA' ? '-' : '+'}{Number(m.cantidad)}</span></TableCell>
                   <TableCell className="text-center text-muted-foreground">{Number(m.stock_anterior)}</TableCell>
                   <TableCell className="text-center font-medium">{Number(m.stock_post_mov)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{m.motivo || '-'}</TableCell>

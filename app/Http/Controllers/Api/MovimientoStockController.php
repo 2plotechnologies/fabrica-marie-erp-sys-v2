@@ -111,4 +111,67 @@ class MovimientoStockController extends Controller
 
         return response()->json($kardex);
     }
+
+    public function destroy($id)
+    {
+        return DB::transaction(function () use ($id) {
+
+            $movimiento = MovimientoStock::lockForUpdate()->findOrFail($id);
+
+            $stock = StockActual::where('producto_id', $movimiento->producto_id)
+                ->where('ruma_id', $movimiento->ruma_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            switch ($movimiento->tipo) {
+
+                case 'INGRESO':
+                    $stock->cantidad -= $movimiento->cantidad;
+                    break;
+
+                case 'SALIDA':
+                    $stock->cantidad += $movimiento->cantidad;
+                    break;
+
+                case 'DEVOLUCION_BUENA':
+                    $stock->cantidad -= $movimiento->cantidad;
+                    break;
+
+                case 'DEVOLUCION_MALA':
+                    // Si la devolución mala no afecta stock bueno,
+                    // aquí no harías nada o dependerá de tu lógica
+                    break;
+
+                case 'AJUSTE':
+                    /*
+                    Aquí depende de cómo guardaste el ajuste.
+                    Si ajuste guarda cantidad positiva o negativa,
+                    simplemente:
+                    */
+                    $stock->cantidad -= $movimiento->cantidad;
+                    break;
+
+                case 'DESECHO':
+                    $stock->cantidad += $movimiento->cantidad;
+                    break;
+
+                default:
+                    throw new Exception('Tipo de movimiento no reconocido');
+            }
+
+            // 🔥 Validar que no quede negativo
+            if ($stock->cantidad < 0) {
+                throw new Exception('La reversión dejaría el stock en negativo');
+            }
+
+            $stock->save();
+
+            $movimiento->estado = 'ANULADO';
+            $movimiento->save();
+
+            return response()->json([
+                'message' => 'Movimiento descartado y stock restablecido correctamente'
+            ]);
+        });
+    }
 }

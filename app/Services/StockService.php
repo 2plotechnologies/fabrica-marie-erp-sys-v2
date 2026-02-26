@@ -79,6 +79,7 @@ class StockService
                 'stock_anterior' => $cantidadActual,
                 'stock_post_mov' => $nuevoStock,
                 'user_id' => $data['user_id'] ?? null,
+                'estado' => 'REGISTRADO',
                 'created_at' => Carbon::now()
             ]);
 
@@ -105,6 +106,9 @@ class StockService
 
             $descuento = min($stock->cantidad, $faltante);
 
+            // ✅ Guardamos el stock antes de modificarlo
+            $stockAnterior = $stock->cantidad;
+
             $stock->cantidad -= $descuento;
             $stock->fecha_ultimo_mov = now();
             $stock->save();
@@ -117,7 +121,7 @@ class StockService
                 'referencia_tipo' => 'VENTA',
                 'referencia_id' => $ventaId,
                 'motivo' => 'Confirmación de venta',
-                'stock_anterior' => $stock->cantidad += $descuento,
+                'stock_anterior' => $stockAnterior,
                 'stock_post_mov' => $stock->cantidad,
                 'user_id' => $userId,
                 'created_at' => now()

@@ -81,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Movimientos
         Route::get('/movimientos', [MovimientoStockController::class, 'index']);
         Route::post('/movimientos', [MovimientoStockController::class, 'store']);
+        Route::delete('/movimientos/{id}', [MovimientoStockController::class, 'destroy']);
 
         // Kardex
         Route::get('/kardex/{productoId}',

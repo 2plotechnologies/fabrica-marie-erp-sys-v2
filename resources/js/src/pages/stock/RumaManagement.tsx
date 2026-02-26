@@ -394,7 +394,11 @@ const RumaManagement = () => {
             </TableHeader>
             <TableBody>
               {filteredRumas.map((ruma) => {
-                const percentage = (Number(ruma.stockActual)||0 / Number(ruma.capacidad)||0) * 100;
+                const stock = Number(ruma.stockActual ?? 0);
+                const capacidad = Number(ruma.capacidad ?? 0);
+
+                const percentage =
+                capacidad === 0 ? 0 : (stock / capacidad) * 100;
                 return (
                   <TableRow key={ruma.id} className="hover:bg-muted/50">
                     <TableCell className="font-mono font-medium">{ruma.codigo}</TableCell>
@@ -412,7 +416,7 @@ const RumaManagement = () => {
                     </TableCell>
                     <TableCell>
                       <div className="w-24 space-y-1">
-                        <Progress value={percentage} className="h-2" />
+                        <Progress value={Math.min(percentage, 100)} className="h-2" />
                         <p className={`text-xs font-medium ${getCapacityColor(percentage)}`}>
                           {percentage.toFixed(0)}%
                         </p>
@@ -490,8 +494,7 @@ const RumaManagement = () => {
                         <TableRow>
                           <TableHead>Producto</TableHead>
                           <TableHead>Cantidad</TableHead>
-                          <TableHead>Lote</TableHead>
-                          <TableHead>Vencimiento</TableHead>
+                          <TableHead>SKU</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
