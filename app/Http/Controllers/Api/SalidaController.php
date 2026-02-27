@@ -61,7 +61,7 @@ class SalidaController
                 'vehiculo_id' => $request->vehiculo_id,
                 'zona' => $request->zona,
                 'ruta_id' => $request->ruta_id,
-                'estado' => 'ACTIVO'
+                'estado' => 'PENDIENTE'
             ]);
 
             foreach ($request->items as $item) {
@@ -98,5 +98,16 @@ class SalidaController
                 'details' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function updateEstado(Request $request, $id){
+        $request->validate([
+            'estado' => 'required|in:PENDIENTE,EN_RUTA,COMPLETADO'
+        ]);
+        $salida = Salida::findOrFail($id);
+        $salida->estado = $request->estado;
+        $salida->save();
+
+        return response()->json(['message' => 'Estado Actualizado']);
     }
 }

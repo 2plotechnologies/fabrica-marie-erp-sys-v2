@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProductoController;
 use App\Http\Controllers\Api\RumaController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\MovimientoStockController;
+use App\Http\Controllers\Api\SalidaController;
 use App\Http\Controllers\Api\RutaController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\VentaController;
@@ -83,6 +84,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/movimientos', [MovimientoStockController::class, 'store']);
         Route::delete('/movimientos/{id}', [MovimientoStockController::class, 'destroy']);
 
+        //Salidas
+        Route::get('/salidas', [SalidaController::class, 'index']);
+        Route::get('/salidas/{id}', [SalidaController::class, 'show']);
+        Route::post('/salidas', [SalidaController::class, 'store']);
+        Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado']);
+
         // Kardex
         Route::get('/kardex/{productoId}',
             [MovimientoStockController::class, 'kardex']);
@@ -149,6 +156,9 @@ Route::middleware('auth:sanctum')->group(function () {
     | VENTAS
     |--------------------------------------------------------------------------
     */
+    //Lista Vendedores
+    Route::get('/vendedores', [UsuarioController::class, 'getVendedores']);
+    //Ventas
     Route::get('/ventas', [VentaController::class, 'index']);
     Route::get('/ventas/reporte/completo', [VentaController::class, 'reporte']);
     Route::get('/ventas/reporte/excel', [VentaController::class, 'exportarExcel']);
