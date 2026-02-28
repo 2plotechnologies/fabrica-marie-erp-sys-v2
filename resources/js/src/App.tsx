@@ -25,6 +25,7 @@ import SalesDetail from "@/pages/sales/SalesDetail";
 import Collections from "@/pages/sales/Collections";
 import DailySummary from "@/pages/sales/DailySummary";
 import FactoryOutput from "@/pages/stock/FactoryOutput";
+import WarehouseReturns from "@/pages/stock/WarehouseReturns";
 import CurrentCash from "@/pages/cash/CurrentCash";
 import CashMovements from "@/pages/cash/CashMovements";
 import CashClosures from "@/pages/cash/CashClosures";
@@ -135,6 +136,7 @@ const AppRoutes = () => {
         <Route path="/almacen/rumas" element={<RumaManagement />} />
         <Route path="/almacen/seguimiento" element={<ProductTracking />} />
         <Route path="/almacen/salida-fabrica" element={<FactoryOutput />} />
+        <Route path="/almacen/devoluciones" element={<WarehouseReturns />} />
 
         {/* Ventas */}
         <Route path="/ventas" element={<SalesHistory />} />

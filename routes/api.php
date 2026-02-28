@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\RumaController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\MovimientoStockController;
 use App\Http\Controllers\Api\SalidaController;
+use App\Http\Controllers\Api\DevolucionController;
 use App\Http\Controllers\Api\RutaController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\VentaController;
@@ -89,6 +90,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/salidas/{id}', [SalidaController::class, 'show']);
         Route::post('/salidas', [SalidaController::class, 'store']);
         Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado']);
+
+        //Devoluciones
+        Route::get('/devoluciones', [DevolucionController::class, 'index']);
+        Route::get('/devoluciones/{id}', [DevolucionController::class, 'show']);
+        Route::post('/devoluciones', [DevolucionController::class, 'store']);
+        Route::put('/devoluciones/estado/{id}', [DevolucionController::class, 'updateEstado']);
 
         // Kardex
         Route::get('/kardex/{productoId}',

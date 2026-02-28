@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 class Devolucion extends Model
 {
     protected $table = 'devoluciones';
+    public $timestamps = false;
 
     protected $fillable = [
         'fecha',
         'vendedor_id',
         'tipo',
         'motivo',
+        'observaciones',
         'estado',
         'created_at'
     ];

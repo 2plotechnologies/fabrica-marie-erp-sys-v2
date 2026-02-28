@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class DevolucionItem extends Model
 {
      protected $table = 'devolucion_items';
+     public $timestamps = false;
 
     protected $fillable = [
         'devolucion_id',
         'producto_id',
-        'cantidad'
+        'cantidad',
+        'motivo'
     ];
 
     public function producto()

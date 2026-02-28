@@ -26,7 +26,8 @@ class DevolucionService
                 'vendedor_id' => $data['vendedor_id'],
                 'tipo' => $data['tipo'],
                 'motivo' => $data['motivo'] ?? null,
-                'estado' => 'PROCESADA',
+                'observaciones'=> $data['observaciones'] ?? null,
+                'estado' => 'PENDIENTE',
                 'created_at' => now()
             ]);
 
@@ -35,31 +36,9 @@ class DevolucionService
                 DevolucionItem::create([
                     'devolucion_id' => $devolucion->id,
                     'producto_id' => $item['producto_id'],
-                    'cantidad' => $item['cantidad']
+                    'cantidad' => $item['cantidad'],
+                    'motivo' => $item['motivo'] ?? null,
                 ]);
-
-                if ($data['tipo'] === 'BUENA') {
-
-                    $this->stockService->registrarMovimiento(
-                        tipo: 'DEVOLUCION',
-                        productoId: $item['producto_id'],
-                        cantidad: $item['cantidad'],
-                        referenciaTipo: 'DEV_ALMACEN',
-                        referenciaId: $devolucion->id,
-                        motivo: 'Devolución buena'
-                    );
-
-                } else {
-
-                    $this->stockService->registrarMovimiento(
-                        tipo: 'AJUSTE',
-                        productoId: $item['producto_id'],
-                        cantidad: $item['cantidad'],
-                        referenciaTipo: 'DEV_DANADA',
-                        referenciaId: $devolucion->id,
-                        motivo: 'Producto dañado'
-                    );
-                }
             }
 
             return $devolucion->load('items');

@@ -51,11 +51,11 @@ const NavItem = ({ to, icon, label, subItems }: NavItemProps) => {
         >
           <span className="flex-shrink-0">{icon}</span>
           <span className="flex-1 text-left">{label}</span>
-          <ChevronDown 
+          <ChevronDown
             className={cn(
               "h-4 w-4 transition-transform duration-200",
               isOpen && "rotate-180"
-            )} 
+            )}
           />
         </button>
         {isOpen && (
@@ -110,9 +110,9 @@ interface NavItemConfig {
 
 const navigation: NavItemConfig[] = [
   { to: '/', icon: <LayoutDashboard className="h-5 w-5" />, label: 'Dashboard', module: 'dashboard' },
-  { 
-    to: '/almacen', 
-    icon: <Package className="h-5 w-5" />, 
+  {
+    to: '/almacen',
+    icon: <Package className="h-5 w-5" />,
     label: 'Almacén',
     module: 'almacen',
     subItems: [
@@ -122,11 +122,12 @@ const navigation: NavItemConfig[] = [
       { to: '/almacen/rumas', label: 'Gestión de Rumas' },
       { to: '/almacen/seguimiento', label: 'Seguimiento Productos' },
       { to: '/almacen/salida-fabrica', label: 'Salida de Fábrica' },
+      { to: '/almacen/devoluciones', label: 'Devoluciones' },
     ]
   },
-  { 
-    to: '/ventas', 
-    icon: <ShoppingCart className="h-5 w-5" />, 
+  {
+    to: '/ventas',
+    icon: <ShoppingCart className="h-5 w-5" />,
     label: 'Ventas',
     module: 'ventas',
     subItems: [
@@ -138,9 +139,9 @@ const navigation: NavItemConfig[] = [
       { to: '/ventas/reportes', label: 'Reportes KPIs' },
     ]
   },
-  { 
-    to: '/clientes', 
-    icon: <Users className="h-5 w-5" />, 
+  {
+    to: '/clientes',
+    icon: <Users className="h-5 w-5" />,
     label: 'Clientes',
     module: 'clientes',
     subItems: [
@@ -150,9 +151,9 @@ const navigation: NavItemConfig[] = [
       { to: '/clientes/morosos', label: 'Morosos' },
     ]
   },
-  { 
-    to: '/caja', 
-    icon: <Wallet className="h-5 w-5" />, 
+  {
+    to: '/caja',
+    icon: <Wallet className="h-5 w-5" />,
     label: 'Caja',
     module: 'caja',
     subItems: [
@@ -163,9 +164,9 @@ const navigation: NavItemConfig[] = [
     ]
   },
   { to: '/rutas', icon: <MapPin className="h-5 w-5" />, label: 'Rutas', module: 'rutas' },
-  { 
-    to: '/gps', 
-    icon: <Navigation className="h-5 w-5" />, 
+  {
+    to: '/gps',
+    icon: <Navigation className="h-5 w-5" />,
     label: 'GPS',
     module: 'gps',
     subItems: [
@@ -175,9 +176,9 @@ const navigation: NavItemConfig[] = [
   },
   { to: '/vehiculos', icon: <Truck className="h-5 w-5" />, label: 'Vehículos', module: 'vehiculos' },
   { to: '/mantenimiento', icon: <Wrench className="h-5 w-5" />, label: 'Mantenimiento', module: 'mantenimiento' },
-  { 
-    to: '/rrhh', 
-    icon: <UserCog className="h-5 w-5" />, 
+  {
+    to: '/rrhh',
+    icon: <UserCog className="h-5 w-5" />,
     label: 'RRHH',
     module: 'rrhh',
     subItems: [
@@ -206,9 +207,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     .slice(0, 2)
     .map(name => name[0]?.toUpperCase() ?? '')
     .join('') || 'US';
-  
+
   // Filtrar navegación según permisos del rol
-  const filteredNavigation = navigation.filter(item => 
+  const filteredNavigation = navigation.filter(item =>
     rolePermissions[currentRole]?.includes(item.module)
   );
 
@@ -216,12 +217,12 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-foreground/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
       <aside
         className={cn(
