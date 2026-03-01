@@ -79,8 +79,8 @@ const WarehouseReturns = () => {
   const [selectedProduct, setSelectedProduct] = useState('');
 
   const filteredDevoluciones = devoluciones.filter(dev => {
-    const matchSearch = dev.vendedores?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || dev.motivo?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchTipo = filterTipo === 'all' || dev.tipo_devolucion === filterTipo;
+    const matchSearch = dev.vendedor?.usuario?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || dev.motivo?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchTipo = filterTipo === 'all' || dev.tipo === filterTipo;
     const matchEstado = filterEstado === 'all' || dev.estado === filterEstado;
     return matchSearch && matchTipo && matchEstado;
   });
