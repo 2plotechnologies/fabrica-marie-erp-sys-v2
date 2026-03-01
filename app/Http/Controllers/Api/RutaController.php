@@ -9,9 +9,12 @@ class RutaController extends Controller
 {
     public function index()
     {
-        return response()->json(
-            Ruta::where('activo', true)->get()
-        );
+        $rutas = Ruta::where('activo', true)
+            ->with('clientes') // si necesitas los datos
+            ->withCount('clientes') // 👈 agrega clientes_count
+            ->get();
+
+        return response()->json($rutas);
     }
 
     public function store(Request $request)

@@ -31,7 +31,16 @@ class ClienteController extends Controller
             'status' => 'required|string',
         ]);
 
+        $rutaId = $validated['ruta_id'] ?? null;
+
         $cliente = Cliente::create($validated);
+
+         // Si se envió una ruta, crear registro en pivot
+        if ($rutaId) {
+            $cliente->rutas()->attach($rutaId, [
+                'orden' => 0 // o la lógica que uses
+            ]);
+        }
 
         return response()->json($cliente, 201);
     }

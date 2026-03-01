@@ -11,11 +11,19 @@ class Ruta extends Model
     protected $fillable = [
         'nombre',
         'zona',
+        'descripcion',
         'frecuencia',
+        'vendedor_id',
+        'clientes_estimados',
         'activo'
     ];
 
     public $timestamps = false;
+
+    public function vendedor()
+    {
+        return $this->hasOne(Vendedor::class);
+    }
 
     public function clientes()
     {

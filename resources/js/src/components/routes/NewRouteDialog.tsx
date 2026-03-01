@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { rutaService } from '@/services/rutaService';
 import {
   Dialog,
   DialogContent,
@@ -26,16 +28,17 @@ interface NewRouteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRouteCreated?: (route: any) => void;
+  vendedores: any[];
 }
 
-const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogProps) => {
+const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewRouteDialogProps) => {
   const [formData, setFormData] = useState({
-    name: '',
-    zone: '',
-    description: '',
-    assignedSellerId: '',
-    estimatedClients: '',
-    frequency: 'diaria',
+    nombre: '',
+    zona: '',
+    descripcion: '',
+    vendedor_id: '',
+    clientes_estimados: '',
+    frecuencia: 'diaria',
   });
 
   const zones = [
@@ -53,40 +56,47 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
     { id: 'mensual', label: 'Mensual' },
   ];
 
-  const sellers = mockUsers.filter(u => u.role === 'VENDEDOR');
+  const sellers = vendedores;
 
-  const handleSubmit = () => {
-    if (!formData.name || !formData.zone) {
-      toast.error('Por favor completa los campos requeridos');
-      return;
+  const handleSubmit = async () => {
+    if (!formData.nombre || !formData.zona) {
+        toast.error('Por favor completa los campos requeridos');
+        return;
     }
 
-    const newRoute = {
-      id: `route-${Date.now()}`,
-      name: formData.name,
-      zone: formData.zone,
-      description: formData.description,
-      assignedSellerId: formData.assignedSellerId || undefined,
-      clientCount: parseInt(formData.estimatedClients) || 0,
-      frequency: formData.frequency,
-      status: 'ACTIVA' as const,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+        const response = await rutaService.create({
+        nombre: formData.nombre,
+        zona: formData.zona,
+        descripcion: formData.descripcion,
+        vendedor_id:
+            formData.vendedor_id === 'none'
+            ? null
+            : Number(formData.vendedor_id),
+        clientes_estimados: parseInt(formData.clientes_estimados) || 0,
+        frecuencia: formData.frecuencia,
+        estado: 'ACTIVA',
+        });
 
-    onRouteCreated?.(newRoute);
-    toast.success(`Ruta "${formData.name}" creada exitosamente`);
-    
-    // Reset form
-    setFormData({
-      name: '',
-      zone: '',
-      description: '',
-      assignedSellerId: '',
-      estimatedClients: '',
-      frequency: 'diaria',
-    });
-    onOpenChange(false);
-  };
+        onRouteCreated?.(response);
+
+        toast.success(`Ruta "${formData.nombre}" creada exitosamente`);
+
+        setFormData({
+        nombre: '',
+        zona: '',
+        descripcion: '',
+        vendedor_id: '',
+        clientes_estimados: '',
+        frecuencia: 'diaria',
+        });
+
+        onOpenChange(false);
+    } catch (error: any) {
+        console.log(error);
+        toast.error(error?.response?.data?.error || 'Error al crear la ruta');
+    }
+ };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,7 +110,7 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
             Crea una nueva ruta y asígnala a un vendedor para comenzar a gestionar clientes.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -108,15 +118,15 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
               <Input
                 id="routeName"
                 placeholder="Ej: Ruta Miraflores"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                value={formData.nombre}
+                onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="zone">Zona *</Label>
               <Select
-                value={formData.zone}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, zone: value }))}
+                value={formData.zona}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, zona: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona zona" />
@@ -125,7 +135,7 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
                   {zones.map((zone) => (
                     <SelectItem key={zone.id} value={zone.id}>
                       <div className="flex items-center gap-2">
-                        <div 
+                        <div
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: zone.color }}
                         />
@@ -143,8 +153,8 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
             <Textarea
               id="description"
               placeholder="Describe los límites o características de la ruta..."
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              value={formData.descripcion}
+              onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
               rows={2}
             />
           </div>
@@ -153,8 +163,8 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
             <div className="space-y-2">
               <Label htmlFor="seller">Vendedor Asignado</Label>
               <Select
-                value={formData.assignedSellerId}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, assignedSellerId: value }))}
+                value={formData.vendedor_id}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, vendedor_id: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sin asignar" />
@@ -163,7 +173,7 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
                   <SelectItem value="none">Sin asignar</SelectItem>
                   {sellers.map((seller) => (
                     <SelectItem key={seller.id} value={seller.id}>
-                      {seller.firstName} {seller.lastName}
+                      {seller.usuario?.nombre}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -172,8 +182,8 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
             <div className="space-y-2">
               <Label htmlFor="frequency">Frecuencia de Visita</Label>
               <Select
-                value={formData.frequency}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, frequency: value }))}
+                value={formData.frecuencia}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, frecuencia: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -195,29 +205,29 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated }: NewRouteDialogPr
               id="estimatedClients"
               type="number"
               placeholder="0"
-              value={formData.estimatedClients}
-              onChange={(e) => setFormData(prev => ({ ...prev, estimatedClients: e.target.value }))}
+              value={formData.clientes_estimados}
+              onChange={(e) => setFormData(prev => ({ ...prev, clientes_estimados: e.target.value }))}
             />
             <p className="text-xs text-muted-foreground">
               Número aproximado de clientes que se espera cubrir en esta ruta
             </p>
           </div>
 
-          {formData.zone && (
+          {formData.zona && (
             <div className="bg-muted/50 rounded-lg p-4 flex items-center gap-3">
-              <div 
+              <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: zones.find(z => z.id === formData.zone)?.color + '20' }}
+                style={{ backgroundColor: zones.find(z => z.id === formData.zona)?.color + '20' }}
               >
-                <MapPin 
+                <MapPin
                   className="h-5 w-5"
-                  style={{ color: zones.find(z => z.id === formData.zone)?.color }}
+                  style={{ color: zones.find(z => z.id === formData.zona)?.color }}
                 />
               </div>
               <div>
-                <p className="font-medium">{formData.name || 'Nueva Ruta'}</p>
+                <p className="font-medium">{formData.nombre || 'Nueva Ruta'}</p>
                 <p className="text-sm text-muted-foreground">
-                  {zones.find(z => z.id === formData.zone)?.label} • {frequencies.find(f => f.id === formData.frequency)?.label}
+                  {zones.find(z => z.id === formData.zona)?.label} • {frequencies.find(f => f.id === formData.frecuencia)?.label}
                 </p>
               </div>
             </div>

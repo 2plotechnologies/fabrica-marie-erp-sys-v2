@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   MapPin,
   Users,
@@ -20,23 +20,69 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { mockRoutes, mockUsers } from '@/data/mockData';
+//import { mockRoutes, mockUsers } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import RouteMap from '@/components/routes/RouteMap';
 import NewRouteDialog from '@/components/routes/NewRouteDialog';
+import { rutaService } from '@/services/rutaService';
 
 const RoutesList = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [showNewRouteDialog, setShowNewRouteDialog] = useState(false);
-  const [routes, setRoutes] = useState(mockRoutes);
+  const [routes, setRoutes] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const getAssignedSeller = (sellerId?: string) => {
-    return mockUsers.find(u => u.id === sellerId);
+    return vendedores.find(u => u.id === sellerId);
   };
 
   const handleRouteCreated = (newRoute: any) => {
     setRoutes(prev => [...prev, newRoute]);
   };
+
+  const fetchRutas = async () => {
+    try {
+        const data = await rutaService.getAll();
+        console.log(data);
+        setRoutes(data);
+        setIsLoading(true);
+    } catch (error) {
+        console.log(error);
+    }finally {
+        setIsLoading(false);
+    }
+  };
+
+  const fetchVendedores = async () => {
+    try {
+        const data = await rutaService.getVendedores();
+        setVendedores(data);
+    } catch (error) {
+        console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRutas();
+    fetchVendedores();
+  }, []);
+
+  const coveragePromedio = useMemo(() => {
+    const totalEstimados = routes.reduce(
+        (sum, r) => sum + (r.clientes_estimados || 0),
+        0
+    );
+
+    const totalReales = routes.reduce(
+        (sum, r) => sum + (r.clientes_count || 0),
+        0
+    );
+
+    return totalEstimados > 0
+        ? (totalReales / totalEstimados) * 100
+        : 0;
+  }, [routes]);
 
   return (
     <div className="space-y-6">
@@ -73,32 +119,42 @@ const RoutesList = () => {
             <div className="bg-card rounded-xl border p-4">
               <p className="text-sm text-muted-foreground">Rutas Activas</p>
               <p className="text-2xl font-bold">
-                {routes.filter(r => r.status === 'ACTIVA').length}
+                {routes.filter(r => r.estado === 'ACTIVA').length}
               </p>
             </div>
             <div className="bg-card rounded-xl border p-4">
               <p className="text-sm text-muted-foreground">Total Clientes</p>
               <p className="text-2xl font-bold">
-                {routes.reduce((sum, r) => sum + r.clientCount, 0)}
+                {routes.reduce((sum, r) => sum + r.clientes_count, 0)}
               </p>
             </div>
             <div className="bg-card rounded-xl border p-4">
               <p className="text-sm text-muted-foreground">Vendedores Asignados</p>
               <p className="text-2xl font-bold">
-                {routes.filter(r => r.assignedSellerId).length}
+                {routes.filter(r => r.vendedor_id).length}
               </p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-sm text-muted-foreground">Cobertura Promedio</p>
-              <p className="text-2xl font-bold text-success">87%</p>
+                <p className="text-sm text-muted-foreground">
+                    Cobertura Promedio
+                </p>
+                <p className={`text-2xl font-bold ${
+                    coveragePromedio >= 80
+                    ? 'text-success'
+                    : coveragePromedio >= 50
+                    ? 'text-warning'
+                    : 'text-destructive'
+                }`}>
+                    {coveragePromedio.toFixed(0)}%
+                </p>
             </div>
           </div>
 
           {/* Routes Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {routes.map((route, index) => {
-              const seller = getAssignedSeller(route.assignedSellerId);
-              const coverage = 75 + Math.random() * 20;
+              const seller = getAssignedSeller(route.vendedor_id);
+              const coverage = route.clientes_estimados > 0 ? Math.min((route.clientes_count / route.clientes_estimados) * 100, 100): 0;
 
               return (
                 <div
@@ -110,20 +166,20 @@ const RoutesList = () => {
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "h-12 w-12 rounded-xl flex items-center justify-center",
-                        route.zone === 'Norte' && 'bg-info/10',
-                        route.zone === 'Sur' && 'bg-success/10',
-                        route.zone === 'Centro' && 'bg-warning/10'
+                        route.zona === 'Norte' && 'bg-info/10',
+                        route.zona === 'Sur' && 'bg-success/10',
+                        route.zona === 'Centro' && 'bg-warning/10'
                       )}>
                         <MapPin className={cn(
                           "h-6 w-6",
-                          route.zone === 'Norte' && 'text-info',
-                          route.zone === 'Sur' && 'text-success',
-                          route.zone === 'Centro' && 'text-warning'
+                          route.zona === 'Norte' && 'text-info',
+                          route.zona === 'Sur' && 'text-success',
+                          route.zona === 'Centro' && 'text-warning'
                         )} />
                       </div>
                       <div>
-                        <h3 className="font-display font-semibold">{route.name}</h3>
-                        <p className="text-sm text-muted-foreground">Zona {route.zone}</p>
+                        <h3 className="font-display font-semibold">{route.nombre}</h3>
+                        <p className="text-sm text-muted-foreground">Zona {route.zona}</p>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -147,7 +203,7 @@ const RoutesList = () => {
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                         {seller ? (
                           <span className="text-xs font-medium text-primary">
-                            {seller.firstName[0]}{seller.lastName[0]}
+                            {seller.usuario.nombre[0]}
                           </span>
                         ) : (
                           <Users className="h-4 w-4 text-muted-foreground" />
@@ -157,7 +213,7 @@ const RoutesList = () => {
                         {seller ? (
                           <>
                             <p className="text-sm font-medium truncate">
-                              {seller.firstName} {seller.lastName}
+                              {seller.usuario.nombre}
                             </p>
                             <p className="text-xs text-muted-foreground">Vendedor</p>
                           </>
@@ -170,7 +226,7 @@ const RoutesList = () => {
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="text-center p-2 rounded-lg bg-secondary/30">
-                        <p className="text-lg font-bold">{route.clientCount}</p>
+                        <p className="text-lg font-bold">{route.clientes_count}</p>
                         <p className="text-xs text-muted-foreground">Clientes</p>
                       </div>
                       <div className="text-center p-2 rounded-lg bg-secondary/30">
@@ -182,7 +238,7 @@ const RoutesList = () => {
                     {/* Coverage Progress */}
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Cumplimiento hoy</span>
+                        <span className="text-muted-foreground">Covertura</span>
                         <span className={cn(
                           "font-medium",
                           coverage >= 80 ? 'text-success' : coverage >= 60 ? 'text-warning' : 'text-destructive'
@@ -236,6 +292,7 @@ const RoutesList = () => {
         open={showNewRouteDialog}
         onOpenChange={setShowNewRouteDialog}
         onRouteCreated={handleRouteCreated}
+        vendedores={vendedores}
       />
     </div>
   );
