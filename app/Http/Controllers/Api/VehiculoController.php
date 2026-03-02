@@ -9,7 +9,7 @@ class VehiculoController extends Controller
 {
     public function index()
     {
-        return response()->json(Vehiculo::where('activo', true)->get());
+        return response()->json(Vehiculo::where('activo', true)->with('mantenimientos')->get());
     }
 
     public function store(Request $request)

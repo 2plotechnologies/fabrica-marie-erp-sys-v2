@@ -1,4 +1,5 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,11 +29,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Search, 
-  Truck, 
-  Plus, 
-  Wrench, 
+import {
+  Search,
+  Truck,
+  Plus,
+  Wrench,
   MapPin,
   Calendar,
   AlertTriangle,
@@ -45,83 +46,100 @@ import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Vehicle } from '@/types';
 import { mockUsers } from '@/data/mockData';
-
-// Mock vehicles data con chofer y vendedor
-const mockVehicles: (Vehicle & { assignedDriverId?: string })[] = [
-  { 
-    id: '1', 
-    plate: 'ABC-123', 
-    brand: 'Toyota', 
-    model: 'Hilux', 
-    year: 2022, 
-    type: 'Camioneta',
-    assignedDriverId: 'driver-1',
-    assignedSellerId: 'seller-1',
-    status: 'EN_RUTA',
-    lastMaintenance: new Date('2024-11-15'),
-    nextMaintenance: new Date('2024-12-15'),
-  },
-  { 
-    id: '2', 
-    plate: 'XYZ-789', 
-    brand: 'Hyundai', 
-    model: 'H100', 
-    year: 2021, 
-    type: 'Furgón',
-    assignedDriverId: 'driver-2',
-    assignedSellerId: 'seller-2',
-    status: 'DISPONIBLE',
-    lastMaintenance: new Date('2024-10-20'),
-    nextMaintenance: new Date('2025-01-20'),
-  },
-  { 
-    id: '3', 
-    plate: 'DEF-456', 
-    brand: 'Kia', 
-    model: 'K2700', 
-    year: 2020, 
-    type: 'Camión Ligero',
-    status: 'MANTENIMIENTO',
-    lastMaintenance: new Date('2024-12-10'),
-    nextMaintenance: new Date('2025-03-10'),
-  },
-  { 
-    id: '4', 
-    plate: 'GHI-321', 
-    brand: 'Suzuki', 
-    model: 'Carry', 
-    year: 2023, 
-    type: 'Minivan',
-    assignedDriverId: 'seller-3', // El vendedor también es el conductor
-    assignedSellerId: 'seller-3',
-    status: 'DISPONIBLE',
-    lastMaintenance: new Date('2024-09-01'),
-    nextMaintenance: new Date('2024-12-01'),
-  },
-];
-
-// Mock de conductores
-const mockDrivers = [
-  { id: 'driver-1', name: 'Roberto Díaz', license: 'A-IIB' },
-  { id: 'driver-2', name: 'Miguel Santos', license: 'A-IIA' },
-  { id: 'seller-1', name: 'Juan Pérez', license: 'A-I' },
-  { id: 'seller-2', name: 'Ana García', license: 'A-I' },
-  { id: 'seller-3', name: 'Carlos Ruiz', license: 'A-I' },
-];
+import { vehiculoService } from '@/services/vehiculoService';
+import { toast } from '@/hooks/use-toast';
 
 const VehiclesList = () => {
+  const [vehiculos, setVehiculos] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredVehicles = mockVehicles.filter((vehicle) => {
-    const matchesSearch = 
-      vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.model.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
+  const filteredVehicles = vehiculos.filter((vehicle) => {
+    const matchesSearch =
+      vehicle.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehicle.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehicle.modelo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || vehicle.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const fetchVehiculos = async () => {
+    try {
+        setIsLoading(true);
+        const data = await vehiculoService.getAll();
+        console.log('Vehiculos:', data);
+        setVehiculos(data);
+    } catch (err: any) {
+        setError(err?.message || 'Error al obtener vehiculos.');
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVehiculos();
+  }, []);
+
+  const [form, setForm] = useState({
+        placa: '',
+        tipo: '',
+        marca: '',
+        modelo: '',
+        chofer: '',
+        anio: '',
+        estado: 'DISPONIBLE',
+        activo: 1
+    });
+
+    const handleCreateVehiculo = async () => {
+        if (!form.placa || !form.marca) return;
+
+            try {
+                await vehiculoService.create({
+                    placa: form.placa,
+                    tipo: form.tipo,
+                    marca: form.marca,
+                    modelo: form.modelo,
+                    chofer: form.chofer,
+                    anio: form.anio,
+                    estado: form.estado,
+                    activo: form.activo
+                });
+
+                await fetchVehiculos();
+
+                setForm({
+                    placa: '',
+                    tipo: '',
+                    marca: '',
+                    modelo: '',
+                    chofer: '',
+                    anio: '',
+                    estado: 'DISPONIBLE',
+                    activo: 1
+                });
+
+                setIsAddDialogOpen(false);
+
+                toast({
+                    title: "Vehiculo creado",
+                    description: "El nuevo vehiculo ha sido registrada exitosamente.",
+                });
+
+            } catch (err: any) {
+                setIsAddDialogOpen(false);
+                console.log("ERROR COMPLETO:", err);
+                console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+                toast({
+                    title: "Error",
+                    description: err?.message || "No se pudo registrar la ruma.",
+                    variant: "destructive",
+                });
+            }
+      };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
@@ -141,7 +159,7 @@ const VehiclesList = () => {
   const getMaintenanceStatus = (nextMaintenance?: Date) => {
     if (!nextMaintenance) return null;
     const daysUntil = differenceInDays(nextMaintenance, new Date());
-    
+
     if (daysUntil < 0) {
       return <Badge variant="destructive">Vencido</Badge>;
     } else if (daysUntil <= 7) {
@@ -151,10 +169,10 @@ const VehiclesList = () => {
   };
 
   const stats = {
-    total: mockVehicles.length,
-    available: mockVehicles.filter(v => v.status === 'DISPONIBLE').length,
-    inRoute: mockVehicles.filter(v => v.status === 'EN_RUTA').length,
-    maintenance: mockVehicles.filter(v => v.status === 'MANTENIMIENTO').length,
+    total: vehiculos.length,
+    available: vehiculos.filter(v => v.estado === 'DISPONIBLE').length,
+    inRoute: vehiculos.filter(v => v.estado === 'EN_RUTA').length,
+    maintenance: vehiculos.filter(v => v.estado === 'MANTENIMIENTO').length,
   };
 
   return (
@@ -187,11 +205,14 @@ const VehiclesList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="plate">Placa</Label>
-                  <Input id="plate" placeholder="ABC-123" />
+                  <Input id="plate" placeholder="ABC-123"
+                  value={form.placa}
+                  onChange={(e) => setForm({ ...form, placa: e.target.value })}/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
-                  <Select>
+                  <Select value={form.tipo}
+                  onValueChange={(v) => setForm({...form, tipo: v})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
@@ -207,23 +228,34 @@ const VehiclesList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="brand">Marca</Label>
-                  <Input id="brand" placeholder="Toyota" />
+                  <Input id="brand" placeholder="Toyota" value={form.marca}
+                  onChange={(e) => setForm({ ...form, marca: e.target.value })}/>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="model">Modelo</Label>
-                  <Input id="model" placeholder="Hilux" />
+                  <Input id="model" placeholder="Hilux" value={form.modelo}
+                  onChange={(e) => setForm({ ...form, modelo: e.target.value })}/>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="year">Año</Label>
-                <Input id="year" type="number" placeholder="2024" />
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="chofer">Chofer</Label>
+                        <Input id="chofer" placeholder="Juan" value={form.chofer}
+                        onChange={(e) => setForm({ ...form, chofer: e.target.value })}/>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="year">Año</Label>
+                        <Input id="year" type="number" placeholder="2024"
+                        value={form.anio}
+                        onChange={(e) => setForm({ ...form, anio: e.target.value })} />
+                    </div>
+                </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="bg-gradient-warm hover:opacity-90">
+              <Button className="bg-gradient-warm hover:opacity-90" onClick={handleCreateVehiculo}>
                 Guardar
               </Button>
             </DialogFooter>
@@ -332,8 +364,8 @@ const VehiclesList = () => {
               <TableRow>
                 <TableHead>Placa</TableHead>
                 <TableHead>Vehículo</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Chofer</TableHead>
-                <TableHead>Vendedor</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Próximo Mant.</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -344,36 +376,29 @@ const VehiclesList = () => {
                 <TableRow key={vehicle.id} className="hover:bg-muted/50">
                   <TableCell>
                     <code className="text-sm bg-muted px-2 py-1 rounded font-bold">
-                      {vehicle.plate}
+                      {vehicle.placa}
                     </code>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{vehicle.brand} {vehicle.model}</p>
-                      <p className="text-xs text-muted-foreground">Año {vehicle.year}</p>
+                      <p className="font-medium">{vehicle.marca} {vehicle.modelo}</p>
+                      <p className="text-xs text-muted-foreground">Año {vehicle.anio}</p>
                     </div>
                   </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{vehicle.type}</Badge>
+                      <Badge variant="outline">{vehicle.tipo}</Badge>
                     </TableCell>
                     <TableCell>
-                      {vehicle.assignedDriverId ? (
-                        <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{mockDrivers.find(d => d.id === vehicle.assignedDriverId)?.name || '-'}</span>
+                          <span className="text-sm">{vehicle.chofer}</span>
                         </div>
-                      ) : <span className="text-muted-foreground">Sin asignar</span>}
                     </TableCell>
                     <TableCell>
-                      {vehicle.assignedSellerId ? (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{mockUsers.find(u => u.id === vehicle.assignedSellerId)?.firstName || '-'}</span>
-                        </div>
-                      ) : <span className="text-muted-foreground">Sin asignar</span>}
+                        {getStatusBadge(vehicle.estado) || 'Sin Estado'}
                     </TableCell>
                   <TableCell>
-                    {getMaintenanceStatus(vehicle.nextMaintenance)}
+                    {getMaintenanceStatus(vehicle.mantenimientos?.fecha) || 'Sin mantenimientos'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">

@@ -12,10 +12,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Search, 
-  Gift, 
-  Star, 
+import {
+  Search,
+  Gift,
+  Star,
   Award,
   TrendingUp,
   Users,
@@ -48,7 +48,7 @@ const LoyaltyProgram = () => {
   const [tierFilter, setTierFilter] = useState<string>('all');
 
   const filteredClients = mockLoyaltyClients.filter((client) => {
-    const matchesSearch = client.businessName
+    const matchesSearch = client.razon_social
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesTier = tierFilter === 'all' || client.tier === tierFilter;
@@ -198,7 +198,7 @@ const LoyaltyProgram = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {mockRewards.map((reward) => (
-              <div 
+              <div
                 key={reward.id}
                 className="p-4 rounded-xl border bg-card hover:shadow-card-hover transition-all duration-200 cursor-pointer"
               >
@@ -235,14 +235,14 @@ const LoyaltyProgram = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button 
+              <Button
                 variant={tierFilter === 'all' ? 'default' : 'outline'}
                 onClick={() => setTierFilter('all')}
                 size="sm"
               >
                 Todos
               </Button>
-              <Button 
+              <Button
                 variant={tierFilter === 'ORO' ? 'default' : 'outline'}
                 onClick={() => setTierFilter('ORO')}
                 size="sm"
@@ -251,7 +251,7 @@ const LoyaltyProgram = () => {
                 <Crown className="h-3 w-3 mr-1" />
                 Oro
               </Button>
-              <Button 
+              <Button
                 variant={tierFilter === 'PLATA' ? 'default' : 'outline'}
                 onClick={() => setTierFilter('PLATA')}
                 size="sm"
@@ -259,7 +259,7 @@ const LoyaltyProgram = () => {
                 <Award className="h-3 w-3 mr-1" />
                 Plata
               </Button>
-              <Button 
+              <Button
                 variant={tierFilter === 'BRONCE' ? 'default' : 'outline'}
                 onClick={() => setTierFilter('BRONCE')}
                 size="sm"
@@ -297,8 +297,8 @@ const LoyaltyProgram = () => {
                 <TableRow key={client.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div>
-                      <p className="font-medium">{client.businessName}</p>
-                      <p className="text-xs text-muted-foreground">{client.ownerName}</p>
+                      <p className="font-medium">{client.razon_social}</p>
+                      <p className="text-xs text-muted-foreground">{client.razon_social}</p>
                     </div>
                   </TableCell>
                   <TableCell>{getTierBadge(client.tier)}</TableCell>
@@ -312,7 +312,7 @@ const LoyaltyProgram = () => {
                     <div className="w-32">
                       <Progress value={getTierProgress(client.tier)} className="h-2" />
                       <p className="text-xs text-muted-foreground mt-1">
-                        {client.tier === 'ORO' 
+                        {client.tier === 'ORO'
                           ? 'Nivel máximo'
                           : `${client.tier === 'PLATA' ? '1000' : '500'} pts para subir`
                         }

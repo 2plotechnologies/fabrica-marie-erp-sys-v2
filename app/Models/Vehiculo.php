@@ -15,6 +15,7 @@ class Vehiculo extends Model
         'modelo',
         'chofer',
         'anio',
+        'estado',
         'activo',
     ];
 
@@ -23,5 +24,10 @@ class Vehiculo extends Model
     public function gpsPoints()
     {
         return $this->hasMany(GpsPoint::class, 'vehiculo_id');
+    }
+
+    public function mantenimientos()
+    {
+        return $this->hasMany(Mantenimiento::class, 'vehiculo_id');
     }
 }
