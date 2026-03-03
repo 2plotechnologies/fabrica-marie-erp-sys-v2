@@ -1,4 +1,5 @@
-import { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,10 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Search, 
-  Wrench, 
-  Plus, 
+import {
+  Search,
+  Wrench,
+  Plus,
   Calendar,
   AlertTriangle,
   CheckCircle,
@@ -43,68 +44,62 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock maintenance data
-const mockMaintenanceRecords = [
-  { 
-    id: '1', 
-    vehiclePlate: 'ABC-123',
-    vehicleName: 'Toyota Hilux',
-    type: 'PREVENTIVO',
-    description: 'Cambio de aceite y filtros',
-    status: 'COMPLETADO',
-    cost: 350.00,
-    scheduledDate: new Date('2024-12-10'),
-    completedDate: new Date('2024-12-10'),
-    technician: 'Taller Automotriz San Miguel',
-  },
-  { 
-    id: '2', 
-    vehiclePlate: 'XYZ-789',
-    vehicleName: 'Hyundai H100',
-    type: 'CORRECTIVO',
-    description: 'Reparación sistema de frenos',
-    status: 'EN_PROCESO',
-    cost: 850.00,
-    scheduledDate: new Date('2024-12-12'),
-    technician: 'Mecánica Express',
-  },
-  { 
-    id: '3', 
-    vehiclePlate: 'DEF-456',
-    vehicleName: 'Kia K2700',
-    type: 'PREVENTIVO',
-    description: 'Revisión general y afinamiento',
-    status: 'PENDIENTE',
-    cost: 450.00,
-    scheduledDate: new Date('2024-12-20'),
-    technician: 'Taller Automotriz San Miguel',
-  },
-  { 
-    id: '4', 
-    vehiclePlate: 'GHI-321',
-    vehicleName: 'Suzuki Carry',
-    type: 'CORRECTIVO',
-    description: 'Cambio de batería',
-    status: 'COMPLETADO',
-    cost: 280.00,
-    scheduledDate: new Date('2024-12-05'),
-    completedDate: new Date('2024-12-05'),
-    technician: 'Autopartes del Centro',
-  },
-];
+import { mantenimientoService } from '@/services/mantenimientoService';
+import { vehiculoService } from '@/services/vehiculoService';
 
 const MaintenanceList = () => {
   const { toast } = useToast();
+  const [mantenimientos, setMantenimientos] = useState<any[]>([]);
+  const [vehiculos, setVehiculos] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredRecords = mockMaintenanceRecords.filter((record) => {
-    const matchesSearch = 
-      record.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.vehicleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.description.toLowerCase().includes(searchTerm.toLowerCase());
+  const fetchMantenimientos = async () => {
+      try {
+          setIsLoading(true);
+          const data = await mantenimientoService.getAll();
+          console.log('Mantenimientos:', data);
+          setMantenimientos(data);
+      } catch (err: any) {
+          setError(err?.message || 'Error al obtener mantenimientos.');
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
+  const fetchVehiculos = async () => {
+    try {
+        const data = await vehiculoService.getAll();
+        console.log('Vehiculos:', data);
+        setVehiculos(data);
+    } catch (err: any) {
+        setError(err?.message || 'Error al obtener vehiculos.');
+    }
+  };
+
+  useEffect(() => {
+      fetchMantenimientos();
+      fetchVehiculos();
+  }, []);
+
+  const [form, setForm] = useState({
+    tipo: '',
+    descripcion: '',
+    fecha_programada: '',
+    costo_estimado: '',
+    taller: '',
+    vehiculo_id: '',
+    estado: 'PENDIENTE',
+  });
+
+  const filteredRecords = mantenimientos.filter((record) => {
+    const matchesSearch =
+      record.vehiculo.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.vehiculo.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -132,19 +127,56 @@ const MaintenanceList = () => {
     );
   };
 
-  const handleAddMaintenance = () => {
-    toast({
-      title: "Mantenimiento programado",
-      description: "El mantenimiento ha sido registrado correctamente",
-    });
-    setIsAddDialogOpen(false);
+  const handleAddMaintenance = async () => {
+    if (!form.tipo || !form.fecha_programada) return;
+
+    try{
+        await mantenimientoService.create({
+            tipo: form.tipo,
+            descripcion: form.descripcion,
+            fecha_programada: form.fecha_programada,
+            costo_estimado: form.costo_estimado,
+            taller: form.taller,
+            vehiculo_id: Number(form.vehiculo_id),
+            estado: form.estado,
+        });
+
+        await fetchMantenimientos();
+
+        setForm({
+            tipo: '',
+            descripcion: '',
+            fecha_programada: '',
+            costo_estimado: '',
+            taller: '',
+            vehiculo_id: '',
+            estado: 'PENDIENTE',
+        });
+
+        toast({
+            title: "Mantenimiento programado",
+            description: "El mantenimiento ha sido registrado correctamente",
+        });
+        setIsAddDialogOpen(false);
+
+    }catch(err: any){
+        setIsAddDialogOpen(false);
+        console.log("ERROR COMPLETO:", err);
+        console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+        toast({
+            title: "Error",
+            description: err?.message || "No se pudo programar el mantenimiento.",
+            variant: "destructive",
+        });
+    }
+
   };
 
   const stats = {
-    total: mockMaintenanceRecords.length,
-    pending: mockMaintenanceRecords.filter(m => m.status === 'PENDIENTE').length,
-    inProcess: mockMaintenanceRecords.filter(m => m.status === 'EN_PROCESO').length,
-    totalCost: mockMaintenanceRecords.reduce((acc, m) => acc + m.cost, 0),
+    total: mantenimientos.length,
+    pending: mantenimientos.filter(m => m.estado === 'PENDIENTE').length,
+    inProcess: mantenimientos.filter(m => m.estado === 'EN_PROCESO').length,
+    totalCost: mantenimientos.reduce((acc, m) => acc + Number(m.costo_estimado), 0),
   };
 
   return (
@@ -177,20 +209,19 @@ const MaintenanceList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Vehículo</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ABC-123">ABC-123 - Toyota Hilux</SelectItem>
-                      <SelectItem value="XYZ-789">XYZ-789 - Hyundai H100</SelectItem>
-                      <SelectItem value="DEF-456">DEF-456 - Kia K2700</SelectItem>
-                    </SelectContent>
+                  <Select value={form.vehiculo_id}
+                          onValueChange={v => setForm({ ...form, vehiculo_id: v })}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa}</SelectItem>)}
+                        </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo</Label>
-                  <Select>
+                  <Select value={form.tipo}
+                          onValueChange={v => setForm({ ...form, tipo: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
@@ -203,21 +234,24 @@ const MaintenanceList = () => {
               </div>
               <div className="space-y-2">
                 <Label>Descripción</Label>
-                <Textarea placeholder="Detalle del trabajo a realizar..." />
+                <Textarea value={form.descripcion}
+                placeholder="Detalle del trabajo a realizar..." onChange={e => setForm({ ...form, descripcion: e.target.value })}/>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Fecha Programada</Label>
-                  <Input type="date" />
+                  <Input type="date" value={form.fecha_programada} onChange={e => setForm({ ...form, fecha_programada: e.target.value })}/>
                 </div>
                 <div className="space-y-2">
                   <Label>Costo Estimado (S/)</Label>
-                  <Input type="number" placeholder="0.00" />
+                  <Input type="number" placeholder="0.00"
+                  value={form.costo_estimado} onChange={e => setForm({ ...form, costo_estimado: e.target.value })}/>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Taller / Técnico</Label>
-                <Input placeholder="Nombre del taller o técnico" />
+                <Input placeholder="Nombre del taller o técnico"
+                value={form.taller} onChange={e => setForm({ ...form, taller: e.target.value })}/>
               </div>
             </div>
             <DialogFooter>
@@ -349,25 +383,25 @@ const MaintenanceList = () => {
                       <Truck className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                          {record.vehiclePlate}
+                          {record.vehiculo.placa}
                         </code>
-                        <p className="text-sm text-muted-foreground">{record.vehicleName}</p>
+                        <p className="text-sm text-muted-foreground">{record.vehiculo.marca}</p>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{getTypeBadge(record.type)}</TableCell>
+                  <TableCell>{getTypeBadge(record.tipo)}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{record.description}</p>
-                      <p className="text-xs text-muted-foreground">{record.technician}</p>
+                      <p className="font-medium">{record.descripcion}</p>
+                      <p className="text-xs text-muted-foreground">{record.taller}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {format(record.scheduledDate, "dd MMM yyyy", { locale: es })}
+                    {format(record.fecha_programada, "dd MMM yyyy", { locale: es })}
                   </TableCell>
-                  <TableCell>{getStatusBadge(record.status)}</TableCell>
+                  <TableCell>{getStatusBadge(record.estado)}</TableCell>
                   <TableCell className="text-right font-semibold">
-                    S/ {record.cost.toFixed(2)}
+                    S/ {Number(record.costo_estimado).toFixed(2)}
                   </TableCell>
                 </TableRow>
               ))}

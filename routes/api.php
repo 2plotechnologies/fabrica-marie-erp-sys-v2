@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\AbonoController;
 use App\Http\Controllers\Api\VehiculoController;
 use App\Http\Controllers\Api\GpsPointController;
+use App\Http\Controllers\Api\MantenimientoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -217,5 +218,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [GpsPointController::class, 'show']);
         Route::put('/{id}', [GpsPointController::class, 'update']);
         Route::delete('/{id}', [GpsPointController::class, 'destroy']);
+    });
+
+    // Mantenimiento
+    Route::prefix('mantenimientos')->group(function () {
+        Route::get('/', [MantenimientoController::class, 'index']);
+        Route::post('/', [MantenimientoController::class, 'store']);
+        Route::get('/{id}', [MantenimientoController::class, 'show']);
+        Route::put('/estado/{id}', [MantenimientoController::class, 'updateEstado']);
+        Route::delete('/{id}', [MantenimientoController::class, 'destroy']);
     });
 });

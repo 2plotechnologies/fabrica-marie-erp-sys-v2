@@ -156,17 +156,20 @@ const VehiclesList = () => {
     );
   };
 
-  const getMaintenanceStatus = (nextMaintenance?: Date) => {
+  const getMaintenanceStatus = (nextMaintenance?: string) => {
     if (!nextMaintenance) return null;
-    const daysUntil = differenceInDays(nextMaintenance, new Date());
+
+    const maintenanceDate = new Date(nextMaintenance);
+    const daysUntil = differenceInDays(maintenanceDate, new Date());
 
     if (daysUntil < 0) {
-      return <Badge variant="destructive">Vencido</Badge>;
+        return <Badge variant="destructive">Vencido</Badge>;
     } else if (daysUntil <= 7) {
-      return <Badge className="bg-amber-500">Próximo ({daysUntil}d)</Badge>;
+        return <Badge className="bg-amber-500">Próximo ({daysUntil}d)</Badge>;
     }
+
     return <span className="text-muted-foreground">{daysUntil} días</span>;
-  };
+};
 
   const stats = {
     total: vehiculos.length,
@@ -398,7 +401,7 @@ const VehiclesList = () => {
                         {getStatusBadge(vehicle.estado) || 'Sin Estado'}
                     </TableCell>
                   <TableCell>
-                    {getMaintenanceStatus(vehicle.mantenimientos?.fecha) || 'Sin mantenimientos'}
+                    {getMaintenanceStatus(vehicle.mantenimientos[0]?.fecha_programada) || 'Sin mantenimientos'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">

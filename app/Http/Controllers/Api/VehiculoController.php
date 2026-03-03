@@ -9,7 +9,13 @@ class VehiculoController extends Controller
 {
     public function index()
     {
-        return response()->json(Vehiculo::where('activo', true)->with('mantenimientos')->get());
+        return response()->json(
+            Vehiculo::where('activo', true)
+                ->with(['mantenimientos' => function ($query) {
+                    $query->orderByDesc('fecha_programada');
+                }])
+                ->get()
+        );
     }
 
     public function store(Request $request)
