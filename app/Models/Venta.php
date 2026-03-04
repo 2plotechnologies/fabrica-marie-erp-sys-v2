@@ -16,6 +16,9 @@ class Venta extends Model
         'fecha',
         'total_neto',
         'tipo_pago',
+        'metodo_pago_detalle',
+        'adelanto',
+        'descuento',
         'estado'
     ];
 

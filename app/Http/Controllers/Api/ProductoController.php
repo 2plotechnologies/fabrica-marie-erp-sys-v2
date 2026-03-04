@@ -28,6 +28,7 @@ class ProductoController extends Controller
             'presentacion' => 'nullable|string|max:100',
             'marca' => 'required|string|max:100',
             'unidad_medida' => 'required|string|max:50',
+            'peso' => 'nullable|numeric|min:0',
             'precio_base' => 'required|numeric|min:0',
             'costo' => 'required|numeric|min:0',
             'stock_minimo' => 'required|integer|min:0',

@@ -1,69 +1,114 @@
-import { useState } from 'react';
-import { 
-  Search, 
-  Plus, 
-  Minus,
-  ShoppingCart,
-  User,
-  Package,
-  Trash2,
-  CreditCard,
-  Banknote
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { mockProducts, mockClients } from '@/data/mockData';
-import { cn } from '@/lib/utils';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-
-interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
+import { ClientSelector } from '@/components/sales/ClientSelector';
+import { ProductSearch } from '@/components/sales/ProductSearch';
+import { SaleCart } from '@/components/sales/SaleCart';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import type { CartItem } from '@/types/sales';
+import { ventaService } from '@/services/ventaService';
 
 const NewSale = () => {
+  const [productos, setProductos] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState<string>('');
-  const [searchProduct, setSearchProduct] = useState('');
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentType, setPaymentType] = useState<'CONTADO' | 'CREDITO'>('CONTADO');
   const [discount, setDiscount] = useState(0);
+  const [metodoPago, setMetodoPago] = useState('efectivo');
+  const [adelanto, setAdelanto] = useState(0);
+  const [isLoadingVendedores, setIsLoadingVendedores] = useState(true);
 
-  const filteredProducts = mockProducts.filter(p =>
-    p.name.toLowerCase().includes(searchProduct.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchProduct.toLowerCase())
-  );
+  interface Producto {
+    id: string;
+    sku: string;
+    nombre: string;
+    descripcion: string | null;
+    marca: string | null;
+    presentacion: string | null;
+    peso: number | null;
+    precio_base: number;
+    costo: number;
+    categoria: string;
+    estado: string;
+    created_at: string;
+    updated_at: string;
+  }
 
-  const addToCart = (product: typeof mockProducts[0]) => {
-    const existingItem = cart.find(item => item.productId === product.id);
-    
+  const fetchProductos = async () => {
+        try {
+            const data = await ventaService.getProductos();
+            setProductos(data);
+        } catch (error) {
+            console.log(error);
+        }
+  };
+
+  const fetchClientes = async () => {
+        try {
+            const data = await ventaService.getClientes();
+            setClientes(data);
+        } catch (error) {
+            console.log(error);
+        }
+  };
+
+  const fetchVendedores = async () => {
+        try {
+            const data = await ventaService.getVendedores();
+            setVendedores(data);
+            setIsLoadingVendedores(false);
+        } catch (error) {
+            console.log(error);
+        }
+  };
+
+  useEffect(() => {
+        fetchProductos();
+        fetchClientes();
+        fetchVendedores();
+  }, []);
+
+  // Credit limit warning
+  const selectedClientData = clientes.find(c => c.id === selectedClient);
+  const regularItems = cart.filter(item => !item.esBonificacion && !item.esDegustacion);
+  const subtotal = regularItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = Math.max(0, subtotal - discount);
+
+  const showCreditWarning = paymentType === 'CREDITO' && selectedClientData &&
+    ((selectedClientData.deuda_actual || 0) + total - adelanto) > (selectedClientData.limite_credito || 0);
+
+  const addToCart = (product: Producto) => {
+    const existingItem = cart.find(
+      item => item.productId === product.id && !item.esBonificacion && !item.esDegustacion
+    );
+
     if (existingItem) {
       setCart(cart.map(item =>
-        item.productId === product.id
+        item.productId === product.id && !item.esBonificacion && !item.esDegustacion
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
       setCart([...cart, {
         productId: product.id,
-        name: product.name,
-        price: product.price,
+        name: product.nombre,
+        price: product.precio_base,
         quantity: 1,
+        marca: product.marca,
+        presentacion: product.presentacion,
+        peso: product.peso,
+        esBonificacion: false,
+        esDegustacion: false,
       }]);
     }
-    
-    toast.success(`${product.name} agregado al carrito`);
+
+    toast.success(`${product.nombre} agregado al carrito`);
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -80,250 +125,178 @@ const NewSale = () => {
     setCart(cart.filter(item => item.productId !== productId));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const total = subtotal - discount;
+  const toggleBonificacion = (productId: string) => {
+    const item = cart.find(i => i.productId === productId && !i.esBonificacion && !i.esDegustacion);
+    if (!item) return;
+    const bonificacionId = `${productId}-bonif`;
+    const existingBonif = cart.find(i => i.productId === bonificacionId);
 
-  const selectedClientData = mockClients.find(c => c.id === selectedClient);
+    if (existingBonif) {
+      setCart(cart.filter(i => i.productId !== bonificacionId));
+    } else {
+      setCart([...cart, {
+        productId: bonificacionId, name: item.name, price: 0, quantity: 1,
+        marca: item.marca, presentacion: item.presentacion, peso: item.peso,
+        esBonificacion: true, esDegustacion: false,
+      }]);
+      toast.success(`Bonificación de ${item.name} agregada`);
+    }
+  };
 
-  const handleSubmit = () => {
-    if (!selectedClient) {
-      toast.error('Selecciona un cliente');
-      return;
+  const toggleDegustacion = (productId: string) => {
+    const item = cart.find(i => i.productId === productId && !i.esBonificacion && !i.esDegustacion);
+    if (!item) return;
+    const degustacionId = `${productId}-degust`;
+    const existingDegust = cart.find(i => i.productId === degustacionId);
+
+    if (existingDegust) {
+      setCart(cart.filter(i => i.productId !== degustacionId));
+    } else {
+      setCart([...cart, {
+        productId: degustacionId, name: item.name, price: 0, quantity: 1,
+        marca: item.marca, presentacion: item.presentacion, peso: item.peso,
+        esBonificacion: false, esDegustacion: true,
+      }]);
+      toast.success(`Degustación de ${item.name} agregada`);
     }
-    if (cart.length === 0) {
-      toast.error('Agrega productos al carrito');
-      return;
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedClient) { toast.error('Selecciona un cliente'); return; }
+    if (!selectedVendedor) { toast.error('Selecciona un vendedor'); return; }
+
+    if (regularItems.length === 0) { toast.error('Agrega productos al carrito'); return; }
+
+    try{
+        await ventaService.create({
+            cliente_id: Number(selectedClient),
+            vendedor_id: Number(selectedVendedor),
+            tipo_pago: paymentType,
+            metodo_pago_detalle: metodoPago,
+            adelanto: paymentType === 'CREDITO' ? adelanto : 0,
+            subtotal: subtotal,
+            descuento: discount,
+            total_neto: total,
+            items: cart.map(item => ({
+                producto_id: Number(item.productId),
+                cantidad: Number(item.quantity),
+                precio_unitario: Number(item.price),
+                subtotal: Number(item.price) * Number(item.quantity),
+                es_bonificacion: item.esBonificacion || false,
+                es_degustacion: item.esDegustacion || false,
+            })),
+    });
+    }catch(error){
+        console.log("ERROR COMPLETO:", error);
+        console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+        toast.error( error?.message || "Error al actualizar estado de la devolución");
     }
-    
-    toast.success('Venta registrada exitosamente');
+
     setCart([]);
     setSelectedClient('');
     setDiscount(0);
+    setAdelanto(0);
+    setMetodoPago('efectivo');
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="animate-fade-in">
         <h1 className="text-2xl lg:text-3xl font-display font-bold">Nueva Venta</h1>
         <p className="text-muted-foreground mt-1">
-          Registra una venta en ruta
+          Registra una venta con productos, bonificaciones y degustaciones
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Products Section */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Client Selection */}
-          <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <div className="flex items-center gap-2 mb-4">
-              <User className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Cliente</h3>
-            </div>
-            
-            <Select value={selectedClient} onValueChange={setSelectedClient}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccionar cliente..." />
-              </SelectTrigger>
-              <SelectContent>
-                {mockClients.map(client => (
-                  <SelectItem key={client.id} value={client.id}>
-                    <div className="flex items-center justify-between w-full">
-                      <span>{client.businessName}</span>
-                      {client.status === 'MOROSO' && (
-                        <Badge variant="destructive" className="ml-2 text-xs">Moroso</Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* Credit limit warning */}
+      {showCreditWarning && (
+        <Alert variant="destructive" className="animate-fade-in border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200">
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-200">Límite de crédito excedido</AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            Deuda actual: S/ {(selectedClientData?.deuda_actual || 0).toLocaleString()} +
+            Monto venta: S/ {(total - adelanto).toLocaleString()} =
+            S/ {((selectedClientData?.deuda_actual || 0) + total - adelanto).toLocaleString()}
+            {' '}(Límite: S/ {(selectedClientData?.limite_credito || 0).toLocaleString()}).
+            Puede continuar, pero el cliente supera su límite.
+          </AlertDescription>
+        </Alert>
+      )}
 
-            {selectedClientData && (
-              <div className="mt-3 p-3 rounded-lg bg-secondary/50">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Deuda actual:</span>
-                  <span className="font-medium">S/ {selectedClientData.currentDebt.toLocaleString()}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up">
+            <div className="space-y-2">
+              <Label className="font-semibold">Vendedor</Label>
+              {isLoadingVendedores ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Cargando...</span>
                 </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Límite de crédito:</span>
-                  <span className="font-medium">S/ {selectedClientData.creditLimit.toLocaleString()}</span>
+              ) : (
+                <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar vendedor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores.map(v => (
+                      <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre} ({v.id})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+
+          <ClientSelector selectedClient={selectedClient} onClientChange={setSelectedClient} lista_clientes={clientes}/>
+
+          {/* Client credit info */}
+          {selectedClientData && paymentType === 'CREDITO' && (
+            <div className="bg-card rounded-xl border shadow-card p-4 animate-fade-in">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Límite Crédito</p>
+                  <p className="font-bold">S/ {(selectedClientData.limite_credito || 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Deuda Actual</p>
+                  <p className="font-bold text-amber-600">S/ {(selectedClientData.deuda_actual || 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Disponible</p>
+                  <p className={`font-bold ${(selectedClientData.limite_credito || 0) - (selectedClientData.deuda_actual || 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    S/ {((selectedClientData.limite_credito || 0) - (selectedClientData.deuda_actual || 0)).toLocaleString()}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Product Search */}
-          <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <div className="flex items-center gap-2 mb-4">
-              <Package className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Productos</h3>
             </div>
+          )}
 
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar producto..."
-                value={searchProduct}
-                onChange={(e) => setSearchProduct(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto">
-              {filteredProducts.map((product, index) => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-secondary/50 transition-colors animate-fade-in cursor-pointer"
-                  style={{ animationDelay: `${300 + index * 50}ms` }}
-                  onClick={() => addToCart(product)}
-                >
-                  <div>
-                    <p className="font-medium text-sm">{product.name}</p>
-                    <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-primary">S/ {product.price.toFixed(2)}</p>
-                    <Button size="sm" variant="ghost" className="h-7 px-2 mt-1">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ProductSearch onAddProduct={addToCart} lista_productos={productos}/>
         </div>
 
-        {/* Cart Section */}
         <div className="lg:col-span-1">
-          <div className="bg-card rounded-xl border shadow-card p-5 sticky top-20 animate-slide-up" style={{ animationDelay: '300ms' }}>
-            <div className="flex items-center gap-2 mb-4">
-              <ShoppingCart className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Carrito</h3>
-              <Badge variant="secondary" className="ml-auto">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)} items
-              </Badge>
-            </div>
-
-            {cart.length === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingCart className="h-12 w-12 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">El carrito está vacío</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                {cart.map((item) => (
-                  <div
-                    key={item.productId}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        S/ {item.price.toFixed(2)} x {item.quantity}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.productId, -1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => updateQuantity(item.productId, 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive"
-                        onClick={() => removeFromCart(item.productId)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <Separator className="my-4" />
-
-            {/* Payment Type */}
-            <div className="mb-4">
-              <Label className="text-sm text-muted-foreground mb-2 block">Tipo de Pago</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={paymentType === 'CONTADO' ? 'default' : 'outline'}
-                  className="gap-2"
-                  onClick={() => setPaymentType('CONTADO')}
-                >
-                  <Banknote className="h-4 w-4" />
-                  Contado
-                </Button>
-                <Button
-                  variant={paymentType === 'CREDITO' ? 'default' : 'outline'}
-                  className="gap-2"
-                  onClick={() => setPaymentType('CREDITO')}
-                >
-                  <CreditCard className="h-4 w-4" />
-                  Crédito
-                </Button>
-              </div>
-            </div>
-
-            {/* Discount */}
-            <div className="mb-4">
-              <Label className="text-sm text-muted-foreground mb-2 block">Descuento (S/)</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.5"
-                value={discount}
-                onChange={(e) => setDiscount(Number(e.target.value))}
-              />
-            </div>
-
-            {/* Totals */}
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>S/ {subtotal.toFixed(2)}</span>
-              </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-sm text-success">
-                  <span>Descuento</span>
-                  <span>-S/ {discount.toFixed(2)}</span>
-                </div>
-              )}
-              <Separator />
-              <div className="flex justify-between font-display text-lg font-bold">
-                <span>Total</span>
-                <span className="text-primary">S/ {total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <Button 
-              variant="gradient" 
-              className="w-full"
-              size="lg"
-              onClick={handleSubmit}
-              disabled={cart.length === 0 || !selectedClient}
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Registrar Venta
-            </Button>
-          </div>
+          <SaleCart
+            cart={cart}
+            paymentType={paymentType}
+            discount={discount}
+            metodoPago={metodoPago}
+            adelanto={adelanto}
+            onPaymentTypeChange={(type) => {
+              setPaymentType(type);
+              if (type === 'CONTADO') setAdelanto(0);
+            }}
+            onDiscountChange={setDiscount}
+            onMetodoPagoChange={setMetodoPago}
+            onAdelantoChange={setAdelanto}
+            onUpdateQuantity={updateQuantity}
+            onRemoveItem={removeFromCart}
+            onToggleBonificacion={toggleBonificacion}
+            onToggleDegustacion={toggleDegustacion}
+            onSubmit={handleSubmit}
+            isClientSelected={!!selectedClient}
+            isSubmitting={false}
+          />
         </div>
       </div>
     </div>

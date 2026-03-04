@@ -16,6 +16,7 @@ class Producto extends Model
         'presentacion',
         'marca',
         'unidad_medida',
+        'peso',
         'precio_base',
         'costo',
         'stock_minimo',

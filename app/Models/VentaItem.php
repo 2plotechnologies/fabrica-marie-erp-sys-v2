@@ -14,7 +14,9 @@ class VentaItem extends Model
         'producto_id',
         'cantidad',
         'precio_unitario',
-        'subtotal'
+        'subtotal',
+        'es_bonificacion',
+        'es_degustacion'
     ];
 
     public function producto()

@@ -9,6 +9,8 @@ use App\Models\VentaItem;
 use App\Services\VentaService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Exception;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class VentaController extends Controller
 {
@@ -169,22 +171,61 @@ class VentaController extends Controller
 
     public function store(Request $request)
     {
-        return DB::transaction(function () use ($request) {
+        $validated = $request->validate([
+            'cliente_id' => ['required', 'exists:clientes,id'],
+            'vendedor_id' => ['required', 'exists:vendedores,id'],
+            'tipo_pago' => ['required', Rule::in(['CONTADO','CREDITO'])],
+            'metodo_pago_detalle' => ['nullable', 'string', 'max:100'],
+            'adelanto' => ['nullable', 'numeric', 'min:0'],
+            'descuento' => ['nullable', 'numeric', 'min:0'],
+            'total_neto' => ['required', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.producto_id' => ['required', 'exists:productos,id'],
+            'items.*.cantidad' => ['required', 'numeric', 'min:1'],
+            'items.*.precio_unitario' => ['required', 'numeric', 'min:0'],
+            'items.*.subtotal' => ['required', 'numeric', 'min:0'],
+            'items.*.es_bonificacion' => ['boolean'],
+            'items.*.es_degustacion' => ['boolean'],
+        ]);
 
-            $venta = Venta::create($request->only([
-                'codigo','vendedor_id','cliente_id',
-                'fecha','total_neto','tipo_pago','estado'
-            ]));
+        return DB::transaction(function () use ($validated) {
 
-            foreach ($request->items as $item) {
-                $venta->items()->create($item);
+            $venta = Venta::create([
+                'cliente_id' => $validated['cliente_id'],
+                'vendedor_id' => $validated['vendedor_id'],
+                'fecha' => Carbon::now(), // 🔥 Fecha automática
+                'tipo_pago' => $validated['tipo_pago'],
+                'metodo_pago_detalle' => $validated['metodo_pago_detalle'] ?? null,
+                'adelanto' => $validated['tipo_pago'] === 'CREDITO'
+                                ? ($validated['adelanto'] ?? 0)
+                                : 0,
+                'descuento' => $validated['descuento'] ?? 0,
+                'total_neto' => $validated['total_neto'],
+                'estado' => 'BORRADOR' // 🔥 Estado inicial automático
+            ]);
+
+            // Generar código después de obtener ID
+            $venta->codigo = 'VTA-' . str_pad($venta->id, 6, '0', STR_PAD_LEFT);
+            $venta->save();
+
+            // Crear items
+            foreach ($validated['items'] as $item) {
+                $venta->items()->create([
+                    'producto_id' => $item['producto_id'],
+                    'cantidad' => $item['cantidad'],
+                    'precio_unitario' => $item['precio_unitario'],
+                    'subtotal' => $item['subtotal'],
+                    'es_bonificacion' => $item['es_bonificacion'] ?? false,
+                    'es_degustacion' => $item['es_degustacion'] ?? false,
+                ]);
             }
 
-            if ($venta->tipo_pago !== 'CONTADO') {
+            // Crear cuenta si es crédito
+            if ($venta->tipo_pago === 'CREDITO') {
                 $venta->cuenta()->create([
                     'cliente_id' => $venta->cliente_id,
                     'monto_total' => $venta->total_neto,
-                    'saldo' => $venta->total_neto,
+                    'saldo' => $venta->total_neto - $venta->adelanto,
                     'estado' => 'PENDIENTE'
                 ]);
             }
