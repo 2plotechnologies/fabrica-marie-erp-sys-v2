@@ -10,8 +10,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import type { CartItem } from '@/types/sales';
 import { ventaService } from '@/services/ventaService';
+import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NewSale = () => {
+  const { currentRole, roleLabels } = useRole();
+  const { user } = useAuth();
+  const isVendedor = currentRole === "VENDEDOR";
   const [productos, setProductos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
@@ -68,11 +73,20 @@ const NewSale = () => {
         }
   };
 
+  const vendedorActual = vendedores.find(
+    v => v.usuario_id === user?.id
+  );
+
   useEffect(() => {
         fetchProductos();
         fetchClientes();
         fetchVendedores();
-  }, []);
+
+        if (isVendedor && vendedorActual) {
+            setSelectedVendedor(String(vendedorActual.id));
+        }
+  }, [isVendedor, vendedorActual]);
+
 
   // Credit limit warning
   const selectedClientData = clientes.find(c => c.id === selectedClient);
@@ -234,7 +248,7 @@ const NewSale = () => {
                   <span className="text-sm">Cargando...</span>
                 </div>
               ) : (
-                <Select value={selectedVendedor} onValueChange={setSelectedVendedor}>
+                <Select value={selectedVendedor} onValueChange={setSelectedVendedor} disabled={isVendedor}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar vendedor..." />
                   </SelectTrigger>
