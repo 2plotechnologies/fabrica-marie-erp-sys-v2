@@ -184,6 +184,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/ventas/{id}', [VentaController::class, 'show']);
 
     // Caja
+    Route::get('/caja', [CajaController::class, 'getCaja']);
     Route::post('/caja/abrir', [CajaController::class, 'abrir']);
     Route::post('/caja/{id}/cerrar', [CajaController::class, 'cerrar'])
         ->middleware('permiso:cerrar_caja');

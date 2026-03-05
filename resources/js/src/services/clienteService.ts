@@ -36,6 +36,16 @@ export const clienteService = {
   async getById(id: number) {
     const response = await api.get(`/clientes/${id}`);
     return response.data;
-  }
+  },
+
+  async update(id: number, data: ClientePayload) {
+    const response = await api.put(`/clientes/${id}`, data);
+    return response.data;
+  },
+
+  async delete(id: number) {
+    const response = await api.delete(`/clientes/${id}`);
+    return response.data;
+  },
 
 };

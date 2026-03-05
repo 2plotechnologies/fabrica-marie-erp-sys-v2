@@ -13,8 +13,15 @@ class MovimientoCaja extends Model
         'caja_id',
         'tipo',
         'monto',
+        'categoria',
+        'descripcion',
         'referencia_tipo',
         'referencia_id',
         'created_at'
     ];
+
+    public function caja()
+    {
+        return $this->belongsTo(Caja::class);
+    }
 }

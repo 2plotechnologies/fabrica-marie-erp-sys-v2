@@ -34,6 +34,7 @@ const ProductsList = () => {
     presentacion: '',
     marca: '',
     unidad_medida: '',
+    peso: '',
     precio_base: '',
     costo: '',
     stock_minimo: '',
@@ -77,6 +78,7 @@ const ProductsList = () => {
         presentacion: form.presentacion || undefined,
         marca: form.marca || undefined,
         unidad_medida: form.unidad_medida,
+        peso: Number(form.peso),
         precio_base: Number(form.precio_base),
         costo: Number(form.costo),
         stock_minimo: Number(form.stock_minimo),
@@ -93,6 +95,7 @@ const ProductsList = () => {
         presentacion: '',
         marca: '',
         unidad_medida: '',
+        peso: '',
         precio_base: '',
         costo: '',
         stock_minimo: '',
@@ -105,10 +108,10 @@ const ProductsList = () => {
       console.log("ERROR COMPLETO:", err);
       console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
       toast({
-          title: "Error",
-          description: err?.message || "No se pudo registrar el producto.",
-          variant: "destructive",
-       });
+        title: "Error",
+        description: err?.message || "No se pudo registrar el producto.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -116,10 +119,10 @@ const ProductsList = () => {
      FILTROS
   ========================= */
 
- const filteredProducts = productos.filter((p) =>
+  const filteredProducts = productos.filter((p) =>
     (p.nombre ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (p.sku ?? '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  );
   const categories = [...new Set(productos.map(p => p.categoria))];
 
   /* =========================
@@ -174,6 +177,7 @@ const ProductsList = () => {
               <div className="space-y-2"><Label>Descripción</Label><Textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Describe el producto..." /></div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label>Unidad Medida</Label><Input value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Peso (Kg)</Label><Input type="number" step="0.01" value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Stock Mínimo </Label><Input type="number" value={form.stock_minimo} onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Costo (S/)</Label><Input type="number" step="0.01" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Venta (S/)</Label><Input type="number" step="0.01" value={form.precio_base} onChange={(e) => setForm({ ...form, precio_base: e.target.value })} /></div>

@@ -14,6 +14,7 @@ export interface ProductoPayload {
   presentacion?: string;
   marca?: string;
   unidad_medida: string;
+  peso: number;
   precio_base: number;
   costo: number;
   stock_minimo: number;

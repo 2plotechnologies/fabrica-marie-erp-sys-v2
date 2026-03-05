@@ -10,13 +10,29 @@ use App\Services\CajaReporteService;
 
 class CajaController extends Controller
 {
+    public function index()
+    {
+        return Caja::where('usuario_id', auth()->id())
+            ->where('fecha', now()->toDateString())
+            ->first();
+    }
+
+    public function getCaja()
+    {
+        return Caja::with(['usuario', 'movimientos'])
+            ->whereDate('fecha', now())
+            ->where('estado', 'ABIERTA')
+            ->latest('id')
+            ->first();
+    }
+
     public function abrir(Request $request)
     {
         return Caja::create([
             'usuario_id' => auth()->id(),
             'fecha' => now()->toDateString(),
-            'saldo_inicial' => $request->saldo_inicial,
-            'saldo_actual' => $request->saldo_inicial,
+            'saldo_inicial' => $request->monto_apertura,
+            'saldo_actual' => $request->monto_apertura,
             'estado' => 'ABIERTA'
         ]);
     }
@@ -25,6 +41,13 @@ class CajaController extends Controller
     {
         return DB::transaction(function () use ($id, $service) {
             return $service->cerrarCaja($id);
+        });
+    }
+
+    public function crearMovimiento(Request $request, CajaService $service)
+    {
+        return DB::transaction(function () use ($request, $service) {
+            return $service->createMovimiento($request->all());
         });
     }
 

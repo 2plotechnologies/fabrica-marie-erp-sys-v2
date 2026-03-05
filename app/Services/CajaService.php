@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Caja;
+use App\Models\MovimientoCaja;
+use Carbon\Carbon;
 use Exception;
 
 class CajaService
@@ -31,5 +33,38 @@ class CajaService
         $caja->save();
 
         return $caja;
+    }
+
+    private static function obtenerCajaAbierta()
+    {
+        $hoy = Carbon::today();
+
+        $caja = Caja::whereDate('fecha', $hoy)
+            ->where('estado', 'ABIERTA')
+            ->first();
+
+        if (!$caja) {
+            throw new \Exception('No hay una caja ABIERTA para el día de hoy.');
+        }
+
+        return $caja;
+    }
+
+    public static function registrarMovimiento(array $data)
+    {
+        $caja = self::obtenerCajaAbierta();
+
+        $movimiento = MovimientoCaja::create([
+            'caja_id' => $caja->id,
+            'tipo' => $data['tipo'],
+            'monto' => $data['monto'],
+            'categoria' => $data['categoria'],
+            'descripcion' => $data['descripcion'],
+            'referencia_tipo' => $data['referencia_tipo'] ?? null,
+            'referencia_id' => $data['referencia_id'] ?? null,
+            'created_at' => Carbon::now()
+        ]);
+
+        return $movimiento;
     }
 }

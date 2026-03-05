@@ -6,7 +6,11 @@ use App\Models\Venta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\VentaItem;
+use App\Models\StockActual;
+use App\Models\MovimientoStock;
 use App\Services\VentaService;
+use App\Services\CajaService;
+use App\Services\StockService;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Exception;
 use Illuminate\Validation\Rule;
@@ -230,6 +234,9 @@ class VentaController extends Controller
                 ]);
             }
 
+            //Reservar Stock.
+            $this->reservarStock($venta);
+
             return $venta->load('items');
         });
     }
@@ -319,9 +326,19 @@ class VentaController extends Controller
                     'motivo' => 'Confirmación de venta',
                     'stock_post_mov' => $stock->cantidad,
                     'user_id' => auth()->id(),
+                    'estado'=>'REGISTRADO',
                     'created_at' => now()
                 ]);
             }
+
+            $movimientoCaja = CajaService::registrarMovimiento([
+                'tipo' => 'INGRESO',
+                'monto' => $venta->total_neto,
+                'categoria' => 'VENTA',
+                'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
+                'referencia_tipo' => 'VENTA',
+                'referencia_id' => $venta->id
+            ]);
 
             $venta->estado = 'CONFIRMADA';
             $venta->save();
