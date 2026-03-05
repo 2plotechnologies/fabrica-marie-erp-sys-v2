@@ -46,31 +46,31 @@ const NewSale = () => {
   }
 
   const fetchProductos = async () => {
-        try {
-            const data = await ventaService.getProductos();
-            setProductos(data);
-        } catch (error) {
-            console.log(error);
-        }
+    try {
+      const data = await ventaService.getProductos();
+      setProductos(data);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const fetchClientes = async () => {
-        try {
-            const data = await ventaService.getClientes();
-            setClientes(data);
-        } catch (error) {
-            console.log(error);
-        }
+    try {
+      const data = await ventaService.getClientes();
+      setClientes(data);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const fetchVendedores = async () => {
-        try {
-            const data = await ventaService.getVendedores();
-            setVendedores(data);
-            setIsLoadingVendedores(false);
-        } catch (error) {
-            console.log(error);
-        }
+    try {
+      const data = await ventaService.getVendedores();
+      setVendedores(data);
+      setIsLoadingVendedores(false);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const vendedorActual = vendedores.find(
@@ -78,13 +78,13 @@ const NewSale = () => {
   );
 
   useEffect(() => {
-        fetchProductos();
-        fetchClientes();
-        fetchVendedores();
+    fetchProductos();
+    fetchClientes();
+    fetchVendedores();
 
-        if (isVendedor && vendedorActual) {
-            setSelectedVendedor(String(vendedorActual.id));
-        }
+    if (isVendedor && vendedorActual) {
+      setSelectedVendedor(String(vendedorActual.id));
+    }
   }, [isVendedor, vendedorActual]);
 
 
@@ -181,29 +181,30 @@ const NewSale = () => {
 
     if (regularItems.length === 0) { toast.error('Agrega productos al carrito'); return; }
 
-    try{
-        await ventaService.create({
-            cliente_id: Number(selectedClient),
-            vendedor_id: Number(selectedVendedor),
-            tipo_pago: paymentType,
-            metodo_pago_detalle: metodoPago,
-            adelanto: paymentType === 'CREDITO' ? adelanto : 0,
-            subtotal: subtotal,
-            descuento: discount,
-            total_neto: total,
-            items: cart.map(item => ({
-                producto_id: Number(item.productId),
-                cantidad: Number(item.quantity),
-                precio_unitario: Number(item.price),
-                subtotal: Number(item.price) * Number(item.quantity),
-                es_bonificacion: item.esBonificacion || false,
-                es_degustacion: item.esDegustacion || false,
-            })),
-    });
-    }catch(error){
-        console.log("ERROR COMPLETO:", error);
-        console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-        toast.error( error?.message || "Error al actualizar estado de la devolución");
+    try {
+      await ventaService.create({
+        cliente_id: Number(selectedClient),
+        vendedor_id: Number(selectedVendedor),
+        tipo_pago: paymentType,
+        metodo_pago_detalle: metodoPago,
+        adelanto: paymentType === 'CREDITO' ? adelanto : 0,
+        subtotal: subtotal,
+        descuento: discount,
+        total_neto: total,
+        items: cart.map(item => ({
+          producto_id: Number(item.productId),
+          cantidad: Number(item.quantity),
+          precio_unitario: Number(item.price),
+          subtotal: Number(item.price) * Number(item.quantity),
+          es_bonificacion: item.esBonificacion || false,
+          es_degustacion: item.esDegustacion || false,
+        })),
+      });
+      toast.success('Venta creada exitosamente');
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error(error?.message || "Error al crear venta: " + error.response?.data.message);
     }
 
     setCart([]);
@@ -262,7 +263,7 @@ const NewSale = () => {
             </div>
           </div>
 
-          <ClientSelector selectedClient={selectedClient} onClientChange={setSelectedClient} lista_clientes={clientes}/>
+          <ClientSelector selectedClient={selectedClient} onClientChange={setSelectedClient} lista_clientes={clientes} />
 
           {/* Client credit info */}
           {selectedClientData && paymentType === 'CREDITO' && (
@@ -286,7 +287,7 @@ const NewSale = () => {
             </div>
           )}
 
-          <ProductSearch onAddProduct={addToCart} lista_productos={productos}/>
+          <ProductSearch onAddProduct={addToCart} lista_productos={productos} />
         </div>
 
         <div className="lg:col-span-1">
