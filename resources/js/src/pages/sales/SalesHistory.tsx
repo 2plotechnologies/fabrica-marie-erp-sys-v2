@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,24 +26,50 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp } from 'lucide-react';
+import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check } from 'lucide-react';
 import { mockSales } from '@/data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Sale } from '@/types';
+import { ventaService } from '@/services/ventaService';
 
 const SalesHistory = () => {
+  const [ventas, setVentas] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
-  const filteredSales = mockSales.filter((sale) => {
-    const matchesSearch = sale.client?.businessName
+  const handleConfirmSale = async (saleId: number) => {
+    try {
+      await ventaService.confirmarVenta(saleId);
+
+      // Actualizar estado local para evitar recargar todo
+      setVentas(prev =>
+        prev.map(v =>
+          v.id === saleId ? { ...v, estado: "CONFIRMADA" } : v
+        )
+      );
+
+    } catch (error) {
+      console.error("Error al confirmar venta:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchVentas = async () => {
+      const ventas = await ventaService.getAll();
+      setVentas(ventas);
+    };
+    fetchVentas();
+  }, []);
+
+  const filteredSales = ventas.filter((sale) => {
+    const matchesSearch = sale.cliente?.razon_social
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sale.status === statusFilter;
-    const matchesPayment = paymentFilter === 'all' || sale.paymentType === paymentFilter;
+    const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
+    const matchesPayment = paymentFilter === 'all' || sale.tipo_pago === paymentFilter;
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
@@ -65,9 +91,9 @@ const SalesHistory = () => {
     );
   };
 
-  const totalSales = mockSales.reduce((acc, sale) => acc + sale.total, 0);
-  const creditSales = mockSales.filter(s => s.paymentType === 'CREDITO').reduce((acc, s) => acc + s.total, 0);
-  const cashSales = mockSales.filter(s => s.paymentType === 'CONTADO').reduce((acc, s) => acc + s.total, 0);
+  const totalSales = ventas.reduce((acc, sale) => acc + Number(sale.total_neto), 0);
+  const creditSales = ventas.filter(s => s.tipo_pago === 'CREDITO').reduce((acc, s) => acc + Number(s.total_neto), 0);
+  const cashSales = ventas.filter(s => s.tipo_pago === 'CONTADO').reduce((acc, s) => acc + Number(s.total_neto), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -97,7 +123,7 @@ const SalesHistory = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Ventas</p>
-                <p className="text-2xl font-bold text-foreground">S/ {totalSales.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-foreground">S/ {Number(totalSales).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -110,7 +136,7 @@ const SalesHistory = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ventas al Contado</p>
-                <p className="text-2xl font-bold text-foreground">S/ {cashSales.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-foreground">S/ {Number(cashSales).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -123,7 +149,7 @@ const SalesHistory = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ventas a Crédito</p>
-                <p className="text-2xl font-bold text-foreground">S/ {creditSales.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-foreground">S/ {Number(creditSales).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -196,28 +222,28 @@ const SalesHistory = () => {
                 <TableRow key={sale.id} className="hover:bg-muted/50">
                   <TableCell>
                     <code className="text-xs bg-muted px-2 py-1 rounded">
-                      #{sale.id.padStart(6, '0')}
+                      #{sale.codigo?.padStart(6, '0')}
                     </code>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {format(sale.createdAt, "dd MMM yyyy, HH:mm", { locale: es })}
+                    {format(sale.fecha, "dd MMM yyyy, HH:mm", { locale: es })}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {sale.client?.businessName}
+                    {sale.cliente?.razon_social}
                   </TableCell>
                   <TableCell className="text-center">
                     <Badge variant="outline">{sale.items.length} items</Badge>
                   </TableCell>
-                  <TableCell>{getPaymentBadge(sale.paymentType)}</TableCell>
-                  <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                  <TableCell>{getPaymentBadge(sale.tipo_pago)}</TableCell>
+                  <TableCell>{getStatusBadge(sale.estado)}</TableCell>
                   <TableCell className="text-right font-bold">
-                    S/ {sale.total.toFixed(2)}
+                    S/ {Number(sale.total_neto).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           onClick={() => setSelectedSale(sale)}
                         >
@@ -226,9 +252,9 @@ const SalesHistory = () => {
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-lg">
                         <DialogHeader>
-                          <DialogTitle>Detalle de Venta #{sale.id.padStart(6, '0')}</DialogTitle>
+                          <DialogTitle>Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
                           <DialogDescription>
-                            {sale.client?.businessName} - {format(sale.createdAt, "dd/MM/yyyy HH:mm")}
+                            {sale.cliente?.razon_social} - {format(sale.fecha, "dd/MM/yyyy HH:mm")}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
@@ -236,29 +262,39 @@ const SalesHistory = () => {
                             {sale.items.map((item) => (
                               <div key={item.id} className="p-3 flex justify-between items-center">
                                 <div>
-                                  <p className="font-medium">{item.product?.name}</p>
+                                  <p className="font-medium">{item.producto?.nombre}</p>
                                   <p className="text-sm text-muted-foreground">
-                                    {item.quantity} x S/ {item.unitPrice.toFixed(2)}
+                                    {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
                                   </p>
                                 </div>
-                                <p className="font-semibold">S/ {item.subtotal.toFixed(2)}</p>
+                                <p className="font-semibold">S/ {Number(item.subtotal).toFixed(2)}</p>
                               </div>
                             ))}
                           </div>
                           <div className="space-y-2 pt-4 border-t">
-                            <div className="flex justify-between text-muted-foreground">
-                              <span>Subtotal</span>
-                              <span>S/ {sale.subtotal.toFixed(2)}</span>
-                            </div>
-                            {sale.discount > 0 && (
+                            {sale.descuento > 0 && (
                               <div className="flex justify-between text-red-500">
                                 <span>Descuento</span>
-                                <span>- S/ {sale.discount.toFixed(2)}</span>
+                                <span>- S/ {Number(sale.descuento).toFixed(2)}</span>
                               </div>
                             )}
                             <div className="flex justify-between text-lg font-bold">
                               <span>Total</span>
-                              <span>S/ {sale.total.toFixed(2)}</span>
+                              <span>S/ {Number(sale.total_neto).toFixed(2)}</span>
+                            </div>
+
+                            {sale.estado === "BORRADOR" && (
+                              <Button
+                                onClick={() => handleConfirmSale(sale.id)}
+                                className="w-full mt-4"
+                                size="sm"
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Confirmar Venta
+                              </Button>
+                            )}
+
+                            <div className="flex justify-between text-muted-foreground">
                             </div>
                           </div>
                         </div>

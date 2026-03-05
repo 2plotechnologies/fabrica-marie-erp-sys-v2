@@ -73,7 +73,7 @@ export const ventaService = {
 
   // Confirmar
   async confirmarVenta(id: number) {
-    const response = await api.put(`/ventas/${id}/confirmar`);
+    const response = await api.post(`/ventas/${id}/confirmar`);
     return response.data;
   },
 
