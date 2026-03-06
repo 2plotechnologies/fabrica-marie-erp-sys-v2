@@ -180,7 +180,7 @@ Route::middleware('auth:sanctum')->group(function () {
     )->middleware(['permiso:eliminar_venta']);
     Route::post('/ventas/{id}/anular',
         [VentaController::class, 'anular']
-    )->middleware(['permiso:anular_venta', 'caja.abierta']);
+    )->middleware(['permiso:eliminar_venta', 'caja.abierta']);
     Route::get('/ventas/{id}', [VentaController::class, 'show']);
 
     // Caja

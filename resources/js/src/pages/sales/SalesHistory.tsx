@@ -26,12 +26,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check } from 'lucide-react';
-import { mockSales } from '@/data/mockData';
+import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check, X, Trash } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Sale } from '@/types';
 import { ventaService } from '@/services/ventaService';
+import { toast } from '@/hooks/use-toast';
 
 const SalesHistory = () => {
   const [ventas, setVentas] = useState<any[]>([]);
@@ -53,6 +53,46 @@ const SalesHistory = () => {
 
     } catch (error) {
       console.error("Error al confirmar venta:", error);
+    }
+  };
+
+  const handleCancelSale = async (saleId: number) => {
+    try {
+      await ventaService.anularVenta(saleId);
+
+      setVentas(prev =>
+        prev.map(v =>
+          v.id === saleId ? { ...v, estado: "ANULADA" } : v
+        )
+      );
+
+    } catch (error) {
+      console.error("ERROR COMPLETO:", error);
+      console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast({
+        title: "Error",
+        description: "Error al anular venta: " + error.response?.data.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteSale = async (saleId: number) => {
+    try {
+      await ventaService.delete(saleId);
+
+      setVentas(prev =>
+        prev.filter(v => v.id !== saleId)
+      );
+
+    } catch (error) {
+      console.error("ERROR COMPLETO:", error);
+      console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast({
+        title: "Error",
+        description: "Error al eliminar venta: " + error.response?.data.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -91,9 +131,20 @@ const SalesHistory = () => {
     );
   };
 
-  const totalSales = ventas.reduce((acc, sale) => acc + Number(sale.total_neto), 0);
-  const creditSales = ventas.filter(s => s.tipo_pago === 'CREDITO').reduce((acc, s) => acc + Number(s.total_neto), 0);
-  const cashSales = ventas.filter(s => s.tipo_pago === 'CONTADO').reduce((acc, s) => acc + Number(s.total_neto), 0);
+  const confirmedSales = ventas.filter(v => v.estado === 'CONFIRMADA');
+
+  const totalSales = confirmedSales.reduce(
+    (acc, sale) => acc + Number(sale.total_neto || 0),
+    0
+  );
+
+  const creditSales = confirmedSales
+    .filter(s => s.tipo_pago === 'CREDITO')
+    .reduce((acc, s) => acc + Number(s.total_neto || 0), 0);
+
+  const cashSales = confirmedSales
+    .filter(s => s.tipo_pago === 'CONTADO')
+    .reduce((acc, s) => acc + Number(s.total_neto || 0), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -286,11 +337,33 @@ const SalesHistory = () => {
                             {sale.estado === "BORRADOR" && (
                               <Button
                                 onClick={() => handleConfirmSale(sale.id)}
-                                className="w-full mt-4"
+                                className="w-full mt-4 bg-green-500 hover:bg-green-600"
                                 size="sm"
                               >
                                 <Check className="h-4 w-4 mr-2" />
                                 Confirmar Venta
+                              </Button>
+                            )}
+
+                            {(sale.estado === "BORRADOR") && (
+                              <Button
+                                onClick={() => handleDeleteSale(sale.id)}
+                                className="w-full mt-4 bg-red-500 hover:bg-red-600"
+                                size="sm"
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Eliminar Venta
+                              </Button>
+                            )}
+
+                            {sale.estado === "CONFIRMADA" && (
+                              <Button
+                                onClick={() => handleCancelSale(sale.id)}
+                                className="w-full mt-4 bg-red-500 hover:bg-red-600"
+                                size="sm"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Anular Venta
                               </Button>
                             )}
 

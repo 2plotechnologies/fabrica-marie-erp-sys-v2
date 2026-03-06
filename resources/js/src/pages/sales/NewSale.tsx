@@ -81,7 +81,9 @@ const NewSale = () => {
     fetchProductos();
     fetchClientes();
     fetchVendedores();
+  }, []);
 
+  useEffect(() => {
     if (isVendedor && vendedorActual) {
       setSelectedVendedor(String(vendedorActual.id));
     }

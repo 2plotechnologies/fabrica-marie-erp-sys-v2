@@ -79,7 +79,7 @@ export const ventaService = {
 
   // Anular
   async anularVenta(id: number) {
-    const response = await api.put(`/ventas/${id}/anular`);
+    const response = await api.post(`/ventas/${id}/anular`);
     return response.data;
   },
 

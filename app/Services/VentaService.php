@@ -70,6 +70,7 @@ class VentaService
                     'motivo' => 'Rollback por anulación de venta',
                     'stock_post_mov' => $stock->cantidad,
                     'user_id' => $userId,
+                    'estado' => 'REGISTRADO',
                     'created_at' => now()
                 ]);
             }
@@ -118,6 +119,8 @@ class VentaService
                     'monto' => $venta->total_neto,
                     'referencia_tipo' => 'ANULACION_VENTA',
                     'referencia_id' => $venta->id,
+                    'categoria' => 'VENTA',
+                    'descripcion' => 'Venta Anulada, ID: ' . $venta->id,
                     'created_at' => now()
                 ]);
             }

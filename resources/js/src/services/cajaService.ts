@@ -10,7 +10,7 @@ export const cajaService = {
     },
     // Cerrar caja
     async cerrarCaja(id: number, monto_cierre: number) {
-        const response = await api.put(`/caja/${id}/cerrar`, { monto_cierre });
+        const response = await api.post(`/caja/${id}/cerrar`, { monto_cierre });
         return response.data;
     },
 
