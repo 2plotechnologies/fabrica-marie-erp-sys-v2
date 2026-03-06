@@ -33,6 +33,11 @@ class Producto extends Model
         return $this->hasMany(StockActual::class, 'producto_id');
     }
 
+    public function stockVendedor()
+    {
+        return $this->hasMany(StockVendedor::class, 'producto_id');
+    }
+
     public function movimientos()
     {
         return $this->hasMany(MovimientoStock::class, 'producto_id');

@@ -6,6 +6,8 @@ use App\Models\Venta;
 use App\Models\MovimientoStock;
 use App\Models\StockActual;
 use App\Models\MovimientoCaja;
+use App\Models\Salida;
+use App\Models\StockVendedor;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
@@ -31,48 +33,19 @@ class VentaService
 
             /*
             ======================================================
-            🔁 1️⃣ ROLLBACK PROFESIONAL DE STOCK (POR RUMA ORIGINAL)
+            🔁 1️⃣ ROLLBACK PROFESIONAL DE STOCK (POR STOCK VENDEDOR)
             ======================================================
             */
 
-            $movimientosSalida = MovimientoStock::where('referencia_tipo', 'VENTA')
-                ->where('referencia_id', $venta->id)
-                ->where('tipo', 'SALIDA')
-                ->get();
+            foreach ($venta->items as $item) {
+                $stockVendedor = StockVendedor::where('producto_id', $item->producto_id)
+                    ->where('vendedor_id', $venta->vendedor_id)
+                    ->first();
 
-            if ($movimientosSalida->isEmpty()) {
-                throw new Exception('No existen movimientos de stock para revertir');
-            }
-
-            foreach ($movimientosSalida as $mov) {
-
-                $stock = StockActual::firstOrCreate(
-                    [
-                        'producto_id' => $mov->producto_id,
-                        'ruma_id' => $mov->ruma_id
-                    ],
-                    [
-                        'cantidad' => 0
-                    ]
-                );
-
-                $stock->cantidad += $mov->cantidad;
-                $stock->fecha_ultimo_mov = now();
-                $stock->save();
-
-                MovimientoStock::create([
-                    'tipo' => 'INGRESO',
-                    'producto_id' => $mov->producto_id,
-                    'ruma_id' => $mov->ruma_id,
-                    'cantidad' => $mov->cantidad,
-                    'referencia_tipo' => 'ANULACION_VENTA',
-                    'referencia_id' => $venta->id,
-                    'motivo' => 'Rollback por anulación de venta',
-                    'stock_post_mov' => $stock->cantidad,
-                    'user_id' => $userId,
-                    'estado' => 'REGISTRADO',
-                    'created_at' => now()
-                ]);
+                if ($stockVendedor) {
+                    $stockVendedor->cantidad += $item->cantidad;
+                    $stockVendedor->save();
+                }
             }
 
             /*
@@ -145,7 +118,8 @@ class VentaService
     {
         foreach ($venta->items as $item) {
 
-            $stock = StockActual::where('producto_id', $item->producto_id)
+            $stock = StockVendedor::where('producto_id', $item->producto_id)
+                ->where('vendedor_id', $venta->vendedor_id)
                 ->lockForUpdate()
                 ->first();
 

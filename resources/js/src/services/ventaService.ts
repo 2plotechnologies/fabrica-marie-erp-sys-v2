@@ -18,6 +18,7 @@ export interface VentaPayload {
 
 export interface VentaItemPayload {
   producto_id: number;
+  salida_id: number;
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
@@ -35,6 +36,11 @@ export const ventaService = {
   //Obtener productos.
   async getProductos() {
     const response = await api.get('/inventario/productos');
+    return response.data;
+  },
+  //Obtener productos por vendedor.
+  async getProductosByVendedor(vendedorId: string) {
+    const response = await api.get(`/inventario/productos/vendedores/${vendedorId}`);
     return response.data;
   },
   //Obtener clientes.

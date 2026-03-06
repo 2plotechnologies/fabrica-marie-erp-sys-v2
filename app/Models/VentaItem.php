@@ -12,6 +12,7 @@ class VentaItem extends Model
     protected $fillable = [
         'venta_id',
         'producto_id',
+        'salida_id',
         'cantidad',
         'precio_unitario',
         'subtotal',

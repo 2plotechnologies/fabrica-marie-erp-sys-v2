@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Producto;
+use App\Models\StockVendedor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -16,6 +17,17 @@ class ProductoController extends Controller
         return response()->json(
             Producto::where('activo', true)->get()
         );
+    }
+
+    public function indexVendedores($vendedor_id)
+    {
+        $stockVendedores = StockVendedor::with('producto', 'vendedor')
+            ->where('vendedor_id', $vendedor_id)
+            ->whereHas('salida', function ($query) {
+                $query->where('estado', 'EN_RUTA');
+            })
+            ->get();
+        return response()->json($stockVendedores);
     }
 
     public function store(Request $request)

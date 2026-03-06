@@ -41,14 +41,26 @@ const NewSale = () => {
     costo: number;
     categoria: string;
     estado: string;
+    salida_id: number;
     created_at: string;
     updated_at: string;
   }
 
-  const fetchProductos = async () => {
+  const fetchProductos = async (vendedorId: string) => {
     try {
-      const data = await ventaService.getProductos();
-      setProductos(data);
+      const data = await ventaService.getProductosByVendedor(vendedorId);
+
+      console.log(data);
+
+      // Adaptar datos al formato que usa ProductSearch
+      const productosAdaptados = data.map((item: any) => ({
+        ...item.producto,
+        salida_id: item.salida_id,
+        stock: item.cantidad - item.stock_reservado
+      }));
+
+      setProductos(productosAdaptados);
+
     } catch (error) {
       console.log(error);
     }
@@ -78,10 +90,15 @@ const NewSale = () => {
   );
 
   useEffect(() => {
-    fetchProductos();
     fetchClientes();
     fetchVendedores();
   }, []);
+
+  useEffect(() => {
+    if (selectedVendedor) {
+      fetchProductos(selectedVendedor);
+    }
+  }, [selectedVendedor]);
 
   useEffect(() => {
     if (isVendedor && vendedorActual) {
@@ -113,6 +130,7 @@ const NewSale = () => {
     } else {
       setCart([...cart, {
         productId: product.id,
+        salida_id: Number(product.salida_id),
         name: product.nombre,
         price: product.precio_base,
         quantity: 1,
@@ -152,6 +170,7 @@ const NewSale = () => {
     } else {
       setCart([...cart, {
         productId: bonificacionId, name: item.name, price: 0, quantity: 1,
+        salida_id: item.salida_id,
         marca: item.marca, presentacion: item.presentacion, peso: item.peso,
         esBonificacion: true, esDegustacion: false,
       }]);
@@ -170,6 +189,7 @@ const NewSale = () => {
     } else {
       setCart([...cart, {
         productId: degustacionId, name: item.name, price: 0, quantity: 1,
+        salida_id: item.salida_id,
         marca: item.marca, presentacion: item.presentacion, peso: item.peso,
         esBonificacion: false, esDegustacion: true,
       }]);
@@ -195,6 +215,7 @@ const NewSale = () => {
         total_neto: total,
         items: cart.map(item => ({
           producto_id: Number(item.productId),
+          salida_id: Number(item.salida_id),
           cantidad: Number(item.quantity),
           precio_unitario: Number(item.price),
           subtotal: Number(item.price) * Number(item.quantity),

@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\VentaItem;
 use App\Models\StockActual;
+use App\Models\StockVendedor;
 use App\Models\MovimientoStock;
+use App\Models\Salida;
 use App\Services\VentaService;
 use App\Services\CajaService;
 use App\Services\StockService;
@@ -185,6 +187,7 @@ class VentaController extends Controller
             'total_neto' => ['required', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.producto_id' => ['required', 'exists:productos,id'],
+            'items.*.salida_id' => ['required', 'exists:salidas,id'],
             'items.*.cantidad' => ['required', 'numeric', 'min:1'],
             'items.*.precio_unitario' => ['required', 'numeric', 'min:0'],
             'items.*.subtotal' => ['required', 'numeric', 'min:0'],
@@ -216,6 +219,7 @@ class VentaController extends Controller
             foreach ($validated['items'] as $item) {
                 $venta->items()->create([
                     'producto_id' => $item['producto_id'],
+                    'salida_id' => $item['salida_id'],
                     'cantidad' => $item['cantidad'],
                     'precio_unitario' => $item['precio_unitario'],
                     'subtotal' => $item['subtotal'],
@@ -273,7 +277,9 @@ class VentaController extends Controller
 
             foreach ($venta->items as $item) {
 
-                $stock = StockActual::where('producto_id', $item->producto_id)
+                $stock = StockVendedor::where('producto_id', $item->producto_id)
+                    ->where('vendedor_id', $venta->vendedor_id)
+                    ->where('salida_id', $item->salida_id)
                     ->lockForUpdate()
                     ->firstOrFail();
 
@@ -307,28 +313,9 @@ class VentaController extends Controller
                     $stock->stock_reservado -= $item->cantidad;
                 }
 
+                $stock->vendido += $item->cantidad;
                 $stock->fecha_ultimo_mov = now();
                 $stock->save();
-
-                /*
-                ============================================
-                🧾 REGISTRAR MOVIMIENTO
-                ============================================
-                */
-
-                MovimientoStock::create([
-                    'tipo' => 'SALIDA',
-                    'producto_id' => $item->producto_id,
-                    'ruma_id' => $stock->ruma_id ?? null,
-                    'cantidad' => $item->cantidad,
-                    'referencia_tipo' => 'VENTA',
-                    'referencia_id' => $venta->id,
-                    'motivo' => 'Confirmación de venta',
-                    'stock_post_mov' => $stock->cantidad,
-                    'user_id' => auth()->id(),
-                    'estado'=>'REGISTRADO',
-                    'created_at' => now()
-                ]);
             }
 
             $movimientoCaja = CajaService::registrarMovimiento([
@@ -354,7 +341,9 @@ class VentaController extends Controller
     {
         foreach ($venta->items as $item) {
 
-            $stock = StockActual::where('producto_id', $item->producto_id)
+            $stock = StockVendedor::where('producto_id', $item->producto_id)
+                ->where('vendedor_id', $venta->vendedor_id)
+                ->where('salida_id', $item->salida_id)
                 ->lockForUpdate()
                 ->first();
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use App\Models\Salida;
 use App\Models\SalidaItem;
+use App\Models\StockVendedor;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 
@@ -69,6 +70,13 @@ class SalidaController
                     'salida_id' => $salida->id,
                     'producto_id' => $item['producto_id'],
                     'ruma_id' => $item['ruma_id'],
+                    'cantidad' => $item['cantidad'],
+                ]);
+
+                StockVendedor::create([
+                    'salida_id' => $salida->id,
+                    'producto_id' => $item['producto_id'],
+                    'vendedor_id' => $request->vendedor_id,
                     'cantidad' => $item['cantidad'],
                 ]);
 

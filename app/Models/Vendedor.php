@@ -23,4 +23,9 @@ class Vendedor extends Model
     {
         return $this->hasMany(Venta::class);
     }
+
+    public function stockVendedor()
+    {
+        return $this->hasMany(StockVendedor::class);
+    }
 }

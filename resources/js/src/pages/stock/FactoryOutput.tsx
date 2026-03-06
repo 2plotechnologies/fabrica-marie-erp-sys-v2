@@ -41,142 +41,144 @@ const FactoryOutput = () => {
   });
 
   const fetchSalidas = async () => {
-        try {
-            const data = await salidaService.getAll();
-            setSalidas(data);
-            setIsLoading(true);
-        } catch (error) {
-            console.log(error);
-        }finally {
-          setIsLoading(false);
-        }
+    try {
+      const data = await salidaService.getAll();
+      setSalidas(data);
+      setIsLoading(true);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchProductos = async () => {
-          try {
-              const data = await salidaService.getProductos();
-              setProductos(data);
-          } catch (error) {
-              console.log(error);
-          }
-    };
+    try {
+      const data = await salidaService.getProductos();
+      setProductos(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-   const fetchRumas = async () => {
-        try {
-            const data = await salidaService.getRumas();
-            setRumas(data);
-        } catch (error) {
-            console.log(error);
-        }
-   };
+  const fetchRumas = async () => {
+    try {
+      const data = await salidaService.getRumas();
+      setRumas(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-   const fetchRutas = async () => {
-        try {
-            const data = await salidaService.getRutas();
-            setRutas(data);
-        } catch (error) {
-            console.log(error);
-        }
-   };
+  const fetchRutas = async () => {
+    try {
+      const data = await salidaService.getRutas();
+      setRutas(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-   const fetchVehiculos = async () => {
-        try {
-            const data = await salidaService.getVehiculos();
-            setVehiculos(data);
-        } catch (error) {
-            console.log(error);
-        }
-   };
+  const fetchVehiculos = async () => {
+    try {
+      const data = await salidaService.getVehiculos();
+      setVehiculos(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-   const fetchVendedores = async () => {
-        try {
-            const data = await salidaService.getVendedores();
-            setVendedores(data);
-        } catch (error) {
-            console.log(error);
-        }
-   };
+  const fetchVendedores = async () => {
+    try {
+      const data = await salidaService.getVendedores();
+      setVendedores(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-   useEffect(() => {
-        fetchSalidas();
-        fetchProductos();
-        fetchRumas();
-        fetchRutas();
-        fetchVehiculos();
-        fetchVendedores();
-    }, []);
+  useEffect(() => {
+    fetchSalidas();
+    fetchProductos();
+    fetchRumas();
+    fetchRutas();
+    fetchVehiculos();
+    fetchVendedores();
+  }, []);
 
   const handleAddItem = () => {
     if (!tempItem.producto_id || !tempItem.cantidad || !tempItem.ruma_id) {
-        toast.error('Selecciona producto, ruma y cantidad');
-        return;
+      toast.error('Selecciona producto, ruma y cantidad');
+      return;
     }
 
     setItems([
-        ...items,
-        {
-            producto_id: Number(tempItem.producto_id),
-            ruma_id: Number(tempItem.ruma_id),
-            cantidad: Number(tempItem.cantidad),
-        }
+      ...items,
+      {
+        producto_id: Number(tempItem.producto_id),
+        ruma_id: Number(tempItem.ruma_id),
+        cantidad: Number(tempItem.cantidad),
+      }
     ]);
 
     setTempItem({ producto_id: '', cantidad: '', ruma_id: '' });
-    };
+  };
 
   const handleCreate = async () => {
     if (!form.vendedor_id || items.length === 0) {
-        toast.error('Selecciona vendedor y agrega productos');
-        return;
+      toast.error('Selecciona vendedor y agrega productos');
+      return;
     }
 
     try {
-        await salidaService.create({
-            fecha: form.fecha,
-            conductor: form.conductor,
-            vehiculo_id: Number(form.vehiculo_id),
-            vendedor_id: Number(form.vendedor_id),
-            zona: form.zona,
-            ruta_id: Number(form.ruta),
-            estado: "PENDIENTE",
-            items: items
-        });
+      await salidaService.create({
+        fecha: form.fecha,
+        conductor: form.conductor,
+        vehiculo_id: Number(form.vehiculo_id),
+        vendedor_id: Number(form.vendedor_id),
+        zona: form.zona,
+        ruta_id: Number(form.ruta),
+        estado: "PENDIENTE",
+        items: items
+      });
 
-        toast.success("Salida creada correctamente");
+      toast.success("Salida creada correctamente");
 
-        setForm({
-            fecha: new Date().toISOString().split('T')[0],
-            vendedor_id: '',
-            conductor: '',
-            vehiculo_id: '',
-            zona: '',
-            ruta: ''
-        });
+      setForm({
+        fecha: new Date().toISOString().split('T')[0],
+        vendedor_id: '',
+        conductor: '',
+        vehiculo_id: '',
+        zona: '',
+        ruta: ''
+      });
 
-        // refrescar lista
-        await fetchSalidas();
+      // refrescar lista
+      await fetchSalidas();
 
-        setItems([]);
-        setIsNewOpen(false);
+      setItems([]);
+      setIsNewOpen(false);
 
-        } catch (error) {
-            toast.error("Error al crear salida");
-        }
-    };
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error(error?.message || "Error al crear salida: " + error.response?.data.message);
+    }
+  };
 
-    const handleUpdateEstado = async (id: number, nuevoEstado: string) => {
+  const handleUpdateEstado = async (id: number, nuevoEstado: string) => {
     try {
-        await salidaService.updateEstado(id, nuevoEstado);
+      await salidaService.updateEstado(id, nuevoEstado);
 
-        toast.success("Estado actualizado");
+      toast.success("Estado actualizado");
 
-        // refrescar lista
-        await fetchSalidas();
+      // refrescar lista
+      await fetchSalidas();
 
-        } catch (error) {
-            toast.error("Error al actualizar estado");
-        }
-    };
+    } catch (error) {
+      toast.error("Error al actualizar estado");
+    }
+  };
 
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
@@ -243,7 +245,7 @@ const FactoryOutput = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsNewOpen(false)}>Cancelar</Button>
-              <Button onClick={handleCreate}className="bg-gradient-warm hover:opacity-90">Guardar</Button>
+              <Button onClick={handleCreate} className="bg-gradient-warm hover:opacity-90">Guardar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

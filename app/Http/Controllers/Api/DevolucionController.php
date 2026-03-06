@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use Illuminate\Http\Request;
 use App\Models\Devolucion;
 use App\Models\MovimientoStock;
+use App\Models\StockVendedor;
 use App\Services\DevolucionService;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
@@ -80,11 +81,18 @@ class DevolucionController
 
                     $rumaId = MovimientoStock::obtenerUltimaRumaSalida($item->producto_id);
 
+                    $stockVendedor = StockVendedor::where('producto_id', $item->producto_id)
+                    ->where('vendedor_id', $devolucion->vendedor_id)
+                    ->first();
+
                     if (!$rumaId) {
                         throw new \Exception("No se encontró ruma previa para el producto {$item->producto_id}");
                     }
 
                     if ($devolucion->tipo === 'BUENA') {
+
+                        $stockVendedor->devuelto += $item->cantidad;
+                        $stockVendedor->save();
 
                         app(StockService::class)->registrarMovimiento([
                             'tipo' => 'DEVOLUCION_BUENA',
@@ -97,6 +105,9 @@ class DevolucionController
                         ]);
 
                     } else {
+
+                        $stockVendedor->devuelto += $item->cantidad;
+                        $stockVendedor->save();
 
                         app(StockService::class)->registrarMovimiento([
                             'tipo'=> 'DEVOLUCION_MALA',

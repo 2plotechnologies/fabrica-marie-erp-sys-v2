@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\StockActual;
+use App\Models\StockVendedor;
 use App\Models\MovimientoStock;
 use Carbon\Carbon;
 use Exception;
@@ -126,6 +127,47 @@ class StockService
                 'user_id' => $userId,
                 'created_at' => now()
             ]);
+
+            $faltante -= $descuento;
+        }
+
+        if ($faltante > 0) {
+            throw new Exception('Stock insuficiente para el producto ID: ' . $productoId);
+        }
+    }
+
+    public function descontarStockVendedor(
+        int $productoId,
+        int $cantidad,
+        int $vendedorId,
+    ) {
+        $salidaId = Salida::where('vendedor_id', $vendedorId)
+            ->where('estado', 'EN_RUTA')
+            ->where('producto_id', $productoId)
+            ->orderBy('fecha', 'desc')
+            ->first()
+            ->id;
+        $stocks = StockVendedor::where('producto_id', $productoId)
+            ->where('cantidad', '>', 0)
+            ->where('vendedor_id', $vendedorId)
+            ->where('salida_id', $salidaId)
+            ->orderBy('cantidad', 'desc')
+            ->get();
+
+        $faltante = $cantidad;
+
+        foreach ($stocks as $stock) {
+
+            if ($faltante <= 0) break;
+
+            $descuento = min($stock->cantidad, $faltante);
+
+            // ✅ Guardamos el stock antes de modificarlo
+            $stockAnterior = $stock->cantidad;
+
+            $stock->cantidad -= $descuento;
+            $stock->fecha_ultimo_mov = now();
+            $stock->save();
 
             $faltante -= $descuento;
         }

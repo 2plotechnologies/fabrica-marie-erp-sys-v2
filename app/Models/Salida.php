@@ -40,4 +40,9 @@ class Salida extends Model
     {
         return $this->hasMany(SalidaItem::class);
     }
+
+    public function stockVendedor()
+    {
+        return $this->hasOne(StockVendedor::class, 'salida_id');
+    }
 }

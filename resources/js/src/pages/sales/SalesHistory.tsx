@@ -31,7 +31,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Sale } from '@/types';
 import { ventaService } from '@/services/ventaService';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 const SalesHistory = () => {
   const [ventas, setVentas] = useState<any[]>([]);
@@ -52,7 +52,9 @@ const SalesHistory = () => {
       );
 
     } catch (error) {
-      console.error("Error al confirmar venta:", error);
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error(error?.message || "Error al confirmar venta: " + error.response?.data.message);
     }
   };
 
@@ -69,11 +71,7 @@ const SalesHistory = () => {
     } catch (error) {
       console.error("ERROR COMPLETO:", error);
       console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast({
-        title: "Error",
-        description: "Error al anular venta: " + error.response?.data.message,
-        variant: "destructive",
-      });
+      toast.error(error?.message || "Error al anular venta: " + error.response?.data.message);
     }
   };
 
@@ -88,11 +86,7 @@ const SalesHistory = () => {
     } catch (error) {
       console.error("ERROR COMPLETO:", error);
       console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast({
-        title: "Error",
-        description: "Error al eliminar venta: " + error.response?.data.message,
-        variant: "destructive",
-      });
+      toast.error(error?.message || "Error al eliminar venta: " + error.response?.data.message);
     }
   };
 
