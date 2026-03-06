@@ -28,9 +28,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { clienteService } from '@/services/clienteService';
 import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 interface ClientUI {
   id: number;
@@ -43,6 +52,22 @@ interface ClientUI {
   status: string;
 }
 
+interface ClientDetail {
+  id: number;
+  codigo_cliente: string;
+  razon_social: string;
+  tipo_cliente?: string;
+  direccion?: string;
+  telefono?: string;
+  ruta_id?: number | null;
+  condicion_pago: string;
+  limite_credito: number;
+  dias_credito: number;
+  deuda_actual: number;
+  activo: boolean;
+  status: string;
+}
+
 const ClientsList = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -52,6 +77,14 @@ const ClientsList = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [detailClient, setDetailClient] = useState<ClientDetail | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editClientId, setEditClientId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<ClientDetail | null>(null);
 
   // 🔹 Obtener clientes desde backend
   useEffect(() => {
@@ -103,6 +136,137 @@ const ClientsList = () => {
       MOROSO: 'bg-destructive/10 text-destructive border-destructive/20',
     };
     return styles[status as keyof typeof styles] || styles.INACTIVO;
+  };
+
+  const mapToUIClient = (c: any): ClientUI => ({
+    id: c.id,
+    razon_social: c.razon_social,
+    codigo: c.codigo_cliente,
+    phone: c.telefono || '',
+    address: c.direccion || '',
+    creditLimit: Number(c.limite_credito || 0),
+    currentDebt: Number(c.deuda_actual || 0),
+    status: c.status || 'ACTIVO',
+  });
+
+  const getClientById = async (clientId: number): Promise<ClientDetail | null> => {
+    try {
+      const data = await clienteService.getById(clientId);
+      return {
+        ...data,
+        limite_credito: Number(data.limite_credito || 0),
+        dias_credito: Number(data.dias_credito || 0),
+        deuda_actual: Number(data.deuda_actual || 0),
+      };
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo obtener la información del cliente.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
+  const handleViewDetail = async (clientId: number) => {
+    setIsDetailOpen(true);
+    setDetailLoading(true);
+    const data = await getClientById(clientId);
+    setDetailClient(data);
+    setDetailLoading(false);
+  };
+
+  const handleOpenEdit = async (clientId: number) => {
+    setIsEditOpen(true);
+    setEditLoading(true);
+    const data = await getClientById(clientId);
+    if (data) {
+      setEditClientId(clientId);
+      setEditForm(data);
+    }
+    setEditLoading(false);
+  };
+
+  const handleEditChange = (field: keyof ClientDetail, value: string | number | boolean | null) => {
+    if (!editForm) return;
+    setEditForm({ ...editForm, [field]: value });
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm || !editClientId) return;
+    setEditSaving(true);
+    try {
+      const payload = {
+        codigo_cliente: editForm.codigo_cliente,
+        razon_social: editForm.razon_social,
+        tipo_cliente: editForm.tipo_cliente || '',
+        direccion: editForm.direccion || '',
+        telefono: editForm.telefono || '',
+        ruta_id: editForm.ruta_id || null,
+        condicion_pago: editForm.condicion_pago,
+        limite_credito: Number(editForm.limite_credito || 0),
+        dias_credito: Number(editForm.dias_credito || 0),
+        deuda_actual: Number(editForm.deuda_actual || 0),
+        activo: Boolean(editForm.activo),
+        status: editForm.status,
+      };
+
+      const updated = await clienteService.update(editClientId, payload);
+      setClients((prev) => prev.map((c) => (c.id === editClientId ? mapToUIClient(updated) : c)));
+
+      toast({
+        title: 'Cliente actualizado',
+        description: 'Los datos del cliente se actualizaron correctamente.',
+      });
+
+      setIsEditOpen(false);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo actualizar el cliente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleDeactivate = async (clientId: number) => {
+    const isConfirmed = window.confirm('¿Deseas desactivar este cliente?');
+    if (!isConfirmed) return;
+
+    const current = await getClientById(clientId);
+    if (!current) return;
+
+    try {
+      const updated = await clienteService.update(clientId, {
+        codigo_cliente: current.codigo_cliente,
+        razon_social: current.razon_social,
+        tipo_cliente: current.tipo_cliente || '',
+        direccion: current.direccion || '',
+        telefono: current.telefono || '',
+        ruta_id: current.ruta_id || null,
+        condicion_pago: current.condicion_pago,
+        limite_credito: Number(current.limite_credito || 0),
+        dias_credito: Number(current.dias_credito || 0),
+        deuda_actual: Number(current.deuda_actual || 0),
+        activo: false,
+        status: 'INACTIVO',
+      });
+
+      setClients((prev) => prev.map((c) => (c.id === clientId ? mapToUIClient(updated) : c)));
+
+      toast({
+        title: 'Cliente desactivado',
+        description: 'El cliente fue desactivado correctamente.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error?.message || 'No se pudo desactivar el cliente.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -244,11 +408,17 @@ const ClientsList = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Ver detalle</DropdownMenuItem>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewDetail(client.id)}>Ver detalle</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenEdit(client.id)}>Editar</DropdownMenuItem>
                         <DropdownMenuItem>Registrar abono</DropdownMenuItem>
                         <DropdownMenuItem>Ver historial</DropdownMenuItem>
-                        <DropdownMenuItem>Desactivar</DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={client.status === 'INACTIVO'}
+                          onClick={() => handleDeactivate(client.id)}
+                          className={cn(client.status !== 'INACTIVO' && 'text-destructive focus:text-destructive')}
+                        >
+                          Desactivar
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -258,6 +428,72 @@ const ClientsList = () => {
           </Table>
         </div>
       </div>
+
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detalle del cliente</DialogTitle>
+            <DialogDescription>Información completa del cliente seleccionado.</DialogDescription>
+          </DialogHeader>
+
+          {detailLoading && <p className="text-sm text-muted-foreground">Cargando información...</p>}
+
+          {!detailLoading && detailClient && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <p><strong>Código:</strong> {detailClient.codigo_cliente}</p>
+              <p><strong>Razón social:</strong> {detailClient.razon_social}</p>
+              <p><strong>Tipo:</strong> {detailClient.tipo_cliente || '-'}</p>
+              <p><strong>Teléfono:</strong> {detailClient.telefono || '-'}</p>
+              <p className="sm:col-span-2"><strong>Dirección:</strong> {detailClient.direccion || '-'}</p>
+              <p><strong>Condición:</strong> {detailClient.condicion_pago}</p>
+              <p><strong>Días crédito:</strong> {detailClient.dias_credito}</p>
+              <p><strong>Límite crédito:</strong> S/ {detailClient.limite_credito.toLocaleString('es-PE')}</p>
+              <p><strong>Deuda actual:</strong> S/ {detailClient.deuda_actual.toLocaleString('es-PE')}</p>
+              <p><strong>Estado:</strong> {detailClient.status}</p>
+              <p><strong>Activo:</strong> {detailClient.activo ? 'Sí' : 'No'}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+            <DialogDescription>Actualiza los datos del cliente seleccionado.</DialogDescription>
+          </DialogHeader>
+
+          {editLoading && <p className="text-sm text-muted-foreground">Cargando información...</p>}
+
+          {!editLoading && editForm && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Código Cliente</Label>
+                <Input value={editForm.codigo_cliente} onChange={(e) => handleEditChange('codigo_cliente', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Razón Social</Label>
+                <Input value={editForm.razon_social} onChange={(e) => handleEditChange('razon_social', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono</Label>
+                <Input value={editForm.telefono || ''} onChange={(e) => handleEditChange('telefono', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Dirección</Label>
+                <Input value={editForm.direccion || ''} onChange={(e) => handleEditChange('direccion', e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={editSaving}>Cancelar</Button>
+            <Button onClick={handleEditSave} disabled={editSaving || editLoading || !editForm}>
+              {editSaving ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
