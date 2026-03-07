@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Search, 
-  ArrowDownCircle, 
-  ArrowUpCircle, 
+import {
+  Search,
+  ArrowDownCircle,
+  ArrowUpCircle,
   Filter,
   Calendar,
   Wallet,
@@ -29,42 +29,40 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-// Mock cash movements data
-const mockCashMovements = [
-  { id: '1', type: 'INGRESO', category: 'Venta', amount: 135.00, description: 'Venta #001234', createdAt: new Date('2024-12-13T09:30:00'), user: 'Juan Pérez' },
-  { id: '2', type: 'INGRESO', category: 'Cobranza', amount: 250.00, description: 'Pago Bodega Don Pedro', createdAt: new Date('2024-12-13T10:15:00'), user: 'Juan Pérez' },
-  { id: '3', type: 'EGRESO', category: 'Gasto', amount: 50.00, description: 'Combustible unidad V-001', createdAt: new Date('2024-12-13T11:00:00'), user: 'Juan Pérez' },
-  { id: '4', type: 'INGRESO', category: 'Venta', amount: 85.00, description: 'Venta #001235', createdAt: new Date('2024-12-13T11:30:00'), user: 'Ana García' },
-  { id: '5', type: 'EGRESO', category: 'Devolución', amount: 30.00, description: 'Devolución cliente - productos dañados', createdAt: new Date('2024-12-13T12:00:00'), user: 'Juan Pérez' },
-  { id: '6', type: 'INGRESO', category: 'Venta', amount: 420.00, description: 'Venta #001236', createdAt: new Date('2024-12-13T14:30:00'), user: 'Ana García' },
-  { id: '7', type: 'INGRESO', category: 'Cobranza', amount: 550.00, description: 'Pago Minimarket El Sol', createdAt: new Date('2024-12-13T15:00:00'), user: 'Juan Pérez' },
-  { id: '8', type: 'EGRESO', category: 'Gasto', amount: 120.00, description: 'Mantenimiento vehículo', createdAt: new Date('2024-12-13T16:30:00'), user: 'Juan Pérez' },
-];
+import { cajaService } from '@/services/cajaService';
 
 const CashMovements = () => {
+  const [movimientos, setMovimientos] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const filteredMovements = mockCashMovements.filter((movement) => {
-    const matchesSearch = movement.description
+  useEffect(() => {
+    const fetchMovimientos = async () => {
+      const movimientos = await cajaService.getMovimientosTotales();
+      setMovimientos(movimientos);
+    };
+    fetchMovimientos();
+  }, []);
+
+  const filteredMovements = movimientos.filter((movement) => {
+    const matchesSearch = movement.descripcion
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || movement.type === typeFilter;
-    const matchesCategory = categoryFilter === 'all' || movement.category === categoryFilter;
+    const matchesType = typeFilter === 'all' || movement.tipo === typeFilter;
+    const matchesCategory = categoryFilter === 'all' || movement.categoria === categoryFilter;
     return matchesSearch && matchesType && matchesCategory;
   });
 
-  const totalIngresos = mockCashMovements
-    .filter(m => m.type === 'INGRESO')
-    .reduce((acc, m) => acc + m.amount, 0);
+  const totalIngresos = movimientos
+    .filter(m => m.tipo === 'INGRESO')
+    .reduce((acc, m) => acc + Number(m.monto), 0);
 
-  const totalEgresos = mockCashMovements
-    .filter(m => m.type === 'EGRESO')
-    .reduce((acc, m) => acc + m.amount, 0);
+  const totalEgresos = movimientos
+    .filter(m => m.tipo === 'EGRESO')
+    .reduce((acc, m) => acc + Number(m.monto), 0);
 
-  const categories = [...new Set(mockCashMovements.map(m => m.category))];
+  const categories = [...new Set(movimientos.map(m => m.categoria))];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -95,7 +93,7 @@ const CashMovements = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Ingresos</p>
                 <p className="text-2xl font-bold text-emerald-600">
-                  S/ {totalIngresos.toLocaleString()}
+                  S/ {Number(totalIngresos).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -111,7 +109,7 @@ const CashMovements = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Egresos</p>
                 <p className="text-2xl font-bold text-red-600">
-                  S/ {totalEgresos.toLocaleString()}
+                  S/ {Number(totalEgresos).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -126,8 +124,8 @@ const CashMovements = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Balance</p>
-                <p className={`text-2xl font-bold ${totalIngresos - totalEgresos >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  S/ {(totalIngresos - totalEgresos).toLocaleString()}
+                <p className={`text-2xl font-bold ${Number(totalIngresos) - Number(totalEgresos) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  S/ {Number(totalIngresos - totalEgresos).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -198,28 +196,27 @@ const CashMovements = () => {
               {filteredMovements.map((movement) => (
                 <TableRow key={movement.id} className="hover:bg-muted/50">
                   <TableCell className="text-muted-foreground">
-                    {format(movement.createdAt, "dd MMM yyyy, HH:mm", { locale: es })}
+                    {format(movement.created_at, "dd MMM yyyy, HH:mm", { locale: es })}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {movement.type === 'INGRESO' 
+                      {movement.tipo === 'INGRESO'
                         ? <ArrowDownCircle className="h-4 w-4 text-emerald-500" />
                         : <ArrowUpCircle className="h-4 w-4 text-red-500" />
                       }
-                      <Badge variant={movement.type === 'INGRESO' ? 'default' : 'destructive'}>
-                        {movement.type === 'INGRESO' ? 'Ingreso' : 'Egreso'}
+                      <Badge variant={movement.tipo === 'INGRESO' ? 'default' : 'destructive'}>
+                        {movement.tipo === 'INGRESO' ? 'Ingreso' : 'Egreso'}
                       </Badge>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{movement.category}</Badge>
+                    <Badge variant="secondary">{movement.categoria}</Badge>
                   </TableCell>
-                  <TableCell className="font-medium">{movement.description}</TableCell>
-                  <TableCell className="text-muted-foreground">{movement.user}</TableCell>
-                  <TableCell className={`text-right font-bold ${
-                    movement.type === 'INGRESO' ? 'text-emerald-600' : 'text-red-600'
-                  }`}>
-                    {movement.type === 'INGRESO' ? '+' : '-'} S/ {movement.amount.toFixed(2)}
+                  <TableCell className="font-medium">{movement.descripcion}</TableCell>
+                  <TableCell className="text-muted-foreground">{movement.caja.usuario.nombre}</TableCell>
+                  <TableCell className={`text-right font-bold ${movement.tipo === 'INGRESO' ? 'text-emerald-600' : 'text-red-600'
+                    }`}>
+                    {movement.tipo === 'INGRESO' ? '+' : '-'} S/ {Number(movement.monto).toFixed(2)}
                   </TableCell>
                 </TableRow>
               ))}

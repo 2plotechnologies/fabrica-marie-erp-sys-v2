@@ -30,6 +30,7 @@ class CajaService
         $caja->saldo_actual = $caja->saldo_inicial + $ingresos - $egresos;
         $caja->estado = 'CERRADA';
         $caja->cerrado_at = now();
+        $caja->cerrado_by = auth()->id();
         $caja->save();
 
         return $caja;

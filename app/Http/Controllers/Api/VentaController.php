@@ -316,6 +316,14 @@ class VentaController extends Controller
                 $stock->vendido += $item->cantidad;
                 $stock->fecha_ultimo_mov = now();
                 $stock->save();
+
+                $salida = Salida::where('id', $item->salida_id)->first();
+                
+                $salidaItem = $salida->items()->where('producto_id', $item->producto_id)->first();
+                $salidaItem->cantidad -= $item->cantidad;
+                $salidaItem->save();
+
+                $salida->save();
             }
 
             $movimientoCaja = CajaService::registrarMovimiento([

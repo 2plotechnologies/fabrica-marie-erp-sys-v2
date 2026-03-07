@@ -27,8 +27,14 @@ export const cajaService = {
     },
 
     // Crear movimiento
-    async createMovimiento(data: { fecha: string, tipo: string, categoria: string, subcategoria: string, descripcion: string, monto: number, referencia_tipo: string, referencia_id: number }) {
-        const response = await api.post('/caja/movimiento', data);
+    async createMovimiento(data: { caja_id: number, fecha: string, tipo: string, categoria: string, descripcion: string, monto: number }) {
+        const response = await api.post('/caja/movimientos', data);
+        return response.data;
+    },
+
+    // Obtener movimientos totales
+    async getMovimientosTotales() {
+        const response = await api.get('/caja/movimientos/total');
         return response.data;
     },
 

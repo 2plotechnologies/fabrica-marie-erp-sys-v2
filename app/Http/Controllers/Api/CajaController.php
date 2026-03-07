@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Caja;
+use App\Models\MovimientoCaja;
 use Illuminate\Http\Request;
 use App\Services\CajaService;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +48,7 @@ class CajaController extends Controller
     public function crearMovimiento(Request $request, CajaService $service)
     {
         return DB::transaction(function () use ($request, $service) {
-            return $service->createMovimiento($request->all());
+            return $service->registrarMovimiento($request->all());
         });
     }
 
@@ -67,4 +68,26 @@ class CajaController extends Controller
             )
         );
     }
+
+    public function obtenerMovimientos()
+    {
+        return MovimientoCaja::with(['caja.usuario'])->orderBy('created_at', 'desc')->get();
     }
+
+    public function obtenerCajasCerradas()
+    {
+        $caja = Caja::with(['usuarioCerrado'])
+            ->where('estado', 'CERRADA')
+            ->orderBy('cerrado_at', 'desc')
+            ->get();
+
+        //Calcular sobrante o faltante
+        foreach ($caja as $key => $value) {
+            
+            $total_ingresos = $value->movimientos()->where('tipo', 'INGRESO')->sum('monto');
+            $total_egresos = $value->movimientos()->where('tipo', 'EGRESO')->sum('monto');            
+        }
+
+        return $caja;
+    }
+}

@@ -186,12 +186,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Caja
     Route::get('/caja', [CajaController::class, 'getCaja']);
+    Route::get('/caja/movimientos/total', [CajaController::class, 'obtenerMovimientos']);
+    Route::post('/caja/movimientos', [CajaController::class, 'crearMovimiento']);
     Route::post('/caja/abrir', [CajaController::class, 'abrir']);
     Route::post('/caja/{id}/cerrar', [CajaController::class, 'cerrar'])
         ->middleware('permiso:cerrar_caja');
     Route::get('/caja/{id}/reporte', [CajaController::class, 'reporte'])
         ->middleware('permiso:ver_reporte_caja');
     Route::get('/caja/reporte/fecha', [CajaController::class, 'reportePorFecha'])
+        ->middleware('permiso:ver_reporte_caja');
+    Route::get('/caja/cerradas', [CajaController::class, 'obtenerCajasCerradas'])
         ->middleware('permiso:ver_reporte_caja');
 
     // Abonos

@@ -24,4 +24,9 @@ class VentaItem extends Model
     {
         return $this->belongsTo(Producto::class);
     }
+
+    public function salida()
+    {
+        return $this->belongsTo(Salida::class, 'salida_id');
+    }
 }

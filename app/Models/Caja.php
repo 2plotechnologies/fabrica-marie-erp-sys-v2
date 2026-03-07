@@ -17,7 +17,8 @@ class Caja extends Model
         'total_ingresos',
         'total_egresos',
         'estado',
-        'cerrado_at'
+        'cerrado_at',
+        'cerrado_by'
     ];
 
     public function movimientos()
@@ -26,7 +27,12 @@ class Caja extends Model
     }
 
     public function usuario()
-{
-    return $this->belongsTo(\App\Models\Usuario::class);
-}
+    {
+        return $this->belongsTo(\App\Models\Usuario::class);
+    }
+
+    public function usuarioCerrado()
+    {
+        return $this->belongsTo(\App\Models\Usuario::class, 'cerrado_by');
+    }
 }

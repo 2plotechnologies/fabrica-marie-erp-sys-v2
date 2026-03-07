@@ -105,23 +105,24 @@ const CurrentCash = () => {
   const handleMovement = async () => {
     if (!movCategoria || !movMonto || !movDescripcion) return;
     try {
-      const response = await cajaService.createMovimiento({
+      await cajaService.createMovimiento({
+        caja_id: cajaActual.id,
         fecha: dateStr,
         tipo: movementType,
         categoria: movCategoria,
-        subcategoria: null,
         descripcion: movDescripcion,
-        monto: parseFloat(movMonto),
-        referencia_tipo: null,
-        referencia_id: null,
+        monto: Number(movMonto),
       });
       setIsMovementDialog(false);
       setMovCategoria('');
       setMovMonto('');
       setMovDescripcion('');
+      await fetchCajaActual();
+      toast.success("Movimiento creado correctamente");
     } catch (error) {
-      console.log(error);
-      toast.error("Error al crear movimiento");
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al crear movimiento: " + error.response?.data);
     }
   };
 
