@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,8 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { 
-  Search, 
+import {
+  Search,
   Lock,
   Eye,
   Calendar,
@@ -32,66 +32,25 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-// Mock cash closures data
-const mockCashClosures = [
-  { 
-    id: '1', 
-    date: new Date('2024-12-12'),
-    openingBalance: 500.00,
-    totalIncome: 3450.00,
-    totalExpense: 650.00,
-    theoreticalBalance: 3300.00,
-    actualBalance: 3300.00,
-    difference: 0,
-    status: 'CUADRADO',
-    closedBy: 'Juan Domínguez',
-    closedAt: new Date('2024-12-12T18:30:00'),
-  },
-  { 
-    id: '2', 
-    date: new Date('2024-12-11'),
-    openingBalance: 500.00,
-    totalIncome: 2890.00,
-    totalExpense: 420.00,
-    theoreticalBalance: 2970.00,
-    actualBalance: 2965.00,
-    difference: -5.00,
-    status: 'FALTANTE',
-    closedBy: 'Ana García',
-    closedAt: new Date('2024-12-11T19:00:00'),
-  },
-  { 
-    id: '3', 
-    date: new Date('2024-12-10'),
-    openingBalance: 500.00,
-    totalIncome: 4120.00,
-    totalExpense: 780.00,
-    theoreticalBalance: 3840.00,
-    actualBalance: 3850.00,
-    difference: 10.00,
-    status: 'SOBRANTE',
-    closedBy: 'Juan Domínguez',
-    closedAt: new Date('2024-12-10T18:45:00'),
-  },
-  { 
-    id: '4', 
-    date: new Date('2024-12-09'),
-    openingBalance: 500.00,
-    totalIncome: 3680.00,
-    totalExpense: 520.00,
-    theoreticalBalance: 3660.00,
-    actualBalance: 3660.00,
-    difference: 0,
-    status: 'CUADRADO',
-    closedBy: 'Juan Domínguez',
-    closedAt: new Date('2024-12-09T18:15:00'),
-  },
-];
+import { cajaService } from '@/services/cajaService';
+import { toast } from 'sonner';
 
 const CashClosures = () => {
+  const [cajasCerradas, setCajasCerradas] = useState<any>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClosure, setSelectedClosure] = useState<typeof mockCashClosures[0] | null>(null);
+  const [selectedClosure, setSelectedClosure] = useState<typeof cajasCerradas[0] | null>(null);
+
+  useEffect(() => {
+    const fetchCajasCerradas = async () => {
+      try {
+        const response = await cajaService.getCajasCerradas();
+        setCajasCerradas(response);
+      } catch (error) {
+        toast.error('Error al obtener las cajas cerradas: ' + error);
+      }
+    };
+    fetchCajasCerradas();
+  }, []);
 
   const getStatusBadge = (status: string, difference: number) => {
     switch (status) {
@@ -121,8 +80,8 @@ const CashClosures = () => {
     }
   };
 
-  const totalCuadrados = mockCashClosures.filter(c => c.status === 'CUADRADO').length;
-  const totalDifferences = mockCashClosures.reduce((acc, c) => acc + c.difference, 0);
+  const totalCuadrados = cajasCerradas.filter(c => c.cierre_caja.estado === 'CUADRADO').length;
+  const totalDifferences = cajasCerradas.reduce((acc, c) => acc + Number(c.cierre_caja.diferencia), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -152,7 +111,7 @@ const CashClosures = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Cierres</p>
-                <p className="text-2xl font-bold text-foreground">{mockCashClosures.length}</p>
+                <p className="text-2xl font-bold text-foreground">{cajasCerradas.length}</p>
               </div>
             </div>
           </CardContent>
@@ -181,7 +140,7 @@ const CashClosures = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Con Diferencia</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {mockCashClosures.length - totalCuadrados}
+                  {cajasCerradas.length - totalCuadrados}
                 </p>
               </div>
             </div>
@@ -191,22 +150,20 @@ const CashClosures = () => {
         <Card className="shadow-card">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-                totalDifferences >= 0 
-                  ? 'bg-emerald-100 dark:bg-emerald-900/30' 
-                  : 'bg-red-100 dark:bg-red-900/30'
-              }`}>
-                {totalDifferences >= 0 
+              <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${Number(totalDifferences) >= 0
+                ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                : 'bg-red-100 dark:bg-red-900/30'
+                }`}>
+                {Number(totalDifferences) >= 0
                   ? <TrendingUp className="h-6 w-6 text-emerald-600" />
                   : <TrendingDown className="h-6 w-6 text-red-600" />
                 }
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Diferencia Neta</p>
-                <p className={`text-2xl font-bold ${
-                  totalDifferences >= 0 ? 'text-emerald-600' : 'text-red-600'
-                }`}>
-                  S/ {totalDifferences.toFixed(2)}
+                <p className={`text-2xl font-bold ${Number(totalDifferences) >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  }`}>
+                  S/ {Number(totalDifferences).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -252,37 +209,37 @@ const CashClosures = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCashClosures.map((closure) => (
+              {cajasCerradas.map((closure) => (
                 <TableRow key={closure.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
-                    {format(closure.date, "EEEE, dd MMM yyyy", { locale: es })}
+                    {format(closure.cerrado_at, "EEEE, dd MMM yyyy", { locale: es })}
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
-                    S/ {closure.openingBalance.toFixed(2)}
+                    S/ {Number(closure.saldo_inicial).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right text-emerald-600 font-medium">
-                    + S/ {closure.totalIncome.toFixed(2)}
+                    + S/ {Number(closure.total_ingresos).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right text-red-600 font-medium">
-                    - S/ {closure.totalExpense.toFixed(2)}
+                    - S/ {Number(closure.total_egresos).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right font-bold">
-                    S/ {closure.actualBalance.toFixed(2)}
+                    S/ {Number(closure.cierre_caja.conteo_real).toFixed(2)}
                   </TableCell>
                   <TableCell>
-                    {getStatusBadge(closure.status, closure.difference)}
+                    {getStatusBadge(closure.cierre_caja.estado, Number(closure.cierre_caja.diferencia))}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     <div>
-                      <p>{closure.closedBy}</p>
-                      <p className="text-xs">{format(closure.closedAt, "HH:mm")}</p>
+                      <p>{closure.usuario_cerrado.nombre}</p>
+                      <p className="text-xs">{format(closure.cerrado_at, "HH:mm")}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           onClick={() => setSelectedClosure(closure)}
                         >
@@ -293,57 +250,56 @@ const CashClosures = () => {
                         <DialogHeader>
                           <DialogTitle>Detalle del Cierre</DialogTitle>
                           <DialogDescription>
-                            {format(closure.date, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es })}
+                            {format(closure.cerrado_at, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: es })}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-muted rounded-lg">
                               <p className="text-sm text-muted-foreground">Apertura</p>
-                              <p className="text-xl font-bold">S/ {closure.openingBalance.toFixed(2)}</p>
+                              <p className="text-xl font-bold">S/ {Number(closure.saldo_inicial).toFixed(2)}</p>
                             </div>
                             <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                               <p className="text-sm text-muted-foreground">Ingresos</p>
                               <p className="text-xl font-bold text-emerald-600">
-                                S/ {closure.totalIncome.toFixed(2)}
+                                S/ {Number(closure.total_ingresos).toFixed(2)}
                               </p>
                             </div>
                             <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
                               <p className="text-sm text-muted-foreground">Egresos</p>
                               <p className="text-xl font-bold text-red-600">
-                                S/ {closure.totalExpense.toFixed(2)}
+                                S/ {Number(closure.total_egresos).toFixed(2)}
                               </p>
                             </div>
                             <div className="p-4 bg-primary/10 rounded-lg">
                               <p className="text-sm text-muted-foreground">Teórico</p>
-                              <p className="text-xl font-bold">S/ {closure.theoreticalBalance.toFixed(2)}</p>
+                              <p className="text-xl font-bold">S/ {Number(closure.cierre_caja.saldo_teorico).toFixed(2)}</p>
                             </div>
                           </div>
-                          
+
                           <div className="border-t pt-4">
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-muted-foreground">Conteo real:</span>
-                              <span className="font-bold text-lg">S/ {closure.actualBalance.toFixed(2)}</span>
+                              <span className="font-bold text-lg">S/ {Number(closure.cierre_caja.conteo_real).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">Diferencia:</span>
-                              <span className={`font-bold text-lg ${
-                                closure.difference === 0 
-                                  ? 'text-emerald-600' 
-                                  : closure.difference > 0 
-                                    ? 'text-amber-600' 
-                                    : 'text-red-600'
-                              }`}>
-                                S/ {closure.difference.toFixed(2)}
+                              <span className={`font-bold text-lg ${Number(closure.cierre_caja.diferencia) === 0
+                                ? 'text-emerald-600'
+                                : Number(closure.cierre_caja.diferencia) > 0
+                                  ? 'text-amber-600'
+                                  : 'text-red-600'
+                                }`}>
+                                S/ {Number(closure.cierre_caja.diferencia).toFixed(2)}
                               </span>
                             </div>
                           </div>
 
                           <div className="border-t pt-4">
                             <p className="text-sm text-muted-foreground">Cerrado por</p>
-                            <p className="font-medium">{closure.closedBy}</p>
+                            <p className="font-medium">{closure.usuario_cerrado.nombre}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(closure.closedAt, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+                              {format(closure.cerrado_at, "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
                             </p>
                           </div>
                         </div>

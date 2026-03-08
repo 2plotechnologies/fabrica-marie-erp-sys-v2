@@ -35,4 +35,9 @@ class Caja extends Model
     {
         return $this->belongsTo(\App\Models\Usuario::class, 'cerrado_by');
     }
+
+    public function cierreCaja()
+    {
+        return $this->hasOne(CierreCaja::class);
+    }
 }

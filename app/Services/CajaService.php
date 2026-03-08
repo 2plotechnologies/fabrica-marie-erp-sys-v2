@@ -4,12 +4,13 @@ namespace App\Services;
 
 use App\Models\Caja;
 use App\Models\MovimientoCaja;
+use App\Models\CierreCaja;
 use Carbon\Carbon;
 use Exception;
 
 class CajaService
 {
-    public function cerrarCaja(int $cajaId)
+    public function cerrarCaja(int $cajaId, array $data)
     {
         $caja = Caja::with('movimientos')->lockForUpdate()->findOrFail($cajaId);
 
@@ -32,6 +33,24 @@ class CajaService
         $caja->cerrado_at = now();
         $caja->cerrado_by = auth()->id();
         $caja->save();
+
+        $diferencia = $data['conteo_real'] - $caja->saldo_actual;
+
+        $estado = 'CUADRADO';
+
+        if ($diferencia < 0) {
+            $estado = 'FALTANTE';
+        } elseif ($diferencia > 0) {
+            $estado = 'SOBRANTE';
+        }
+
+        $cierreCaja = CierreCaja::create([
+            'caja_id' => $caja->id,
+            'conteo_real' => $data['conteo_real'],
+            'saldo_teorico' => $caja->saldo_actual,
+            'diferencia' => $diferencia,
+            'estado' => $estado,
+        ]);
 
         return $caja;
     }

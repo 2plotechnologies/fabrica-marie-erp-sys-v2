@@ -38,10 +38,10 @@ class CajaController extends Controller
         ]);
     }
 
-    public function cerrar($id, CajaService $service)
+    public function cerrar($id, CajaService $service, Request $request)
     {
-        return DB::transaction(function () use ($id, $service) {
-            return $service->cerrarCaja($id);
+        return DB::transaction(function () use ($id, $service, $request) {
+            return $service->cerrarCaja($id, $request->all());
         });
     }
 
@@ -76,7 +76,9 @@ class CajaController extends Controller
 
     public function obtenerCajasCerradas()
     {
-        $caja = Caja::with(['usuarioCerrado'])
+        //Buscar solo cajas donde exista un registro de cierre en la tabla cierres_caja.
+        $caja = Caja::with(['usuarioCerrado','cierreCaja'])
+            ->whereHas('cierreCaja')
             ->where('estado', 'CERRADA')
             ->orderBy('cerrado_at', 'desc')
             ->get();

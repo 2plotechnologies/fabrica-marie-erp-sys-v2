@@ -9,8 +9,8 @@ export const cajaService = {
         return response.data;
     },
     // Cerrar caja
-    async cerrarCaja(id: number, monto_cierre: number) {
-        const response = await api.post(`/caja/${id}/cerrar`, { monto_cierre });
+    async cerrarCaja(id: number, monto_cierre: number, conteo_real: number) {
+        const response = await api.post(`/caja/${id}/cerrar`, { monto_cierre, conteo_real });
         return response.data;
     },
 
@@ -35,6 +35,12 @@ export const cajaService = {
     // Obtener movimientos totales
     async getMovimientosTotales() {
         const response = await api.get('/caja/movimientos/total');
+        return response.data;
+    },
+
+    //Obtener Cajas Cerradas
+    async getCajasCerradas() {
+        const response = await api.get('/caja/cerradas');
         return response.data;
     },
 

@@ -90,13 +90,14 @@ const CurrentCash = () => {
   const handleCloseCash = async () => {
     if (!cajaActual) return;
     try {
-      const response = await cajaService.cerrarCaja(cajaActual.id, Number(closingCount));
+      const response = await cajaService.cerrarCaja(cajaActual.id, Number(cajaActual.saldo_actual), Number(closingCount));
       console.log(response);
       await fetchCajaActual();
       toast.success("Caja cerrada correctamente");
     } catch (error) {
-      console.log(error);
-      toast.error("Error al cerrar caja");
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al cerrar caja: " + error.response?.data);
     }
     setIsCloseCashDialog(false);
     setClosingCount('');
