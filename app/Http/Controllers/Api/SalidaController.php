@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Salida;
 use App\Models\SalidaItem;
 use App\Models\StockVendedor;
+use App\Models\Vehiculo;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 
@@ -51,9 +52,37 @@ class SalidaController
             'items.*.cantidad' => 'required|integer|min:1',
         ]);
 
+        //Verificar que el vendedor no este en una salida con estado PENDIENTE O EN RUTA.
+        $vendedorSalida = Salida::where('vendedor_id', $request->vendedor_id)
+            ->where('estado', '!=', 'COMPLETADO')
+            ->first();
+
+        if ($vendedorSalida) {
+            return response()->json([
+                'error' => 'El vendedor ya tiene una salida pendiente o en ruta'
+            ], 400);
+        }
+
+        //Verificar que el vehiculo no este en una salida con estado PENDIENTE O EN RUTA.
+        $vehiculoSalida = Salida::where('vehiculo_id', $request->vehiculo_id)
+            ->where('estado', '!=', 'COMPLETADO')
+            ->first();
+
+        if ($vehiculoSalida) {
+            return response()->json([
+                'error' => 'El vehiculo ya tiene una salida pendiente o en ruta'
+            ], 400);
+        }
+
         DB::beginTransaction();
 
         try {
+            //Si el vendedor no esta asignado al vehiculo, asignarlo automaticamente.
+            $vehiculo = Vehiculo::findOrFail($request->vehiculo_id);
+            //Asignar solo si no existe la relacion
+            if (!$vehiculo->vendedores()->where('vendedor_id', $request->vendedor_id)->exists()) {
+                $vehiculo->vendedores()->attach($request->vendedor_id);
+            }
 
             $salida = Salida::create([
                 'fecha' => $request->fecha,

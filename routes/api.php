@@ -143,7 +143,9 @@ Route::middleware('auth:sanctum')->group(function () {
     | CLIENTES Y RUTAS
     |--------------------------------------------------------------------------
     */
-    Route::prefix('clientes')->group(function () {
+    Route::prefix('clientes')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,FIDELIZACION')
+        ->group(function () {
         Route::get('/', [ClienteController::class, 'index']);
         Route::post('/', [ClienteController::class, 'store']);
         Route::get('/{id}', [ClienteController::class, 'show']);
@@ -151,7 +153,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [ClienteController::class, 'destroy']);
     });
 
-    Route::prefix('rutas')->group(function () {
+    Route::prefix('rutas')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,FIDELIZACION,MANTENIMIENTO')
+        ->group(function () {
         Route::get('/', [RutaController::class, 'index']);
         Route::post('/', [RutaController::class, 'store']);
         Route::get('/{id}', [RutaController::class, 'show']);
@@ -168,53 +172,72 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     //Lista Vendedores
     Route::get('/vendedores', [UsuarioController::class, 'getVendedores']);
+    
     //Ventas
-    Route::get('/ventas', [VentaController::class, 'index']);
-    Route::get('/ventas/reporte/completo', [VentaController::class, 'reporte']);
-    Route::get('/ventas/reporte/excel', [VentaController::class, 'exportarExcel']);
-    Route::post('/ventas', [VentaController::class, 'store'])
-        ->middleware(['caja.abierta']);
-    Route::put('/ventas/{id}',
-        [VentaController::class, 'update']
-    )->middleware(['permiso:editar_venta']);
-    Route::delete('/ventas/{id}',
-        [VentaController::class, 'destroy']
-    )->middleware(['permiso:eliminar_venta']);
-    Route::post('/ventas/{id}/anular',
-        [VentaController::class, 'anular']
-    )->middleware(['permiso:eliminar_venta', 'caja.abierta']);
-    Route::get('/ventas/{id}', [VentaController::class, 'show']);
+    Route::prefix('ventas')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,ALMACENERO,VENDEDOR,CAJERO')
+        ->group(function () {
+        Route::get('/', [VentaController::class, 'index']);
+        Route::get('/reporte/completo', [VentaController::class, 'reporte']);
+        Route::get('/reporte/excel', [VentaController::class, 'exportarExcel']);
+        Route::post('/', [VentaController::class, 'store'])
+            ->middleware(['caja.abierta']);
+        Route::put('/{id}',
+            [VentaController::class, 'update']
+        )->middleware(['permiso:editar_venta']);
+        Route::delete('/{id}',
+            [VentaController::class, 'destroy']
+        )->middleware(['permiso:eliminar_venta']);
+        Route::post('/{id}/anular',
+            [VentaController::class, 'anular']
+        )->middleware(['permiso:eliminar_venta', 'caja.abierta']);
+        Route::get('/{id}', [VentaController::class, 'show']);
+        // Confirmar
+        Route::post('/{id}/confirmar', [VentaController::class, 'confirmar']);
+    });
 
     // Caja
-    Route::get('/caja', [CajaController::class, 'getCaja']);
-    Route::get('/caja/movimientos/total', [CajaController::class, 'obtenerMovimientos']);
-    Route::post('/caja/movimientos', [CajaController::class, 'crearMovimiento']);
-    Route::post('/caja/abrir', [CajaController::class, 'abrir']);
-    Route::post('/caja/{id}/cerrar', [CajaController::class, 'cerrar'])
-        ->middleware('permiso:cerrar_caja');
-    Route::get('/caja/{id}/reporte', [CajaController::class, 'reporte'])
-        ->middleware('permiso:ver_reporte_caja');
-    Route::get('/caja/reporte/fecha', [CajaController::class, 'reportePorFecha'])
-        ->middleware('permiso:ver_reporte_caja');
-    Route::get('/caja/cerradas', [CajaController::class, 'obtenerCajasCerradas'])
-        ->middleware('permiso:ver_reporte_caja');
-    Route::get('/caja/salidas', [SalidaCajaController::class, 'index']);
-    Route::post('/caja/salidas', [SalidaCajaController::class, 'store']);
-    Route::post('/caja/salidas/{id}/liquidar', [SalidaCajaController::class, 'liquidar']);
-    Route::post('/caja/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar']);
+    Route::prefix('caja')
+        ->middleware('role:ADMIN,GERENTE,CAJERO')
+        ->group(function () {
+            //Obtener caja
+            Route::get('/', [CajaController::class, 'getCaja']);
+            //Obtener movimientos
+            Route::get('/movimientos/total', [CajaController::class, 'obtenerMovimientos']);
+            //Crear movimiento
+            Route::post('/movimientos', [CajaController::class, 'crearMovimiento']);
+            //Abrir caja
+            Route::post('/abrir', [CajaController::class, 'abrir']);
+            //Cerrar caja
+            Route::post('/{id}/cerrar', [CajaController::class, 'cerrar'])
+                ->middleware('permiso:cerrar_caja');
+            Route::get('/{id}/reporte', [CajaController::class, 'reporte'])
+                ->middleware('permiso:ver_reporte_caja');
+            Route::get('/reporte/fecha', [CajaController::class, 'reportePorFecha'])
+                ->middleware('permiso:ver_reporte_caja');
+            Route::get('/cerradas', [CajaController::class, 'obtenerCajasCerradas'])
+            ->middleware('permiso:ver_reporte_caja');
+            Route::get('/salidas', [SalidaCajaController::class, 'index']);
+            Route::post('/salidas', [SalidaCajaController::class, 'store']);
+            Route::post('/salidas/{id}/liquidar', [SalidaCajaController::class, 'liquidar']);
+            Route::post('/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar']);
+    });
 
     // Abonos
-    Route::post('/abonos', [AbonoController::class, 'store'])
-        ->middleware(['caja.abierta']);
-    Route::post('/abonos/{id}/anular',
-        [AbonoController::class, 'anular']
-    )->middleware(['permiso:anular_abono']);
-
-    // Confirmar
-    Route::post('/ventas/{id}/confirmar', [VentaController::class, 'confirmar']);
+    Route::prefix('abonos')
+        ->middleware('role:ADMIN,GERENTE,RRHH')
+        ->group(function () {
+            Route::post('/', [AbonoController::class, 'store'])
+                ->middleware(['caja.abierta']);
+            Route::post('/{id}/anular',
+                [AbonoController::class, 'anular']
+            )->middleware(['permiso:anular_abono']);
+        });
 
     // Vehículos
-    Route::prefix('vehiculos')->group(function () {
+    Route::prefix('vehiculos')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,MANTENIMIENTO')
+        ->group(function () {
         Route::get('/', [VehiculoController::class, 'index']);
         Route::post('/', [VehiculoController::class, 'store']);
         Route::get('/{id}', [VehiculoController::class, 'show']);
@@ -233,7 +256,9 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Mantenimiento
-    Route::prefix('mantenimientos')->group(function () {
+    Route::prefix('mantenimientos')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,MANTENIMIENTO')
+        ->group(function () {
         Route::get('/', [MantenimientoController::class, 'index']);
         Route::post('/', [MantenimientoController::class, 'store']);
         Route::get('/{id}', [MantenimientoController::class, 'show']);

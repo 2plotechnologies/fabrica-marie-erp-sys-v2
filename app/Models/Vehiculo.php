@@ -33,6 +33,6 @@ class Vehiculo extends Model
 
     public function vendedores()
     {
-        return $this->belongsToMany(Vendedor::class, 'vehiculo_vendedor');
+        return $this->belongsToMany(Vendedor::class, 'vehiculo_vendedor', 'vehiculo_id', 'vendedor_id');
     }
 }

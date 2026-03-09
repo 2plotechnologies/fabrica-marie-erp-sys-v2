@@ -162,7 +162,7 @@ const FactoryOutput = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al crear salida: " + error.response?.data.message);
+      toast.error("Error al crear salida: " + error.response?.data.error);
     }
   };
 
