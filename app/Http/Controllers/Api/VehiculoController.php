@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Vehiculo;
+use App\Models\Vendedor;
 use Illuminate\Http\Request;
 
 class VehiculoController extends Controller
@@ -23,6 +24,19 @@ class VehiculoController extends Controller
         $vehiculo = Vehiculo::create($request->all());
 
         return response()->json($vehiculo, 201);
+    }
+
+    public function assignVendedor(Request $request, $id)
+    {
+        $vehiculo = Vehiculo::findOrFail($id);
+        $vendedor = Vendedor::where('id', $request->vendedor_id)->first();
+        //Validar que ya se asigno el vehiculo al vendedor
+        if ($vendedor->vehiculos()->where('vehiculo_id', $id)->exists()) {
+            return response()->json(['message' => 'El vehiculo ya se encuentra asignado al vendedor'], 400);
+        }
+        $vendedor->vehiculos()->attach($id);
+        $vendedor->save();
+        return response()->json($vehiculo);
     }
 
     public function show($id)

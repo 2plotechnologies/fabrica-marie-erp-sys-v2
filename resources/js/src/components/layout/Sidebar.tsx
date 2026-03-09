@@ -159,6 +159,7 @@ const navigation: NavItemConfig[] = [
     subItems: [
       { to: '/caja/actual', label: 'Caja Actual' },
       { to: '/caja/movimientos', label: 'Movimientos' },
+      { to: '/caja/salidas', label: 'Salidas de Caja' },
       { to: '/caja/cierres', label: 'Cierres' },
       { to: '/caja/regularizacion', label: 'Regularización' },
     ]
@@ -237,7 +238,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               <Cookie className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-            <h1 className="font-display text-sm font-bold text-sidebar-foreground leading-tight">
+              <h1 className="font-display text-sm font-bold text-sidebar-foreground leading-tight">
                 Fabrica Rey del Centro
               </h1>
               <p className="text-xs text-sidebar-foreground/60">Sistema Comercial</p>

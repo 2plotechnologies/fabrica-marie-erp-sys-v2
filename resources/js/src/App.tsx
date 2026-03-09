@@ -30,6 +30,7 @@ import CurrentCash from "@/pages/cash/CurrentCash";
 import CashMovements from "@/pages/cash/CashMovements";
 import CashClosures from "@/pages/cash/CashClosures";
 import CashRegularization from "@/pages/cash/CashRegularization";
+import CashDisbursements from "@/pages/cash/CashDisbursements";
 import RoutesList from "@/pages/routes/RoutesList";
 import VehiclesList from "@/pages/vehicles/VehiclesList";
 import MaintenanceList from "@/pages/maintenance/MaintenanceList";
@@ -160,6 +161,7 @@ const AppRoutes = () => {
         <Route path="/caja" element={<CurrentCash />} />
         <Route path="/caja/actual" element={<CurrentCash />} />
         <Route path="/caja/movimientos" element={<CashMovements />} />
+        <Route path="/caja/salidas" element={<CashDisbursements />} />
         <Route path="/caja/cierres" element={<CashClosures />} />
         <Route path="/caja/regularizacion" element={<CashRegularization />} />
 

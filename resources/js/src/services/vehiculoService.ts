@@ -24,13 +24,23 @@ export const vehiculoService = {
     return response.data;
   },
 
+  async getVendedores() {
+    const response = await api.get('/vendedores');
+    return response.data;
+  },
+
   async getById(id: number) {
     const response = await api.get(`/vehiculos/${id}`);
     return response.data;
   },
 
+  async assignVendedor(vendedor_id: string, vehiculo_id: string) {
+    const response = await api.post(`/vehiculos/${vehiculo_id}/vendedor`, { vendedor_id });
+    return response.data;
+  },
+
   //Actualizar estado
-   delete: async (id: number): Promise<void> => {
+  delete: async (id: number): Promise<void> => {
     await api.delete(`/vehiculos/${id}`);
   },
 

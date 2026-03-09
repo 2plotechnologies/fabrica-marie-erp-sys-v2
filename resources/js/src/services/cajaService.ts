@@ -44,6 +44,30 @@ export const cajaService = {
         return response.data;
     },
 
+    // Obtener salidas de caja
+    async getSalidasCaja() {
+        const response = await api.get('/caja/salidas');
+        return response.data;
+    },
+
+    // Crear salida de caja
+    async createSalidaCaja(data: { destinatario: string, motivo: string, entregado: number }) {
+        const response = await api.post('/caja/salidas', data);
+        return response.data;
+    },
+
+    // Crear salida de caja
+    async entregarSalidaCaja(data: { id: number }) {
+        const response = await api.post(`/caja/salidas/${data.id}/entregar`);
+        return response.data;
+    },
+
+    // Liquidar salida de caja
+    async liquidarSalidaCaja(data: { id: number, usado: number, vuelto: number, comprobante: string }) {
+        const response = await api.post(`/caja/salidas/${data.id}/liquidar`, data);
+        return response.data;
+    },
+
     // Obtener caja por usuario
     async getCajaByUsuario(usuario_id: number) {
         const response = await api.get(`/caja/usuario/${usuario_id}`);

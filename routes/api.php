@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\RutaController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\VentaController;
 use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\SalidaCajaController;
 use App\Http\Controllers\Api\AbonoController;
 use App\Http\Controllers\Api\VehiculoController;
 use App\Http\Controllers\Api\GpsPointController;
@@ -197,6 +198,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('permiso:ver_reporte_caja');
     Route::get('/caja/cerradas', [CajaController::class, 'obtenerCajasCerradas'])
         ->middleware('permiso:ver_reporte_caja');
+    Route::get('/caja/salidas', [SalidaCajaController::class, 'index']);
+    Route::post('/caja/salidas', [SalidaCajaController::class, 'store']);
+    Route::post('/caja/salidas/{id}/liquidar', [SalidaCajaController::class, 'liquidar']);
+    Route::post('/caja/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar']);
 
     // Abonos
     Route::post('/abonos', [AbonoController::class, 'store'])
@@ -215,6 +220,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [VehiculoController::class, 'show']);
         Route::put('/{id}', [VehiculoController::class, 'update']);
         Route::delete('/{id}', [VehiculoController::class, 'destroy']);
+        Route::post('/{id}/vendedor', [VehiculoController::class, 'assignVendedor']);
     });
 
     // Puntos GPS

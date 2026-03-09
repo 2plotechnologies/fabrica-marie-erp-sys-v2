@@ -51,9 +51,12 @@ import { toast } from '@/hooks/use-toast';
 
 const VehiclesList = () => {
   const [vehiculos, setVehiculos] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [vehicleId, setVehicleId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,22 +71,67 @@ const VehiclesList = () => {
 
   const fetchVehiculos = async () => {
     try {
-        setIsLoading(true);
-        const data = await vehiculoService.getAll();
-        console.log('Vehiculos:', data);
-        setVehiculos(data);
+      setIsLoading(true);
+      const data = await vehiculoService.getAll();
+      console.log('Vehiculos:', data);
+      setVehiculos(data);
     } catch (err: any) {
-        setError(err?.message || 'Error al obtener vehiculos.');
+      setError(err?.message || 'Error al obtener vehiculos.');
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  const fetchVendedores = async () => {
+    try {
+      const data = await vehiculoService.getVendedores();
+      console.log('Vendedores:', data);
+      setVendedores(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener vendedores.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     fetchVehiculos();
+    fetchVendedores();
   }, []);
 
   const [form, setForm] = useState({
+    placa: '',
+    tipo: '',
+    marca: '',
+    modelo: '',
+    chofer: '',
+    anio: '',
+    estado: 'DISPONIBLE',
+    activo: 1
+  });
+
+  const [assignForm, setAssignForm] = useState({
+    vendedor_id: '',
+  });
+
+  const handleCreateVehiculo = async () => {
+    if (!form.placa || !form.marca) return;
+
+    try {
+      await vehiculoService.create({
+        placa: form.placa,
+        tipo: form.tipo,
+        marca: form.marca,
+        modelo: form.modelo,
+        chofer: form.chofer,
+        anio: form.anio,
+        estado: form.estado,
+        activo: form.activo
+      });
+
+      await fetchVehiculos();
+
+      setForm({
         placa: '',
         tipo: '',
         marca: '',
@@ -92,54 +140,26 @@ const VehiclesList = () => {
         anio: '',
         estado: 'DISPONIBLE',
         activo: 1
-    });
+      });
 
-    const handleCreateVehiculo = async () => {
-        if (!form.placa || !form.marca) return;
+      setIsAddDialogOpen(false);
 
-            try {
-                await vehiculoService.create({
-                    placa: form.placa,
-                    tipo: form.tipo,
-                    marca: form.marca,
-                    modelo: form.modelo,
-                    chofer: form.chofer,
-                    anio: form.anio,
-                    estado: form.estado,
-                    activo: form.activo
-                });
+      toast({
+        title: "Vehiculo creado",
+        description: "El nuevo vehiculo ha sido registrada exitosamente.",
+      });
 
-                await fetchVehiculos();
-
-                setForm({
-                    placa: '',
-                    tipo: '',
-                    marca: '',
-                    modelo: '',
-                    chofer: '',
-                    anio: '',
-                    estado: 'DISPONIBLE',
-                    activo: 1
-                });
-
-                setIsAddDialogOpen(false);
-
-                toast({
-                    title: "Vehiculo creado",
-                    description: "El nuevo vehiculo ha sido registrada exitosamente.",
-                });
-
-            } catch (err: any) {
-                setIsAddDialogOpen(false);
-                console.log("ERROR COMPLETO:", err);
-                console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
-                toast({
-                    title: "Error",
-                    description: err?.message || "No se pudo registrar la ruma.",
-                    variant: "destructive",
-                });
-            }
-      };
+    } catch (err: any) {
+      setIsAddDialogOpen(false);
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo registrar la ruma.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
@@ -163,19 +183,49 @@ const VehiclesList = () => {
     const daysUntil = differenceInDays(maintenanceDate, new Date());
 
     if (daysUntil < 0) {
-        return <Badge variant="destructive">Vencido</Badge>;
+      return <Badge variant="destructive">Vencido</Badge>;
     } else if (daysUntil <= 7) {
-        return <Badge className="bg-amber-500">Próximo ({daysUntil}d)</Badge>;
+      return <Badge className="bg-amber-500">Próximo ({daysUntil}d)</Badge>;
     }
 
     return <span className="text-muted-foreground">{daysUntil} días</span>;
-};
+  };
 
   const stats = {
     total: vehiculos.length,
     available: vehiculos.filter(v => v.estado === 'DISPONIBLE').length,
     inRoute: vehiculos.filter(v => v.estado === 'EN_RUTA').length,
     maintenance: vehiculos.filter(v => v.estado === 'MANTENIMIENTO').length,
+  };
+
+  const handleAssignVendedor = (vehicleId: string) => {
+    // Abrir dialog para asignar vendedor
+    setIsAssignDialogOpen(true);
+    setVehicleId(vehicleId);
+  };
+
+  const handleAsignarVendedor = async () => {
+    try {
+      await vehiculoService.assignVendedor(assignForm.vendedor_id, vehicleId);
+      await fetchVehiculos();
+      setAssignForm({
+        vendedor_id: '',
+      });
+      setIsAssignDialogOpen(false);
+      toast({
+        title: "Vendedor asignado",
+        description: "El vendedor ha sido asignado exitosamente.",
+      });
+    } catch (err: any) {
+      setIsAssignDialogOpen(false);
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: "No se pudo asignar el vendedor: " + err.response?.data.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -190,6 +240,45 @@ const VehiclesList = () => {
             Gestión de vehículos y unidades de reparto
           </p>
         </div>
+        {/*Dialog para asignar vendedor*/}
+        <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Asignar Vendedor</DialogTitle>
+              <DialogDescription>
+                Selecciona el vendedor que venderá con este vehículo
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vendedor">Vendedor</Label>
+                  <Select value={assignForm.vendedor_id}
+                    onValueChange={(v) => setAssignForm({ ...assignForm, vendedor_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map((vendedor) => (
+                        <SelectItem key={vendedor.id} value={vendedor.id}>
+                          {vendedor.usuario.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAsignarVendedor}>
+                Asignar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-warm hover:opacity-90">
@@ -209,13 +298,13 @@ const VehiclesList = () => {
                 <div className="space-y-2">
                   <Label htmlFor="plate">Placa</Label>
                   <Input id="plate" placeholder="ABC-123"
-                  value={form.placa}
-                  onChange={(e) => setForm({ ...form, placa: e.target.value })}/>
+                    value={form.placa}
+                    onChange={(e) => setForm({ ...form, placa: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
                   <Select value={form.tipo}
-                  onValueChange={(v) => setForm({...form, tipo: v})}>
+                    onValueChange={(v) => setForm({ ...form, tipo: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
@@ -232,27 +321,27 @@ const VehiclesList = () => {
                 <div className="space-y-2">
                   <Label htmlFor="brand">Marca</Label>
                   <Input id="brand" placeholder="Toyota" value={form.marca}
-                  onChange={(e) => setForm({ ...form, marca: e.target.value })}/>
+                    onChange={(e) => setForm({ ...form, marca: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="model">Modelo</Label>
                   <Input id="model" placeholder="Hilux" value={form.modelo}
-                  onChange={(e) => setForm({ ...form, modelo: e.target.value })}/>
+                    onChange={(e) => setForm({ ...form, modelo: e.target.value })} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="chofer">Chofer</Label>
-                        <Input id="chofer" placeholder="Juan" value={form.chofer}
-                        onChange={(e) => setForm({ ...form, chofer: e.target.value })}/>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="year">Año</Label>
-                        <Input id="year" type="number" placeholder="2024"
-                        value={form.anio}
-                        onChange={(e) => setForm({ ...form, anio: e.target.value })} />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="chofer">Chofer</Label>
+                  <Input id="chofer" placeholder="Juan" value={form.chofer}
+                    onChange={(e) => setForm({ ...form, chofer: e.target.value })} />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="year">Año</Label>
+                  <Input id="year" type="number" placeholder="2024"
+                    value={form.anio}
+                    onChange={(e) => setForm({ ...form, anio: e.target.value })} />
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -388,23 +477,28 @@ const VehiclesList = () => {
                       <p className="text-xs text-muted-foreground">Año {vehicle.anio}</p>
                     </div>
                   </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{vehicle.tipo}</Badge>
-                    </TableCell>
-                    <TableCell>
-                       <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{vehicle.chofer}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                        {getStatusBadge(vehicle.estado) || 'Sin Estado'}
-                    </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{vehicle.tipo}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{vehicle.chofer}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {getStatusBadge(vehicle.estado) || 'Sin Estado'}
+                  </TableCell>
                   <TableCell>
                     {getMaintenanceStatus(vehicle.mantenimientos[0]?.fecha_programada) || 'Sin mantenimientos'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {/*Asignar vendedor*/}
+                      {/*Al clickar el boton de usuario, se debe abrir un dialog para asignar un vendedor*/}
+                      <Button variant="ghost" size="icon" onClick={() => handleAssignVendedor(vehicle.id)}>
+                        <User className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon">
                         <Pencil className="h-4 w-4" />
                       </Button>

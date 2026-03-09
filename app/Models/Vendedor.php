@@ -28,4 +28,14 @@ class Vendedor extends Model
     {
         return $this->hasMany(StockVendedor::class);
     }
+
+    public function cierreCaja()
+    {
+        return $this->hasMany(CierreCaja::class);
+    }
+
+    public function vehiculos()
+    {
+        return $this->belongsToMany(Vehiculo::class, 'vehiculo_vendedor');
+    }
 }
