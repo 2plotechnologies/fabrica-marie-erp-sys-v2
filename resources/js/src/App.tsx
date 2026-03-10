@@ -26,6 +26,7 @@ import Collections from "@/pages/sales/Collections";
 import DailySummary from "@/pages/sales/DailySummary";
 import FactoryOutput from "@/pages/stock/FactoryOutput";
 import WarehouseReturns from "@/pages/stock/WarehouseReturns";
+import ViaticosPage from "@/pages/sales/ViaticosPage";
 import CurrentCash from "@/pages/cash/CurrentCash";
 import CashMovements from "@/pages/cash/CashMovements";
 import CashClosures from "@/pages/cash/CashClosures";
@@ -147,6 +148,7 @@ const AppRoutes = () => {
         <Route path="/ventas/cobranzas" element={<Collections />} />
         <Route path="/ventas/resumen-diario" element={<DailySummary />} />
         <Route path="/ventas/reportes" element={<SalesReports />} />
+        <Route path="/ventas/caja-chica" element={<ViaticosPage />} />
 
         {/* Clientes */}
         <Route path="/clientes" element={<ClientsList />} />

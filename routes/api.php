@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\RutaController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\VentaController;
 use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\ViaticoController;
 use App\Http\Controllers\Api\SalidaCajaController;
 use App\Http\Controllers\Api\AbonoController;
 use App\Http\Controllers\Api\VehiculoController;
@@ -222,6 +223,21 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/salidas/{id}/liquidar', [SalidaCajaController::class, 'liquidar']);
             Route::post('/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar']);
     });
+
+    // Caja Chica
+    Route::prefix('caja_chica')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO')
+        ->group(function () {
+            Route::get('/viaticos', [ViaticoController::class, 'index']);
+            Route::post('/viaticos', [ViaticoController::class, 'store']);
+            Route::get('/viaticos/{id}', [ViaticoController::class, 'show']);
+            Route::put('/viaticos/{id}', [ViaticoController::class, 'update']);
+            Route::put('/viaticos/{id}/estado', [ViaticoController::class, 'updateEstado'])
+                ->middleware(['caja.abierta']);
+            Route::post('/viaticos/{id}/liquidar', [ViaticoController::class, 'liquidar'])
+                ->middleware(['caja.abierta']);
+            Route::delete('/viaticos/{id}', [ViaticoController::class, 'destroy']);
+        });
 
     // Abonos
     Route::prefix('abonos')

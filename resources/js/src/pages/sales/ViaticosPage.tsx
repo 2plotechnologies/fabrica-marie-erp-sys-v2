@@ -1,0 +1,546 @@
+import { useEffect, useState } from 'react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import {
+  Banknote,
+  Plus,
+  Filter,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Receipt,
+  Car,
+  Wallet,
+  CheckCircle2,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cajaChicaService } from '@/services/cajaChicaService';
+import { toast } from 'sonner';
+
+const estadoBadge: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+  PENDIENTE: { variant: 'secondary', label: 'PENDIENTE' },
+  APROBADO: { variant: 'default', label: 'APROBADO' },
+  RECHAZADO: { variant: 'destructive', label: 'RECHAZADO' },
+  LIQUIDADO: { variant: 'outline', label: 'LIQUIDADO' },
+};
+
+const ViaticosPage = () => {
+  const [viaticos, setViaticos] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [liquidacion, setLiquidacion] = useState({ usado: 0, vuelto: 0, comprobante: '' });
+  const [selectedViatico, setSelectedViatico] = useState<any>(null);
+  const [rutas, setRutas] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [filterVendedor, setFilterVendedor] = useState<string>('all');
+  const [filterTipo, setFilterTipo] = useState<string>('all');
+  const [filterEstado, setFilterEstado] = useState<string>('all');
+  const [isLiquidarDialog, setIsLiquidarDialog] = useState(false);
+
+  // Form state
+  const [formVendedor, setFormVendedor] = useState('');
+  const [formTipo, setFormTipo] = useState<'inicial' | 'viaje'>('inicial');
+  const [formMonto, setFormMonto] = useState('');
+  const [formDescripcion, setFormDescripcion] = useState('');
+  const [formZona, setFormZona] = useState('');
+  const [formRuta, setFormRuta] = useState('');
+  const [formFecha, setFormFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const filteredViaticos = viaticos.filter(v => {
+    const matchVendedor = filterVendedor === 'all' || v.vendedor_id === filterVendedor;
+    const matchTipo = filterTipo === 'all' || v.tipo === filterTipo;
+    const matchEstado = filterEstado === 'all' || v.estado === filterEstado;
+    return matchVendedor && matchTipo && matchEstado;
+  });
+
+  // Stats
+  const totalPendiente = viaticos.filter(v => v.estado === 'PENDIENTE').reduce((s, v) => s + Number(v.monto), 0);
+  const totalAprobado = viaticos.filter(v => v.estado === 'APROBADO').reduce((s, v) => s + Number(v.monto), 0);
+  const totalInicial = viaticos.filter(v => v.tipo === 'inicial').reduce((s, v) => s + Number(v.monto), 0);
+  const totalViaje = viaticos.filter(v => v.tipo === 'viaje').reduce((s, v) => s + Number(v.monto), 0);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [viaticosData, vendedoresData, rutasData] = await Promise.all([
+          cajaChicaService.getAll(),
+          cajaChicaService.getVendedores(),
+          cajaChicaService.getRutas(),
+        ]);
+        setViaticos(viaticosData);
+        setVendedores(vendedoresData);
+        setRutas(rutasData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const resetForm = () => {
+    setFormVendedor('');
+    setFormTipo('inicial');
+    setFormMonto('');
+    setFormDescripcion('');
+    setFormZona('');
+    setFormRuta('');
+    setFormFecha(format(new Date(), 'yyyy-MM-dd'));
+  };
+
+  const handleSubmit = async () => {
+    if (!formVendedor || !formMonto || Number(formMonto) <= 0) {
+      return;
+    }
+
+    try {
+      await cajaChicaService.createViatico({
+        vendedor_id: Number(formVendedor),
+        fecha: formFecha,
+        tipo: formTipo,
+        monto: Number(formMonto),
+        descripcion: formDescripcion || undefined,
+        zona: formZona || undefined,
+        ruta_id: Number(formRuta),
+      });
+      const viaticosData = await cajaChicaService.getAll();
+      setViaticos(viaticosData);
+      resetForm();
+      setDialogOpen(false);
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al crear viático: " + error.response?.data.error);
+    }
+  };
+
+  const handleUpdateEstado = async (id: number, estado: string) => {
+    try {
+      await cajaChicaService.updateViaticoEstado(id, estado);
+      const viaticosData = await cajaChicaService.getAll();
+      setViaticos(viaticosData);
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al actualizar estado de viático: " + error.response?.data.message);
+    }
+  };
+
+  const openLiquidar = (viatico: any) => {
+    setSelectedViatico(viatico);
+    const montoEntregado = Number(viatico.monto);
+    setLiquidacion({ usado: montoEntregado, vuelto: 0, comprobante: '' });
+    setIsLiquidarDialog(true);
+  };
+
+  const handleLiquidar = async (id: number) => {
+    try {
+      if (!id) return;
+      await cajaChicaService.liquidarViatico({
+        id: id,
+        usado: liquidacion.usado,
+        vuelto: liquidacion.vuelto,
+        comprobante: liquidacion.comprobante,
+      });
+      const viaticosData = await cajaChicaService.getAll();
+      setViaticos(viaticosData);
+      setIsLiquidarDialog(false);
+      setSelectedViatico(null);
+      setLiquidacion({ usado: 0, vuelto: 0, comprobante: '' });
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al liquidar: " + error.response?.data.message);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4 animate-fade-in">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-display font-bold">Caja Chica</h1>
+          <p className="text-muted-foreground mt-1">
+            Gestión de caja chica para vendedores en ruta
+          </p>
+        </div>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="gradient" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nueva Caja Chica
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Registrar Caja Chica</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Vendedor *</Label>
+                <Select value={formVendedor} onValueChange={setFormVendedor}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar vendedor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores?.map(v => (
+                      <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Tipo de Viático *</Label>
+                <Select value={formTipo} onValueChange={(v) => setFormTipo(v as 'inicial' | 'viaje')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inicial">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Viático Inicial (Préstamo)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="viaje">
+                      <div className="flex items-center gap-2">
+                        <Car className="h-4 w-4" />
+                        Viático de Viaje
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Fecha *</Label>
+                  <Input
+                    type="date"
+                    value={formFecha}
+                    onChange={(e) => setFormFecha(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Monto (S/) *</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.50"
+                    placeholder="0.00"
+                    value={formMonto}
+                    onChange={(e) => setFormMonto(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Zona</Label>
+                  <Input
+                    placeholder="Ej: Norte"
+                    value={formZona}
+                    onChange={(e) => setFormZona(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Ruta</Label>
+                  <Select
+                    value={formRuta}
+                    onValueChange={v => setFormRuta(v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rutas.map(v => <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>Descripción</Label>
+                <Textarea
+                  placeholder="Detalle del viático..."
+                  value={formDescripcion}
+                  onChange={(e) => setFormDescripcion(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button variant="gradient" onClick={handleSubmit} disabled={!formVendedor || !formMonto || Number(formMonto) <= 0}>Registrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Pendientes</p>
+                <p className="text-lg font-bold">S/ {Number(totalPendiente).toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Aprobados</p>
+                <p className="text-lg font-bold">S/ {Number(totalAprobado).toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Inicial</p>
+                <p className="text-lg font-bold">S/ {Number(totalInicial).toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <Car className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">De Viaje</p>
+                <p className="text-lg font-bold">S/ {Number(totalViaje).toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 animate-slide-up" style={{ animationDelay: '200ms' }}>
+        <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+          <SelectTrigger className="w-[200px]">
+            <Filter className="h-3.5 w-3.5 mr-1" />
+            <SelectValue placeholder="Vendedor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los vendedores</SelectItem>
+            {vendedores?.map(v => (
+              <SelectItem key={v.id} value={v.id}>{v.usuario.nombre}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterTipo} onValueChange={setFilterTipo}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los tipos</SelectItem>
+            <SelectItem value="inicial">Inicial</SelectItem>
+            <SelectItem value="viaje">De Viaje</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={filterEstado} onValueChange={setFilterEstado}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Estado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los estados</SelectItem>
+            <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+            <SelectItem value="APROBADO">Aprobado</SelectItem>
+            <SelectItem value="RECHAZADO">Rechazado</SelectItem>
+            <SelectItem value="LIQUIDADO">Liquidado</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up" style={{ animationDelay: '300ms' }}>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Vendedor</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Zona / Ruta</TableHead>
+              <TableHead>Descripción</TableHead>
+              <TableHead className="text-right">Monto</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  Cargando...
+                </TableCell>
+              </TableRow>
+            ) : filteredViaticos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <Banknote className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  No hay registros de caja chica
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredViaticos.map((v) => {
+                const badge = estadoBadge[v.estado] ?? estadoBadge.pendiente;
+                return (
+                  <TableRow key={v.id}>
+                    <TableCell className="font-medium">
+                      {format(new Date(v.fecha + 'T00:00:00'), 'dd/MM/yyyy')}
+                    </TableCell>
+                    <TableCell>{v.vendedor?.usuario.nombre ?? '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant={v.tipo === 'inicial' ? 'default' : 'secondary'} className="gap-1">
+                        {v.tipo === 'inicial' ? <Wallet className="h-3 w-3" /> : <Car className="h-3 w-3" />}
+                        {v.tipo === 'inicial' ? 'Inicial' : 'Viaje'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {v.zona && <span>{v.zona}</span>}
+                        {v.zona && v.ruta.nombre && <span> / </span>}
+                        {v.ruta.nombre && <span>{v.ruta.nombre}</span>}
+                        {!v.zona && !v.ruta && '—'}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-sm">
+                      {v.descripcion || '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      S/ {Number(v.monto).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {v.estado === 'PENDIENTE' && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-emerald-600 hover:text-emerald-700"
+                            onClick={() => handleUpdateEstado(v.id, 'APROBADO')}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-destructive hover:text-destructive"
+                            onClick={() => handleUpdateEstado(v.id, 'RECHAZADO')}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {v.estado === 'APROBADO' && (
+                        <Button variant="outline" size="sm" onClick={() => openLiquidar(v)}>
+                          <CheckCircle2 className="h-4 w-4 mr-1" />Liquidar
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+        {/* Liquidar Dialog */}
+        <Dialog open={isLiquidarDialog} onOpenChange={setIsLiquidarDialog}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Liquidar Viatico</DialogTitle></DialogHeader>
+            {selectedViatico && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Monto Usado (S/)</Label>
+                  <Input
+                    type="number" placeholder="0.00"
+                    value={liquidacion.usado || ''}
+                    onChange={(e) => {
+                      const usado = parseFloat(e.target.value) || 0;
+                      setLiquidacion({
+                        ...liquidacion,
+                        usado: usado,
+                        vuelto: Math.max(0, Number(selectedViatico.monto) - usado),
+                      });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Vuelto (S/)</Label>
+                  <Input type="number" readOnly className="bg-muted" value={Number(liquidacion.vuelto).toFixed(2)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Comprobante / Referencia</Label>
+                  <Input placeholder="Nro. de boleta, etc." value={liquidacion.comprobante} onChange={(e) => setLiquidacion({ ...liquidacion, comprobante: e.target.value })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsLiquidarDialog(false)}>Cancelar</Button>
+              <Button onClick={() => handleLiquidar(selectedViatico.id)} className="bg-emerald-600 hover:bg-emerald-700">
+                Confirmar Liquidación
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+};
+
+export default ViaticosPage;
