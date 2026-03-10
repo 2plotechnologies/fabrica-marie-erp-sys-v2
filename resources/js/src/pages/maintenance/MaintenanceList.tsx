@@ -40,6 +40,8 @@ import {
   Clock,
   Truck,
   DollarSign,
+  Play,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -55,6 +57,7 @@ const MaintenanceList = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMantenimientos = async () => {
@@ -100,9 +103,49 @@ const MaintenanceList = () => {
       record.vehiculo.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.vehiculo.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || record.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const handleUpdateStatus = async (id: number, estado: string) => {
+    try {
+      setActionLoadingId(id);
+      await mantenimientoService.updateEstado(id, estado);
+      await fetchMantenimientos();
+      toast({
+        title: 'Estado actualizado',
+        description: `El mantenimiento fue marcado como ${estado === 'EN_PROCESO' ? 'En Proceso' : 'Completado'}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'No se pudo actualizar el estado del mantenimiento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      setActionLoadingId(id);
+      await mantenimientoService.delete(id);
+      await fetchMantenimientos();
+      toast({
+        title: 'Mantenimiento eliminado',
+        description: 'El mantenimiento pendiente fue eliminado correctamente.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'No se pudo eliminar el mantenimiento.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode; label: string }> = {
@@ -373,6 +416,7 @@ const MaintenanceList = () => {
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Costo</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -402,6 +446,43 @@ const MaintenanceList = () => {
                   <TableCell>{getStatusBadge(record.estado)}</TableCell>
                   <TableCell className="text-right font-semibold">
                     S/ {Number(record.costo_estimado).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-2">
+                      {record.estado !== 'EN_PROCESO' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={actionLoadingId === record.id}
+                          onClick={() => handleUpdateStatus(record.id, 'EN_PROCESO')}
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          En proceso
+                        </Button>
+                      )}
+                      {record.estado !== 'COMPLETADO' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          disabled={actionLoadingId === record.id}
+                          onClick={() => handleUpdateStatus(record.id, 'COMPLETADO')}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Completar
+                        </Button>
+                      )}
+                      {record.estado === 'PENDIENTE' && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={actionLoadingId === record.id}
+                          onClick={() => handleDelete(record.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
