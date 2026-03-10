@@ -16,6 +16,7 @@ class MovimientoStock extends Model
         'referencia_tipo',
         'referencia_id',
         'motivo',
+        'stock_anterior',
         'stock_post_mov',
         'user_id',
         'estado',

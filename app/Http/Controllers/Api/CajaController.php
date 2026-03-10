@@ -29,6 +29,15 @@ class CajaController extends Controller
 
     public function abrir(Request $request)
     {
+        //Si hay una caja abierta, no permitir abrir otra
+        $caja = Caja::where('fecha', now()->toDateString())
+            ->where('estado', 'ABIERTA')
+            ->first();
+        if ($caja) {
+            return response()->json([
+                'error' => 'Ya existe una caja abierta'
+            ], 400);
+        }
         return Caja::create([
             'usuario_id' => auth()->id(),
             'fecha' => now()->toDateString(),
