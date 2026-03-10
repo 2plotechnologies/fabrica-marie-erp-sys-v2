@@ -146,7 +146,7 @@ const VehiclesList = () => {
 
       toast({
         title: "Vehiculo creado",
-        description: "El nuevo vehiculo ha sido registrada exitosamente.",
+        description: "El nuevo vehiculo ha sido registrado exitosamente.",
       });
 
     } catch (err: any) {
@@ -155,7 +155,7 @@ const VehiclesList = () => {
       console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
       toast({
         title: "Error",
-        description: err?.message || "No se pudo registrar la ruma.",
+        description: err?.message || "No se pudo registrar el vehiculo.",
         variant: "destructive",
       });
     }
@@ -490,7 +490,8 @@ const VehiclesList = () => {
                     {getStatusBadge(vehicle.estado) || 'Sin Estado'}
                   </TableCell>
                   <TableCell>
-                    {getMaintenanceStatus(vehicle.mantenimientos[0]?.fecha_programada) || 'Sin mantenimientos'}
+                    {/*Mostrar solo si hay manteminiento con estado PENDIENTE O EN_PROCESO*/}
+                    {vehicle.mantenimientos.filter((m: any) => m.estado === 'PENDIENTE' || m.estado === 'EN_PROCESO').length > 0 ? getMaintenanceStatus(vehicle.mantenimientos[0]?.fecha_programada) : 'Sin mantenimientos'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
