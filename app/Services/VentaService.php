@@ -76,20 +76,29 @@ class VentaService
             =========================================
             */
 
-            if ($venta->tipo_pago === 'CONTADO') {
-
-                $caja = request()->get('caja');
-
-                if (!$caja) {
+            $caja = request()->get('caja');
+            if (!$caja) {
                     throw new Exception(
                         'No existe una caja abierta para registrar la anulación'
                     );
-                }
+            }
 
+            if ($venta->tipo_pago === 'CONTADO') {
                 MovimientoCaja::create([
                     'caja_id' => $caja->id,
                     'tipo' => 'EGRESO',
                     'monto' => $venta->total_neto,
+                    'referencia_tipo' => 'ANULACION_VENTA',
+                    'referencia_id' => $venta->id,
+                    'categoria' => 'VENTA',
+                    'descripcion' => 'Venta Anulada, ID: ' . $venta->id,
+                    'created_at' => now()
+                ]);
+            }else{
+                MovimientoCaja::create([
+                    'caja_id' => $caja->id,
+                    'tipo' => 'EGRESO',
+                    'monto' => $venta->adelanto,
                     'referencia_tipo' => 'ANULACION_VENTA',
                     'referencia_id' => $venta->id,
                     'categoria' => 'VENTA',

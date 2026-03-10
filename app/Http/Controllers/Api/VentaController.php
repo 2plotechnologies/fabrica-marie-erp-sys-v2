@@ -326,14 +326,25 @@ class VentaController extends Controller
                 $salida->save();
             }
 
-            $movimientoCaja = CajaService::registrarMovimiento([
-                'tipo' => 'INGRESO',
-                'monto' => $venta->total_neto,
-                'categoria' => 'VENTA',
-                'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
-                'referencia_tipo' => 'VENTA',
-                'referencia_id' => $venta->id
-            ]);
+            if($venta->tipo_pago === 'CONTADO'){
+                $movimientoCaja = CajaService::registrarMovimiento([
+                    'tipo' => 'INGRESO',
+                    'monto' => $venta->total_neto,
+                    'categoria' => 'VENTA',
+                    'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
+                    'referencia_tipo' => 'VENTA',
+                    'referencia_id' => $venta->id
+                ]);
+            }else{
+                $movimientoCaja = CajaService::registrarMovimiento([
+                    'tipo' => 'INGRESO',
+                    'monto' => $venta->adelanto,
+                    'categoria' => 'VENTA',
+                    'descripcion' => 'Venta al crédito confirmada, Venta #'.$venta->id,
+                    'referencia_tipo' => 'VENTA',
+                    'referencia_id' => $venta->id
+                ]);
+            }
 
             $venta->estado = 'CONFIRMADA';
             $venta->save();
