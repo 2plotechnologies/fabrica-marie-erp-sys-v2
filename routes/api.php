@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\CajaController;
 use App\Http\Controllers\Api\ViaticoController;
 use App\Http\Controllers\Api\SalidaCajaController;
 use App\Http\Controllers\Api\AbonoController;
+use App\Http\Controllers\Api\CuentaPorCobrarController;
 use App\Http\Controllers\Api\VehiculoController;
 use App\Http\Controllers\Api\GpsPointController;
 use App\Http\Controllers\Api\MantenimientoController;
@@ -240,14 +241,17 @@ Route::middleware('auth:sanctum')->group(function () {
         });
 
     // Abonos
-    Route::prefix('abonos')
-        ->middleware('role:ADMIN,GERENTE,RRHH')
+    Route::prefix('cuentas_por_cobrar')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO')
         ->group(function () {
-            Route::post('/', [AbonoController::class, 'store'])
+            Route::get('/', [CuentaPorCobrarController::class, 'index']);
+            Route::post('/{id}/abonos', [AbonoController::class, 'store'])
                 ->middleware(['caja.abierta']);
+            Route::get('/{id}/abonos', [AbonoController::class, 'index']);
             Route::post('/{id}/anular',
                 [AbonoController::class, 'anular']
             )->middleware(['permiso:anular_abono']);
+            Route::put('/{id}/fecha_vencimiento', [CuentaPorCobrarController::class, 'updateFechaVencimiento']);
         });
 
     // Vehículos

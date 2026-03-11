@@ -12,6 +12,7 @@ class CuentaPorCobrar extends Model
     protected $fillable = [
         'venta_id',
         'cliente_id',
+        'fecha_vencimiento',
         'monto_total',
         'saldo',
         'estado'
@@ -20,6 +21,11 @@ class CuentaPorCobrar extends Model
     public function venta()
     {
         return $this->belongsTo(Venta::class);
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
     }
 
     public function abonos()

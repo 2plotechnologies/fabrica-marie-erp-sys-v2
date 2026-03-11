@@ -11,7 +11,7 @@ class Abono extends Model
 
     protected $fillable = [
         'cuenta_id',
-        'vendedor_id',
+        'usuario_id',
         'monto',
         'metodo_pago',
         'fecha',
@@ -20,6 +20,11 @@ class Abono extends Model
         'anulado_at',
         'anulado_por'
     ];
+
+    public function usuario()
+    {
+        return $this->belongsTo(Usuario::class, 'usuario_id');
+    }
 
     public function cuenta()
     {
