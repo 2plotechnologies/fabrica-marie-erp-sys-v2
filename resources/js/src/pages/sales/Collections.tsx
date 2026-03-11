@@ -22,7 +22,7 @@ const CollectionsPage = () => {
   // Payment dialog
   const [payDialog, setPayDialog] = useState<{ cuentaId: string; saldo: number; clienteName: string } | null>(null);
   const [payAmount, setPayAmount] = useState('');
-  const [payMethod, setPayMethod] = useState('efectivo');
+  const [payMethod, setPayMethod] = useState('EFECTIVO');
 
   // Extend date dialog  
   const [extendDialog, setExtendDialog] = useState<{ cuentaId: string; currentDate: string } | null>(null);

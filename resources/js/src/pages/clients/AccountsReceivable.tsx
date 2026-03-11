@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,37 +29,75 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle } from 'lucide-react';
-import { mockAccountsReceivable } from '@/data/mockData';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast';
+import { cobranzasService } from '@/services/cobranzasService';
+import { toast } from 'sonner';
 
 const AccountsReceivable = () => {
-  const { toast } = useToast();
+  const [cuentas, setCuentas] = useState<any[]>([]);
+  const [vendedores, setVendedores] = useState<any[]>([]);
+  const [pagos, setPagos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('EFECTIVO');
 
-  const filteredAccounts = mockAccountsReceivable.filter((account) => {
-    const matchesSearch = account.client?.businessName
+  const fetchCuentas = async () => {
+    setIsLoading(true);
+    try {
+      const data = await cobranzasService.getCuentasPorCobrar();
+      setCuentas(data);
+      console.log(data);
+    } catch (error) {
+      console.error('Error fetching cuentas:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchVendedores = async () => {
+    setIsLoading(true);
+    try {
+      const data = await cobranzasService.getVendedores();
+      setVendedores(data);
+    } catch (error) {
+      console.error('Error fetching vendedores:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCuentas();
+    fetchVendedores();
+  }, []);
+
+  const filteredAccounts = cuentas.filter((account) => {
+    const matchesSearch = account.cliente?.razon_social
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || account.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
-      PENDIENTE: { variant: 'secondary', label: 'Pendiente' },
-      PARCIAL: { variant: 'outline', label: 'Parcial' },
-      PAGADA: { variant: 'default', label: 'Pagada' },
-      VENCIDA: { variant: 'destructive', label: 'Vencida' },
+      PENDIENTE: { variant: 'secondary', label: 'PENDIENTE' },
+      PARCIAL: { variant: 'outline', label: 'PARCIAL' },
+      PAGADA: { variant: 'default', label: 'PAGADO' },
+      VENCIDA: { variant: 'destructive', label: 'VENCIDO' },
     };
     const config = variants[status] || { variant: 'outline', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getDaysInfo = (dueDate: Date) => {
+    if (!dueDate) {
+      return { text: 'Sin fecha de vencimiento establecida', isOverdue: false };
+    }
     const days = differenceInDays(dueDate, new Date());
     if (days < 0) {
       return { text: `${Math.abs(days)} días vencido`, isOverdue: true };
@@ -70,25 +108,35 @@ const AccountsReceivable = () => {
     }
   };
 
-  const handlePayment = () => {
-    toast({
-      title: "Pago registrado",
-      description: `Se ha registrado un pago de S/ ${paymentAmount}`,
-    });
+  const handlePayment = async (id) => {
+
+    try {
+      await cobranzasService.registrarAbono(id, {
+        fecha: new Date().toISOString().split('T')[0],
+        monto: Number(paymentAmount),
+        metodo_pago: payMethod,
+      });
+      fetchCuentas();
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al crear abono: " + error.response?.data.message || error?.message || "Error desconocido");
+    }
     setPaymentAmount('');
   };
 
-  const totalPending = mockAccountsReceivable
-    .filter(a => a.status !== 'PAGADA')
-    .reduce((acc, a) => acc + a.currentBalance, 0);
+  const totalPending = cuentas
+    .filter(a => a.estado !== 'PAGADO')
+    .reduce((acc, a) => acc + Number(a.monto_pagado), 0);
 
-  const totalOverdue = mockAccountsReceivable
-    .filter(a => a.status === 'VENCIDA')
-    .reduce((acc, a) => acc + a.currentBalance, 0);
+  const totalOverdue = cuentas
+    .filter(a => a.estado === 'VENCIDO')
+    .reduce((acc, a) => acc + Number(a.saldo), 0);
 
-  const totalPartial = mockAccountsReceivable
-    .filter(a => a.status === 'PARCIAL')
-    .reduce((acc, a) => acc + a.currentBalance, 0);
+  const totalPartial = cuentas
+    .filter(a => a.estado === 'PARCIAL')
+    .reduce((acc, a) => acc + Number(a.saldo), 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -163,7 +211,7 @@ const AccountsReceivable = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Cuentas Activas</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {mockAccountsReceivable.filter(a => a.status !== 'PAGADA').length}
+                  {cuentas.filter(a => a.estado !== 'PAGADO').length}
                 </p>
               </div>
             </div>
@@ -193,8 +241,8 @@ const AccountsReceivable = () => {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="PENDIENTE">Pendiente</SelectItem>
                 <SelectItem value="PARCIAL">Parcial</SelectItem>
-                <SelectItem value="VENCIDA">Vencida</SelectItem>
-                <SelectItem value="PAGADA">Pagada</SelectItem>
+                <SelectItem value="VENCIDO">Vencida</SelectItem>
+                <SelectItem value="PAGADO">Pagada</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -223,38 +271,46 @@ const AccountsReceivable = () => {
             </TableHeader>
             <TableBody>
               {filteredAccounts.map((account) => {
-                const daysInfo = getDaysInfo(account.dueDate);
+                const daysInfo = getDaysInfo(account.fecha_vencimiento);
                 return (
                   <TableRow key={account.id} className="hover:bg-muted/50">
                     <TableCell>
                       <div>
-                        <p className="font-medium">{account.client?.businessName}</p>
+                        <p className="font-medium">{account.cliente?.razon_social}</p>
                         <p className="text-xs text-muted-foreground">
-                          {account.client?.ownerName}
+                          {account.cliente?.tipo}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      S/ {account.originalAmount.toLocaleString()}
+                      S/ {Number(account.monto_total).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-bold">
-                      S/ {account.currentBalance.toLocaleString()}
+                      S/ {Number(account.saldo).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="text-sm">
-                          {format(account.dueDate, "dd MMM yyyy", { locale: es })}
-                        </p>
-                        <p className={`text-xs ${daysInfo.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
-                          {daysInfo.text}
-                        </p>
+                        {account.fecha_vencimiento && (
+                          <p className="text-sm">
+                            {format(account.fecha_vencimiento, "dd MMM yyyy", { locale: es })}
+                          </p>
+                        )}
+                        {!account.fecha_vencimiento && (
+                          <p className="text-sm">Sin fecha de vencimiento establecida</p>
+                        )}
+                        {account.fecha_vencimiento && (
+                          <p className={`text-xs ${daysInfo.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            {daysInfo.text}
+                          </p>
+                        )}
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(account.status)}</TableCell>
+                    <TableCell>{getStatusBadge(account.estado)}</TableCell>
                     <TableCell className="text-right">
-                      <Dialog>
+                      {/* Deshabilitar si el estado es PAGADO */}
+                      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                          <Button size="sm" className="bg-gradient-warm hover:opacity-90">
+                          <Button size="sm" className="bg-gradient-warm hover:opacity-90" disabled={account.estado === 'PAGADO'}>
                             <DollarSign className="h-4 w-4 mr-1" />
                             Cobrar
                           </Button>
@@ -263,9 +319,9 @@ const AccountsReceivable = () => {
                           <DialogHeader>
                             <DialogTitle>Registrar Pago</DialogTitle>
                             <DialogDescription>
-                              Cliente: {account.client?.businessName}
+                              Cliente: {account.cliente?.razon_social}
                               <br />
-                              Saldo pendiente: S/ {account.currentBalance.toLocaleString()}
+                              Saldo pendiente: S/ {Number(account.saldo).toLocaleString()}
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
@@ -277,30 +333,29 @@ const AccountsReceivable = () => {
                                 placeholder="0.00"
                                 value={paymentAmount}
                                 onChange={(e) => setPaymentAmount(e.target.value)}
-                                max={account.currentBalance}
+                                max={Number(account.saldo)}
                               />
                             </div>
                             <div className="space-y-2">
                               <Label>Método de Pago</Label>
-                              <Select defaultValue="efectivo">
+                              <Select value={payMethod} onValueChange={setPayMethod}>
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="efectivo">Efectivo</SelectItem>
-                                  <SelectItem value="transferencia">Transferencia</SelectItem>
-                                  <SelectItem value="yape">Yape</SelectItem>
-                                  <SelectItem value="plin">Plin</SelectItem>
+                                  <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                                  <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                                  <SelectItem value="OTRO">Yape</SelectItem>
+                                  <SelectItem value="OTRO">Plin</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                           </div>
                           <DialogFooter>
                             <Button variant="outline">Cancelar</Button>
-                            <Button 
+                            <Button
                               className="bg-gradient-warm hover:opacity-90"
-                              onClick={handlePayment}
-                            >
+                              onClick={() => handlePayment(account.id)}>
                               Confirmar Pago
                             </Button>
                           </DialogFooter>
