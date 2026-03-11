@@ -57,18 +57,19 @@ class SalidaCajaController
         ], 201);
     }
 
-    //Entregar Salida
+    //Aprobar Salida
     public function entregar($id){
         $salida = SalidaCaja::findOrFail($id);
         $salida->estado = "ENTREGADO";
         $salida->save();
 
-        //Registrar movimiento en caja
+        //Registrar movimiento en caja al aprobar salida
         $movimiento = CajaService::registrarMovimiento([
             'tipo' => 'EGRESO',
+            'estado' => 'APROBADO',
             'monto' => $salida->entregado,
             'categoria' => 'SALIDA',
-            'descripcion' => 'Salida Registrada. Salida #' . $salida->id,
+            'descripcion' => 'Salida aprobada. Salida #' . $salida->id,
             'referencia_tipo' => 'SALIDA',
             'referencia_id' => $salida->id
         ]);
@@ -112,6 +113,7 @@ class SalidaCajaController
         if($request->vuelto > 0){
             $movimiento = CajaService::registrarMovimiento([
                 'tipo' => 'INGRESO',
+                'estado' => 'APROBADO',
                 'monto' => $request->vuelto,
                 'categoria' => 'VUELTO',
                 'descripcion' => 'Salida Liquidada. Salida #' . $salida->id,

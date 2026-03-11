@@ -66,6 +66,7 @@ class ViaticoController
         if ($viatico->estado == 'APROBADO') {
             $movimiento = CajaService::registrarMovimiento([
                 'tipo' => 'EGRESO',
+                'estado' => 'APROBADO',
                 'monto' => $viatico->monto,
                 'categoria' => 'VIATICO',
                 'descripcion' => 'Viatico ' . $viatico->tipo . ' para ' . $viatico->vendedor->usuario->nombre . ' - ' . $viatico->zona . '. Viatico #' . $viatico->id,
@@ -110,6 +111,7 @@ class ViaticoController
         if($request->vuelto > 0){
             $movimiento = CajaService::registrarMovimiento([
                 'tipo' => 'INGRESO',
+                'estado' => 'APROBADO',
                 'monto' => $request->vuelto,
                 'categoria' => 'VUELTO',
                 'descripcion' => 'Viatico Liquidado. Viatico #' . $viatico->id,

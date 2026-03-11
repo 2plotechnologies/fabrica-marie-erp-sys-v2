@@ -87,6 +87,7 @@ class VentaService
                 MovimientoCaja::create([
                     'caja_id' => $caja->id,
                     'tipo' => 'EGRESO',
+                    'estado' => 'APROBADO',
                     'monto' => $venta->total_neto,
                     'referencia_tipo' => 'ANULACION_VENTA',
                     'referencia_id' => $venta->id,
@@ -98,6 +99,7 @@ class VentaService
                 MovimientoCaja::create([
                     'caja_id' => $caja->id,
                     'tipo' => 'EGRESO',
+                    'estado' => 'APROBADO',
                     'monto' => $venta->adelanto,
                     'referencia_tipo' => 'ANULACION_VENTA',
                     'referencia_id' => $venta->id,

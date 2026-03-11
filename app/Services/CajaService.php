@@ -24,6 +24,7 @@ class CajaService
 
         $egresos = $caja->movimientos
             ->where('tipo', 'EGRESO')
+            ->where('estado', 'APROBADO')
             ->sum('monto');
 
         $caja->total_ingresos = $ingresos;
@@ -76,7 +77,8 @@ class CajaService
 
         $movimiento = MovimientoCaja::create([
             'caja_id' => $caja->id,
-            'tipo' => $data['tipo'],
+            'tipo' => strtoupper($data['tipo']),
+            'estado' => $data['estado'] ?? (strtoupper($data['tipo']) === 'EGRESO' ? 'PENDIENTE' : 'APROBADO'),
             'monto' => $data['monto'],
             'categoria' => $data['categoria'],
             'descripcion' => $data['descripcion'],
