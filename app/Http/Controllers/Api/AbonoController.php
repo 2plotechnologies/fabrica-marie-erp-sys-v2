@@ -35,6 +35,8 @@ class AbonoController extends Controller
                 'caja_id' => $caja->id,
                 'tipo' => 'INGRESO',
                 'monto' => $request->monto,
+                'categoria' => 'ABONO',
+                'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id,
                 'referencia_tipo' => 'ABONO',
                 'referencia_id' => $cuenta->id,
                 'created_at' => now()

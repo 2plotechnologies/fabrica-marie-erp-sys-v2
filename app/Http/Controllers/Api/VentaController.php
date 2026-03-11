@@ -10,6 +10,7 @@ use App\Models\StockActual;
 use App\Models\StockVendedor;
 use App\Models\MovimientoStock;
 use App\Models\Salida;
+use App\Models\Cliente;
 use App\Services\VentaService;
 use App\Services\CajaService;
 use App\Services\StockService;
@@ -230,8 +231,20 @@ class VentaController extends Controller
 
             // Crear cuenta si es crédito
             if ($venta->tipo_pago === 'CREDITO') {
+
+                // Generar fecha de vencimiento usando el valor "Dias credito" del cliente (Solo si es diferente de cero)
+                $cliente = Cliente::findOrFail($venta->cliente_id);
+                $diasCredito = $cliente->dias_credito;
+
+                if ($diasCredito > 0) {
+                    $fechaVencimiento = Carbon::now()->addDays($diasCredito);
+                } else {
+                    $fechaVencimiento = Carbon::now()->addDays(10);
+                }
+
                 $venta->cuenta()->create([
                     'cliente_id' => $venta->cliente_id,
+                    'fecha_vencimiento' => $fechaVencimiento,
                     'monto_total' => $venta->total_neto,
                     'saldo' => $venta->total_neto - $venta->adelanto,
                     'estado' => 'PENDIENTE'
