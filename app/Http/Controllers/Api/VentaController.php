@@ -342,6 +342,7 @@ class VentaController extends Controller
             if($venta->tipo_pago === 'CONTADO'){
                 $movimientoCaja = CajaService::registrarMovimiento([
                     'tipo' => 'INGRESO',
+                    'estado' => 'APROBADO',
                     'monto' => $venta->total_neto,
                     'categoria' => 'VENTA',
                     'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
@@ -351,6 +352,7 @@ class VentaController extends Controller
             }else{
                 $movimientoCaja = CajaService::registrarMovimiento([
                     'tipo' => 'INGRESO',
+                    'estado' => 'APROBADO',
                     'monto' => $venta->adelanto,
                     'categoria' => 'VENTA',
                     'descripcion' => 'Venta al crédito confirmada, Venta #'.$venta->id,

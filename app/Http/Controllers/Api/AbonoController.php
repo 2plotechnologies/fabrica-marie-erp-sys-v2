@@ -34,6 +34,7 @@ class AbonoController extends Controller
             $mov = MovimientoCaja::create([
                 'caja_id' => $caja->id,
                 'tipo' => 'INGRESO',
+                'estado' => 'APROBADO',
                 'monto' => $request->monto,
                 'categoria' => 'ABONO',
                 'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id,

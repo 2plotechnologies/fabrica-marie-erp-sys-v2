@@ -96,7 +96,10 @@ class CajaController extends Controller
         foreach ($caja as $key => $value) {
             
             $total_ingresos = $value->movimientos()->where('tipo', 'INGRESO')->sum('monto');
-            $total_egresos = $value->movimientos()->where('tipo', 'EGRESO')->sum('monto');            
+            $total_egresos = $value->movimientos()
+                ->where('tipo', 'EGRESO')
+                ->where('estado', 'APROBADO')
+                ->sum('monto');
         }
 
         return $caja;

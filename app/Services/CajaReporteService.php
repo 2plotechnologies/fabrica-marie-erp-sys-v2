@@ -18,6 +18,7 @@ class CajaReporteService
 
         $egresos = $caja->movimientos
             ->where('tipo', 'EGRESO')
+            ->where('estado', 'APROBADO')
             ->sum('monto');
 
         return [

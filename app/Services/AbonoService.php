@@ -32,6 +32,7 @@ class AbonoService
                     ? $abono->movimientoCaja->caja_id
                     : null,
                 'tipo' => 'EGRESO',
+                'estado' => 'APROBADO',
                 'monto' => $abono->monto,
                 'referencia_tipo' => 'ANULACION_ABONO',
                 'referencia_id' => $abono->id,

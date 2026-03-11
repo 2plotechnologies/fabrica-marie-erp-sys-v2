@@ -48,7 +48,7 @@ const CurrentCash = () => {
 
   const isOpen = cajaActual?.estado === 'ABIERTA';
   const totalIngresos = movimientos.filter(m => m.tipo === 'INGRESO').reduce((acc, m) => acc + Number(m.monto), 0);
-  const totalEgresos = movimientos.filter(m => m.tipo === 'EGRESO').reduce((acc, m) => acc + Number(m.monto), 0);
+  const totalEgresos = movimientos.filter(m => m.tipo === 'EGRESO' && m.estado === 'APROBADO').reduce((acc, m) => acc + Number(m.monto), 0);
   const saldoActual = (isToday ? saldoInicial : 0) + totalIngresos - totalEgresos;
 
   const fetchCajaActual = async () => {

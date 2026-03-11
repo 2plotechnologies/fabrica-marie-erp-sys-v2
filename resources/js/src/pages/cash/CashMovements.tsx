@@ -59,7 +59,7 @@ const CashMovements = () => {
     .reduce((acc, m) => acc + Number(m.monto), 0);
 
   const totalEgresos = movimientos
-    .filter(m => m.tipo === 'EGRESO')
+    .filter(m => m.tipo === 'EGRESO' && m.estado === 'APROBADO')
     .reduce((acc, m) => acc + Number(m.monto), 0);
 
   const categories = [...new Set(movimientos.map(m => m.categoria))];
