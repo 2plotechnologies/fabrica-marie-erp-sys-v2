@@ -94,7 +94,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/salidas', [SalidaController::class, 'index']);
         Route::get('/salidas/{id}', [SalidaController::class, 'show']);
         Route::post('/salidas', [SalidaController::class, 'store']);
-        Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado']);
+        Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado'])
+            ->middleware(['permiso:caja_registrar_egreso']);
 
         //Devoluciones
         Route::get('/devoluciones', [DevolucionController::class, 'index']);
@@ -112,11 +113,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | ROLES Y USUARIOS (SOLO ADMIN)
+    | ROLES Y USUARIOS
     |--------------------------------------------------------------------------
     */
     Route::prefix('admin')
-        ->middleware('role:ADMIN')
+        ->middleware('role:ADMIN,RRHH')
         ->group(function () {
 
         // Usuarios
@@ -174,7 +175,7 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     //Lista Vendedores
     Route::get('/vendedores', [UsuarioController::class, 'getVendedores']);
-    
+
     //Ventas
     Route::prefix('ventas')
         ->middleware('role:ADMIN,GERENTE,SUPERVISOR,ALMACENERO,VENDEDOR,CAJERO')
@@ -206,6 +207,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [CajaController::class, 'getCaja']);
             //Obtener movimientos
             Route::get('/movimientos/total', [CajaController::class, 'obtenerMovimientos']);
+            //Lista Egresos
+            Route::get('/egresos', [CajaController::class, 'obtenerEgresos']);
+            //Aprobar o rechazar egreso
+            Route::post('/egresos/{id}/estado', [CajaController::class, 'updateEstadoEgreso'])
+                ->middleware(['permiso:caja_registrar_egreso']);
             //Crear movimiento
             Route::post('/movimientos', [CajaController::class, 'crearMovimiento']);
             //Abrir caja
@@ -213,16 +219,20 @@ Route::middleware('auth:sanctum')->group(function () {
             //Cerrar caja
             Route::post('/{id}/cerrar', [CajaController::class, 'cerrar'])
                 ->middleware('permiso:cerrar_caja');
+            //Reportes
             Route::get('/{id}/reporte', [CajaController::class, 'reporte'])
                 ->middleware('permiso:ver_reporte_caja');
             Route::get('/reporte/fecha', [CajaController::class, 'reportePorFecha'])
                 ->middleware('permiso:ver_reporte_caja');
             Route::get('/cerradas', [CajaController::class, 'obtenerCajasCerradas'])
             ->middleware('permiso:ver_reporte_caja');
+            //Salidas de caja
             Route::get('/salidas', [SalidaCajaController::class, 'index']);
             Route::post('/salidas', [SalidaCajaController::class, 'store']);
-            Route::post('/salidas/{id}/liquidar', [SalidaCajaController::class, 'liquidar']);
-            Route::post('/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar']);
+            Route::post('/salidas/{id}/liquidar', [SalidaCajaController::class, 'liquidar'])
+                ->middleware(['permiso:caja_registrar_egreso']);
+            Route::post('/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar'])
+                ->middleware(['permiso:caja_registrar_egreso']);
     });
 
     // Caja Chica
@@ -234,9 +244,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/viaticos/{id}', [ViaticoController::class, 'show']);
             Route::put('/viaticos/{id}', [ViaticoController::class, 'update']);
             Route::put('/viaticos/{id}/estado', [ViaticoController::class, 'updateEstado'])
-                ->middleware(['caja.abierta']);
+                ->middleware(['caja.abierta','permiso:caja_registrar_egreso']);
             Route::post('/viaticos/{id}/liquidar', [ViaticoController::class, 'liquidar'])
-                ->middleware(['caja.abierta']);
+                ->middleware(['caja.abierta','permiso:caja_registrar_egreso']);
             Route::delete('/viaticos/{id}', [ViaticoController::class, 'destroy']);
         });
 

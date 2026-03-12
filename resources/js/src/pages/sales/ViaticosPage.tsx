@@ -154,6 +154,9 @@ const ViaticosPage = () => {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
       toast.error("Error al actualizar estado de viático: " + error.response?.data.message);
+      if (error.response?.status === 403) {
+        toast.error("Usted no tiene autorización para realizar esta acción");
+      }
     }
   };
 
@@ -182,6 +185,9 @@ const ViaticosPage = () => {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
       toast.error("Error al liquidar: " + error.response?.data.message);
+      if (error.response?.status === 403) {
+        toast.error("Usted no tiene autorización para realizar esta acción");
+      }
     }
   };
 

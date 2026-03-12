@@ -122,7 +122,10 @@ const CashDisbursements = () => {
         } catch (error) {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-            toast.error("Error al crear movimiento: " + error.response?.data);
+            toast.error("Error al liquidar salida: " + error.response?.data);
+            if (error.response?.status === 403) {
+                toast.error("Usted no tiene autorización para realizar esta acción");
+            }
         }
     };
 
@@ -146,6 +149,9 @@ const CashDisbursements = () => {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
             toast.error("Error al entregar salida: " + error.response?.data);
+            if (error.response?.status === 403) {
+                toast.error("Usted no tiene autorización para realizar esta acción");
+            }
         }
     };
 

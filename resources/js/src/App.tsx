@@ -24,6 +24,7 @@ import SalesReports from "@/pages/sales/SalesReports";
 import SalesDetail from "@/pages/sales/SalesDetail";
 import Collections from "@/pages/sales/Collections";
 import DailySummary from "@/pages/sales/DailySummary";
+import ExpenseValidation from "@/pages/sales/ExpenseValidation";
 import FactoryOutput from "@/pages/stock/FactoryOutput";
 import WarehouseReturns from "@/pages/stock/WarehouseReturns";
 import ViaticosPage from "@/pages/sales/ViaticosPage";
@@ -147,6 +148,7 @@ const AppRoutes = () => {
         <Route path="/ventas/detalle" element={<SalesDetail />} />
         <Route path="/ventas/cobranzas" element={<Collections />} />
         <Route path="/ventas/resumen-diario" element={<DailySummary />} />
+        <Route path="/ventas/validacion-egresos" element={<ExpenseValidation />} />
         <Route path="/ventas/reportes" element={<SalesReports />} />
         <Route path="/ventas/caja-chica" element={<ViaticosPage />} />
 

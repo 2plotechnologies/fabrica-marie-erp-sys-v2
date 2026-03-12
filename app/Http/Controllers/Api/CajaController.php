@@ -83,6 +83,23 @@ class CajaController extends Controller
         return MovimientoCaja::with(['caja.usuario'])->orderBy('created_at', 'desc')->get();
     }
 
+    public function obtenerEgresos()
+    {
+        return MovimientoCaja::with(['caja.usuario'])
+        ->where('tipo', 'EGRESO')
+        ->orderBy('created_at', 'desc')->get();
+    }
+
+    public function updateEstadoEgreso(Request $request, $id)
+    {
+        $movimiento = MovimientoCaja::findOrFail($id);
+        $movimiento->estado = $request->estado;
+        if($request->estado === "RECHAZADO"){
+            $movimiento->descripcion = 'EGRESO RECHAZADO: ' . $request->motivo;
+        }
+        $movimiento->save();
+    }
+
     public function obtenerCajasCerradas()
     {
         //Buscar solo cajas donde exista un registro de cierre en la tabla cierres_caja.

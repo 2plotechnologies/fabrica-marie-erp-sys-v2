@@ -74,6 +74,17 @@ class SalidaController
             ], 400);
         }
 
+        //Verificar que el vehiculo no esta en mantenimiento.
+        $vehiculoMantenimiento = Vehiculo::where('id', $request->vehiculo_id)
+            ->where('estado', '!=', 'DISPONIBLE')
+            ->first();
+
+        if ($vehiculoMantenimiento) {
+            return response()->json([
+                'error' => 'El vehiculo no esta disponible'
+            ], 400);
+        }
+
         DB::beginTransaction();
 
         try {

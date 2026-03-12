@@ -38,6 +38,18 @@ export const cajaService = {
         return response.data;
     },
 
+    //Obtener egresos sin validar
+    async getEgresos() {
+        const response = await api.get('/caja/egresos');
+        return response.data;
+    },
+
+    //Actualizar estado de egreso
+    async actualizarEstadoEgreso(id: string, data: { estado: string, motivo: string }) {
+        const response = await api.post(`/caja/egresos/${id}/estado`, data);
+        return response.data;
+    },
+
     //Obtener Cajas Cerradas
     async getCajasCerradas() {
         const response = await api.get('/caja/cerradas');
