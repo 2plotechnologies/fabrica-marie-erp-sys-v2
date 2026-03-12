@@ -249,6 +249,11 @@ class VentaController extends Controller
                     'saldo' => $venta->total_neto - $venta->adelanto,
                     'estado' => 'PENDIENTE'
                 ]);
+
+                //Actualizar deuda actual del cliente
+                $cliente->update([
+                    'deuda_actual' => $cliente->deuda_actual + $venta->total_neto - $venta->adelanto
+                ]);
             }
 
             //Reservar Stock.

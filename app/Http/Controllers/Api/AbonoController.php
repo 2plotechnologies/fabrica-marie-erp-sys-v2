@@ -55,6 +55,12 @@ class AbonoController extends Controller
             $cuenta->estado = $cuenta->saldo == 0 ? 'PAGADO' : 'PARCIAL';
             $cuenta->save();
 
+            //Actualizar deuda actual del cliente
+            $cliente = $cuenta->cliente;
+            $cliente->update([
+                'deuda_actual' => $cliente->deuda_actual - $request->monto
+            ]);
+
             return $abono;
         });
     }
