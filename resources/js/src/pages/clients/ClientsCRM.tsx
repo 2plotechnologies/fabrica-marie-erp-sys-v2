@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Search, 
-  Phone, 
-  Mail, 
-  MapPin, 
+import { clienteService } from '@/services/clienteService';
+import {
+  Search,
+  Phone,
+  Mail,
+  MapPin,
   Calendar,
   MessageSquare,
   Plus,
@@ -28,220 +29,105 @@ import {
   Star
 } from 'lucide-react';
 
-// Tipos para el CRM
-interface ClientInteraction {
-  id: string;
-  clientId: string;
-  type: 'LLAMADA' | 'VISITA' | 'MENSAJE' | 'VENTA' | 'COBRANZA' | 'RECLAMO';
-  description: string;
-  date: Date;
-  userId: string;
-  userName: string;
-}
-
-interface ClientTask {
-  id: string;
-  clientId: string;
-  title: string;
-  description: string;
-  dueDate: Date;
-  status: 'PENDIENTE' | 'EN_PROGRESO' | 'COMPLETADA';
-  priority: 'ALTA' | 'MEDIA' | 'BAJA';
-  assignedTo: string;
-}
-
-interface CRMClient {
-  id: string;
-  businessName: string;
-  ownerName: string;
-  phone: string;
-  email?: string;
-  address: string;
-  routeName: string;
-  status: 'ACTIVO' | 'INACTIVO' | 'MOROSO';
-  lastPurchaseDate: Date | null;
-  purchasedToday: boolean;
-  totalPurchases: number;
-  averageTicket: number;
-  purchaseFrequency: string;
-  creditLimit: number;
-  currentDebt: number;
-  loyaltyPoints: number;
-  lastInteraction: Date | null;
-  interactionCount: number;
-}
-
-// Mock data para el CRM
-const mockCRMClients: CRMClient[] = [
-  {
-    id: '1',
-    businessName: 'Bodega El Sol',
-    ownerName: 'María García',
-    phone: '987654321',
-    email: 'maria@bodegaelsol.com',
-    address: 'Av. Los Pinos 234, San Juan',
-    routeName: 'Ruta Norte A',
-    status: 'ACTIVO',
-    lastPurchaseDate: new Date(),
-    purchasedToday: true,
-    totalPurchases: 45,
-    averageTicket: 350,
-    purchaseFrequency: 'Semanal',
-    creditLimit: 2000,
-    currentDebt: 450,
-    loyaltyPoints: 1250,
-    lastInteraction: new Date(),
-    interactionCount: 28
-  },
-  {
-    id: '2',
-    businessName: 'Minimarket La Esquina',
-    ownerName: 'Carlos Mendoza',
-    phone: '956123456',
-    email: 'carlos@laesquina.com',
-    address: 'Jr. Libertad 567, Miraflores',
-    routeName: 'Ruta Centro',
-    status: 'ACTIVO',
-    lastPurchaseDate: new Date(Date.now() - 86400000 * 3),
-    purchasedToday: false,
-    totalPurchases: 32,
-    averageTicket: 520,
-    purchaseFrequency: 'Quincenal',
-    creditLimit: 3000,
-    currentDebt: 0,
-    loyaltyPoints: 890,
-    lastInteraction: new Date(Date.now() - 86400000 * 2),
-    interactionCount: 15
-  },
-  {
-    id: '3',
-    businessName: 'Tienda Doña Rosa',
-    ownerName: 'Rosa Quispe',
-    phone: '912345678',
-    address: 'Calle San Martín 123',
-    routeName: 'Ruta Sur',
-    status: 'ACTIVO',
-    lastPurchaseDate: new Date(),
-    purchasedToday: true,
-    totalPurchases: 68,
-    averageTicket: 280,
-    purchaseFrequency: 'Diario',
-    creditLimit: 1500,
-    currentDebt: 200,
-    loyaltyPoints: 2100,
-    lastInteraction: new Date(),
-    interactionCount: 42
-  },
-  {
-    id: '4',
-    businessName: 'Abarrotes San Pedro',
-    ownerName: 'Pedro Vargas',
-    phone: '945678912',
-    email: 'pedro.vargas@email.com',
-    address: 'Av. Túpac Amaru 890',
-    routeName: 'Ruta Norte B',
-    status: 'MOROSO',
-    lastPurchaseDate: new Date(Date.now() - 86400000 * 15),
-    purchasedToday: false,
-    totalPurchases: 22,
-    averageTicket: 410,
-    purchaseFrequency: 'Mensual',
-    creditLimit: 2500,
-    currentDebt: 1800,
-    loyaltyPoints: 450,
-    lastInteraction: new Date(Date.now() - 86400000 * 5),
-    interactionCount: 18
-  },
-  {
-    id: '5',
-    businessName: 'Market Express',
-    ownerName: 'Luis Fernández',
-    phone: '978451236',
-    email: 'lfernandez@marketexpress.com',
-    address: 'Av. Principal 456, Centro',
-    routeName: 'Ruta Centro',
-    status: 'ACTIVO',
-    lastPurchaseDate: new Date(Date.now() - 86400000),
-    purchasedToday: false,
-    totalPurchases: 56,
-    averageTicket: 680,
-    purchaseFrequency: 'Semanal',
-    creditLimit: 5000,
-    currentDebt: 1200,
-    loyaltyPoints: 1890,
-    lastInteraction: new Date(Date.now() - 86400000),
-    interactionCount: 35
-  },
-  {
-    id: '6',
-    businessName: 'Bodega Santa María',
-    ownerName: 'Ana Ramírez',
-    phone: '963852741',
-    address: 'Jr. Comercio 321',
-    routeName: 'Ruta Sur',
-    status: 'ACTIVO',
-    lastPurchaseDate: new Date(),
-    purchasedToday: true,
-    totalPurchases: 89,
-    averageTicket: 320,
-    purchaseFrequency: 'Diario',
-    creditLimit: 3000,
-    currentDebt: 500,
-    loyaltyPoints: 3200,
-    lastInteraction: new Date(),
-    interactionCount: 56
-  }
-];
-
-const mockInteractions: ClientInteraction[] = [
-  { id: '1', clientId: '1', type: 'VENTA', description: 'Venta de 5 cajas de galletas surtidas', date: new Date(), userId: '1', userName: 'Juan Domínguez' },
-  { id: '2', clientId: '1', type: 'LLAMADA', description: 'Seguimiento de pedido anterior', date: new Date(Date.now() - 86400000 * 2), userId: '1', userName: 'Juan Domínguez' },
-  { id: '3', clientId: '1', type: 'VISITA', description: 'Visita comercial para presentar nuevos productos', date: new Date(Date.now() - 86400000 * 5), userId: '2', userName: 'María López' },
-  { id: '4', clientId: '2', type: 'COBRANZA', description: 'Cobro de factura pendiente S/ 450', date: new Date(Date.now() - 86400000), userId: '1', userName: 'Juan Domínguez' },
-  { id: '5', clientId: '3', type: 'VENTA', description: 'Pedido regular semanal', date: new Date(), userId: '2', userName: 'María López' },
-];
-
-const mockTasks: ClientTask[] = [
-  { id: '1', clientId: '4', title: 'Cobrar deuda pendiente', description: 'Cliente tiene deuda de S/ 1,800 vencida hace 15 días', dueDate: new Date(Date.now() + 86400000), status: 'PENDIENTE', priority: 'ALTA', assignedTo: 'Juan Domínguez' },
-  { id: '2', clientId: '2', title: 'Presentar promoción mensual', description: 'Ofrecer descuento del 10% en compras mayores a S/ 500', dueDate: new Date(Date.now() + 86400000 * 3), status: 'PENDIENTE', priority: 'MEDIA', assignedTo: 'María López' },
-  { id: '3', clientId: '5', title: 'Renovar línea de crédito', description: 'Cliente solicita aumento de límite de crédito', dueDate: new Date(Date.now() + 86400000 * 7), status: 'EN_PROGRESO', priority: 'MEDIA', assignedTo: 'Carlos Ruiz' },
-];
-
 const ClientsCRM = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [purchaseFilter, setPurchaseFilter] = useState<'all' | 'today' | 'pending'>('all');
-  const [selectedClient, setSelectedClient] = useState<CRMClient | null>(null);
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
   const [newNote, setNewNote] = useState('');
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskFechaLimite, setNewTaskFechaLimite] = useState('');
+  const [newTaskPrioridad, setNewTaskPrioridad] = useState('');
+  const [newTaskEstado, setNewTaskEstado] = useState('');
   const [newInteractionType, setNewInteractionType] = useState<string>('LLAMADA');
 
-  const filteredClients = mockCRMClients.filter(client => {
-    const matchesSearch = 
-      client.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.ownerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.phone.includes(searchTerm);
-    
+  const [openTaskModal, setOpenTaskModal] = useState(false);
+
+  const [clients, setClients] = useState<any[]>([]);
+
+  const loadClients = async () => {
+    const clients = await clienteService.listaCRM();
+    setClients(clients);
+  };
+
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const handleCreateInteraction = async () => {
+    try {
+      await clienteService.createInteraction({
+        cliente_id: selectedClient?.id,
+        tipo: newInteractionType,
+        descripcion: newNote,
+      });
+      loadClients();
+      setNewNote('');
+      setNewInteractionType('LLAMADA');
+    } catch (error) {
+      console.error('Error creating interaction:', error);
+    }
+  };
+
+  const handleOpenTaskModal = () => {
+    setOpenTaskModal(true);
+  };
+
+  const handleCreateTask = async () => {
+    try {
+      await clienteService.createTask({
+        cliente_id: selectedClient?.id,
+        titulo: newTaskTitle,
+        descripcion: newTaskDescription,
+        fecha_limite: newTaskFechaLimite,
+        prioridad: newTaskPrioridad,
+        estado: newTaskEstado,
+      });
+      loadClients();
+      setNewTaskTitle('');
+      setNewTaskDescription('');
+      setNewTaskFechaLimite('');
+      setNewTaskPrioridad('');
+      setNewTaskEstado('');
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
+
+  const handleCompleteTask = async (id: number) => {
+    try {
+      await clienteService.completeTask(id);
+      loadClients();
+    } catch (error) {
+      console.error('Error completing task:', error);
+    }
+  };
+
+  const filteredClients = clients.filter(client => {
+    const matchesSearch =
+      client.razon_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.telefono.includes(searchTerm);
+
     if (purchaseFilter === 'today') {
-      return matchesSearch && client.purchasedToday;
+      return matchesSearch && client.compro_hoy;
     } else if (purchaseFilter === 'pending') {
-      return matchesSearch && !client.purchasedToday;
+      return matchesSearch && !client.compro_hoy;
     }
     return matchesSearch;
   });
 
   const stats = {
-    totalClients: mockCRMClients.length,
-    purchasedToday: mockCRMClients.filter(c => c.purchasedToday).length,
-    pendingToday: mockCRMClients.filter(c => !c.purchasedToday).length,
-    pendingTasks: mockTasks.filter(t => t.status !== 'COMPLETADA').length
+    totalClients: clients.length,
+    purchasedToday: clients.filter(c => c.compro_hoy).length,
+    pendingToday: clients.filter(c => !c.compro_hoy).length,
+    pendingTasks: clients.filter(c => c.tareas?.filter(t => t.estado !== 'COMPLETADA')).length
   };
 
-  const getClientInteractions = (clientId: string) => {
-    return mockInteractions.filter(i => i.clientId === clientId);
-  };
+  const getClientInteractions = (clientId: number) =>
+    clients.find(c => c.id === clientId)?.interacciones ?? [];
 
-  const getClientTasks = (clientId: string) => {
-    return mockTasks.filter(t => t.clientId === clientId);
-  };
+  const getClientTasks = (clientId: number) =>
+    clients.find(c => c.id === clientId)?.tareas ?? [];
 
   const getInteractionIcon = (type: string) => {
     switch (type) {
@@ -275,22 +161,31 @@ const ClientsCRM = () => {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: string) => {
+    const parsed = new Date(date);
+
+    if (isNaN(parsed.getTime())) return '';
+
     return new Intl.DateTimeFormat('es-PE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    }).format(date);
+    }).format(parsed);
   };
 
-  const formatShortDate = (date: Date | null) => {
+  const formatShortDate = (date: string | null) => {
     if (!date) return 'Sin compras';
+
+    const parsed = new Date(date);
+
+    if (isNaN(parsed.getTime())) return 'Sin compras';
+
     return new Intl.DateTimeFormat('es-PE', {
       day: '2-digit',
       month: 'short'
-    }).format(date);
+    }).format(parsed);
   };
 
   return (
@@ -421,18 +316,17 @@ const ClientsCRM = () => {
               </TableHeader>
               <TableBody>
                 {filteredClients.map((client) => (
-                  <TableRow 
+                  <TableRow
                     key={client.id}
-                    className={`cursor-pointer transition-colors ${
-                      client.purchasedToday 
-                        ? 'bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100/50 dark:hover:bg-green-900/20' 
-                        : 'hover:bg-muted/50'
-                    }`}
+                    className={`cursor-pointer transition-colors ${client.compro_hoy
+                      ? 'bg-green-50/50 dark:bg-green-900/10 hover:bg-green-100/50 dark:hover:bg-green-900/20'
+                      : 'hover:bg-muted/50'
+                      }`}
                     onClick={() => setSelectedClient(client)}
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {client.purchasedToday ? (
+                        {client.compro_hoy ? (
                           <div className="flex items-center gap-1">
                             <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
                             <span className="text-xs text-green-600 dark:text-green-400 font-medium">Compró</span>
@@ -447,8 +341,8 @@ const ClientsCRM = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-foreground">{client.businessName}</p>
-                        <p className="text-sm text-muted-foreground">{client.ownerName}</p>
+                        <p className="font-medium text-foreground">{client.razon_social}</p>
+                        <p className="text-sm text-muted-foreground">{client.direccion}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -466,20 +360,20 @@ const ClientsCRM = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{client.routeName}</Badge>
+                      <Badge variant="outline">{client.ruta.nombre}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      S/ {client.averageTicket.toLocaleString()}
+                      S/ {Number(client.ticket_promocional).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Star className="h-4 w-4 text-yellow-500" />
-                        <span className="font-medium">{client.loyaltyPoints.toLocaleString()}</span>
+                        <span className="font-medium">{Number(client.puntos).toLocaleString()}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className={client.purchasedToday ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}>
-                        {formatShortDate(client.lastPurchaseDate)}
+                      <span className={client.compro_hoy ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}>
+                        {formatShortDate(client.fecha_ultima_venta) || 'Nunca'}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -509,8 +403,8 @@ const ClientsCRM = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <DialogTitle className="flex items-center gap-2">
-                      {selectedClient.businessName}
-                      {selectedClient.purchasedToday ? (
+                      {selectedClient.razon_social}
+                      {selectedClient.compro_hoy ? (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Compró Hoy
@@ -522,7 +416,7 @@ const ClientsCRM = () => {
                         </Badge>
                       )}
                     </DialogTitle>
-                    <DialogDescription>{selectedClient.ownerName} • {selectedClient.routeName}</DialogDescription>
+                    <DialogDescription>{selectedClient.telefono} • {selectedClient.ruta.nombre}</DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
@@ -530,21 +424,21 @@ const ClientsCRM = () => {
               {/* Client Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4">
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <p className="text-2xl font-bold text-foreground">{selectedClient.totalPurchases}</p>
+                  <p className="text-2xl font-bold text-foreground">{selectedClient.total_ventas}</p>
                   <p className="text-xs text-muted-foreground">Compras Totales</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <p className="text-2xl font-bold text-foreground">S/ {selectedClient.averageTicket}</p>
+                  <p className="text-2xl font-bold text-foreground">S/ {selectedClient.ticket_promocional}</p>
                   <p className="text-xs text-muted-foreground">Ticket Promedio</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <p className="text-2xl font-bold text-foreground">{selectedClient.purchaseFrequency}</p>
+                  <p className="text-2xl font-bold text-foreground">{selectedClient.frecuencia_ventas}</p>
                   <p className="text-xs text-muted-foreground">Frecuencia</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
                   <div className="flex items-center justify-center gap-1">
                     <Star className="h-5 w-5 text-yellow-500" />
-                    <p className="text-2xl font-bold text-foreground">{selectedClient.loyaltyPoints}</p>
+                    <p className="text-2xl font-bold text-foreground">{selectedClient.puntos}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">Puntos Fidelización</p>
                 </div>
@@ -557,7 +451,7 @@ const ClientsCRM = () => {
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedClient.phone}</span>
+                      <span>{selectedClient.telefono}</span>
                     </div>
                     {selectedClient.email && (
                       <div className="flex items-center gap-2">
@@ -567,7 +461,7 @@ const ClientsCRM = () => {
                     )}
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{selectedClient.address}</span>
+                      <span>{selectedClient.direccion}</span>
                     </div>
                   </div>
                 </div>
@@ -576,18 +470,18 @@ const ClientsCRM = () => {
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Límite de Crédito:</span>
-                      <span className="font-medium">S/ {selectedClient.creditLimit.toLocaleString()}</span>
+                      <span className="font-medium">S/ {Number(selectedClient.limite_credito).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Deuda Actual:</span>
-                      <span className={`font-medium ${selectedClient.currentDebt > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        S/ {selectedClient.currentDebt.toLocaleString()}
+                      <span className={`font-medium ${selectedClient.deuda_actual > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        S/ {Number(selectedClient.deuda_actual).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Disponible:</span>
                       <span className="font-medium text-green-600">
-                        S/ {(selectedClient.creditLimit - selectedClient.currentDebt).toLocaleString()}
+                        S/ {(Number(selectedClient.limite_credito) - Number(selectedClient.deuda_actual)).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -616,18 +510,18 @@ const ClientsCRM = () => {
                     {getClientInteractions(selectedClient.id).length > 0 ? (
                       getClientInteractions(selectedClient.id).map((interaction) => (
                         <div key={interaction.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
-                          <div className={`p-2 rounded-full ${getInteractionBadgeClass(interaction.type)}`}>
-                            {getInteractionIcon(interaction.type)}
+                          <div className={`p-2 rounded-full ${getInteractionBadgeClass(interaction.tipo)}`}>
+                            {getInteractionIcon(interaction.tipo)}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <Badge className={getInteractionBadgeClass(interaction.type)}>
-                                {interaction.type}
+                              <Badge className={getInteractionBadgeClass(interaction.tipo)}>
+                                {interaction.tipo}
                               </Badge>
-                              <span className="text-xs text-muted-foreground">{formatDate(interaction.date)}</span>
+                              <span className="text-xs text-muted-foreground">{formatDate(interaction.fecha)}</span>
                             </div>
-                            <p className="text-sm mt-1">{interaction.description}</p>
-                            <p className="text-xs text-muted-foreground mt-1">Por: {interaction.userName}</p>
+                            <p className="text-sm mt-1">{interaction.descripcion}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Por: {interaction.usuario.nombre}</p>
                           </div>
                         </div>
                       ))
@@ -644,26 +538,28 @@ const ClientsCRM = () => {
                         <div key={task.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{task.title}</span>
-                              <Badge className={getPriorityBadge(task.priority)}>{task.priority}</Badge>
+                              <span className="font-medium">{task.titulo}</span>
+                              <Badge className={getPriorityBadge(task.prioridad)}>{task.prioridad}</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{task.descripcion}</p>
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                Vence: {formatShortDate(task.dueDate)}
+                                Vence: {formatShortDate(task.fecha_limite)}
                               </span>
-                              <span>Asignado a: {task.assignedTo}</span>
+                              <span>Asignado a: {task.usuario.nombre}</span>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm">Completar</Button>
+                          {task.estado === 'PENDIENTE' && (
+                            <Button variant="outline" size="sm" onClick={() => handleCompleteTask(task.id)}>Completar</Button>
+                          )}
                         </div>
                       ))
                     ) : (
                       <p className="text-center text-muted-foreground py-8">No hay tareas pendientes</p>
                     )}
                   </div>
-                  <Button className="w-full mt-4" variant="outline">
+                  <Button className="w-full mt-4" variant="outline" onClick={handleOpenTaskModal}>
                     <Plus className="h-4 w-4 mr-2" />
                     Nueva Tarea
                   </Button>
@@ -689,7 +585,7 @@ const ClientsCRM = () => {
                     </div>
                     <div>
                       <label className="text-sm font-medium">Descripción</label>
-                      <Textarea 
+                      <Textarea
                         placeholder="Describe la interacción con el cliente..."
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
@@ -697,7 +593,7 @@ const ClientsCRM = () => {
                         rows={4}
                       />
                     </div>
-                    <Button className="w-full">
+                    <Button className="w-full" onClick={handleCreateInteraction}>
                       <Plus className="h-4 w-4 mr-2" />
                       Registrar Interacción
                     </Button>
@@ -707,6 +603,77 @@ const ClientsCRM = () => {
             </>
           )}
         </DialogContent>
+
+        <Dialog open={openTaskModal} onOpenChange={setOpenTaskModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nueva Tarea</DialogTitle>
+              <DialogDescription>
+                Crea una nueva tarea para el cliente {selectedClient?.razon_social}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateTask} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Título</label>
+                <Input
+                  placeholder="Título de la tarea"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Descripción</label>
+                <Textarea
+                  placeholder="Descripción de la tarea"
+                  value={newTaskDescription}
+                  onChange={(e) => setNewTaskDescription(e.target.value)}
+                  className="mt-1"
+                  rows={4}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Fecha Límite</label>
+                <Input
+                  type="date"
+                  value={newTaskFechaLimite}
+                  onChange={(e) => setNewTaskFechaLimite(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Prioridad</label>
+                <Select value={newTaskPrioridad} onValueChange={setNewTaskPrioridad}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALTA">Alta</SelectItem>
+                    <SelectItem value="MEDIA">Media</SelectItem>
+                    <SelectItem value="BAJA">Baja</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Estado</label>
+                <Select value={newTaskEstado} onValueChange={setNewTaskEstado}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                    <SelectItem value="EN_PROGRESO">En Progreso</SelectItem>
+                    <SelectItem value="COMPLETADA">Completada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Tarea
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </Dialog>
     </div>
   );

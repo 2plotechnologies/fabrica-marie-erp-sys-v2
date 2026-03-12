@@ -52,4 +52,14 @@ class Usuario extends Authenticatable
             ->select('permisos.*')
             ->distinct();
     }
+
+    public function interacciones()
+    {
+        return $this->hasMany(Interaccion::class, 'usuario_id', 'id');
+    }
+
+    public function tareas()
+    {
+        return $this->hasMany(Tarea::class, 'usuario_id', 'id');
+    }
 }

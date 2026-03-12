@@ -39,4 +39,14 @@ class Cliente extends Model
             'ruta_id'
         )->withPivot('orden');
     }
+
+    public function interacciones()
+    {
+        return $this->hasMany(Interaccion::class);
+    }
+
+    public function tareas()
+    {
+        return $this->hasMany(Tarea::class);
+    }
 }

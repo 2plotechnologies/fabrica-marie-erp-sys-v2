@@ -150,10 +150,16 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,FIDELIZACION')
         ->group(function () {
         Route::get('/', [ClienteController::class, 'index']);
+        Route::get('/crm', [ClienteController::class, 'listaCRM']);
+        //Interacciones
+        Route::post('/interacciones', [ClienteController::class, 'createInteraction']);
+        //Tareas
+        Route::post('/tareas', [ClienteController::class, 'createTask']);
         Route::post('/', [ClienteController::class, 'store']);
         Route::get('/{id}', [ClienteController::class, 'show']);
         Route::put('/{id}', [ClienteController::class, 'update']);
         Route::delete('/{id}', [ClienteController::class, 'destroy']);
+        Route::put('/tareas/{id}/completar', [ClienteController::class, 'completeTask']);
     });
 
     Route::prefix('rutas')

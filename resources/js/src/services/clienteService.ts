@@ -48,4 +48,23 @@ export const clienteService = {
     return response.data;
   },
 
+  async listaCRM() {
+    const response = await api.get('/clientes/crm');
+    return response.data;
+  },
+
+  async createInteraction(data: any) {
+    const response = await api.post('/clientes/interacciones', data);
+    return response.data;
+  },
+
+  async createTask(data: any) {
+    const response = await api.post('/clientes/tareas', data);
+    return response.data;
+  },
+
+  async completeTask(id: number) {
+    const response = await api.put(`/clientes/tareas/${id}/completar`);
+    return response.data;
+  },
 };
