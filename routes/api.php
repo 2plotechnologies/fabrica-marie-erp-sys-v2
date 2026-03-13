@@ -86,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Stock
         Route::get('/stock', [StockController::class, 'index']);
+        Route::get('/stock-vendedores', [StockController::class, 'stockVendedores']);
 
         // Movimientos
         Route::get('/movimientos', [MovimientoStockController::class, 'index']);

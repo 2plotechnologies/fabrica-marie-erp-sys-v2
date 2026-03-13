@@ -142,7 +142,11 @@ const AppRoutes = () => {
         <Route path="/almacen/movimientos" element={<StockMovements />} />
         <Route path="/almacen/productos" element={<ProductsList />} />
         <Route path="/almacen/rumas" element={<RumaManagement />} />
-        <Route path="/almacen/seguimiento" element={<ProductTracking />} />
+        <Route path="/almacen/seguimiento" element={
+          <ErrorBoundary key={location.pathname}>
+            <ProductTracking />
+          </ErrorBoundary>
+        } />
         <Route path="/almacen/salida-fabrica" element={<FactoryOutput />} />
         <Route path="/almacen/devoluciones" element={<WarehouseReturns />} />
 

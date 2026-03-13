@@ -11,7 +11,7 @@ export const stockService = {
     const response = await api.get('/inventario/rumas');
     return response.data;
   },
- /* Obtener todas los movimientos */
+  /* Obtener todas los movimientos */
   async getAll() {
     const response = await api.get('/inventario/stock');
     return response.data;
@@ -26,5 +26,17 @@ export const stockService = {
   /* Eliminar emovimiento */
   delete: async (id: number): Promise<void> => {
     await api.delete(`/inventario/movimiento/${id}`);
+  },
+
+  /* Obtener stock de vendedores */
+  async getStockVendedores() {
+    const response = await api.get('/inventario/stock-vendedores');
+    return response.data;
+  },
+
+  /* Obtener vendedores */
+  async getVendedores() {
+    const response = await api.get('/vendedores');
+    return response.data;
   },
 };
