@@ -45,6 +45,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cajaChicaService } from '@/services/cajaChicaService';
 import { toast } from 'sonner';
+import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const estadoBadge: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
   PENDIENTE: { variant: 'secondary', label: 'PENDIENTE' },
@@ -54,6 +56,9 @@ const estadoBadge: Record<string, { variant: 'default' | 'secondary' | 'destruct
 };
 
 const ViaticosPage = () => {
+  const { currentRole } = useRole();
+  const { user } = useAuth();
+  const isVendedor = currentRole === 'VENDEDOR';
   const [viaticos, setViaticos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [liquidacion, setLiquidacion] = useState({ usado: 0, vuelto: 0, comprobante: '' });
@@ -75,6 +80,8 @@ const ViaticosPage = () => {
   const [formZona, setFormZona] = useState('');
   const [formRuta, setFormRuta] = useState('');
   const [formFecha, setFormFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const vendedorActual = vendedores.find(v => v.usuario_id === user?.id);
 
   const filteredViaticos = viaticos.filter(v => {
     const matchVendedor = filterVendedor === 'all' || v.vendedor_id === filterVendedor;
@@ -109,8 +116,14 @@ const ViaticosPage = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (isVendedor && vendedorActual) {
+      setFormVendedor(String(vendedorActual.id));
+    }
+  }, [isVendedor, vendedorActual]);
+
   const resetForm = () => {
-    setFormVendedor('');
+    setFormVendedor(isVendedor && vendedorActual ? String(vendedorActual.id) : '');
     setFormTipo('inicial');
     setFormMonto('');
     setFormDescripcion('');
@@ -216,13 +229,13 @@ const ViaticosPage = () => {
             <div className="space-y-4">
               <div>
                 <Label>Vendedor *</Label>
-                <Select value={formVendedor} onValueChange={setFormVendedor}>
+                <Select value={formVendedor} onValueChange={setFormVendedor} disabled={isVendedor}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar vendedor..." />
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores?.map(v => (
-                      <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>
+                      <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -278,7 +278,7 @@ const NewSale = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.map(v => (
-                      <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre} ({v.id})</SelectItem>
+                      <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre} ({v.id})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
