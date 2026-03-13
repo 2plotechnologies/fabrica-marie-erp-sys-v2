@@ -170,7 +170,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [RutaController::class, 'index']);
         Route::post('/', [RutaController::class, 'store']);
         Route::get('/{id}', [RutaController::class, 'show']);
+        Route::get('/{id}/detalle', [RutaController::class, 'detalle']);
+        Route::get('/{id}/clientes', [RutaController::class, 'clientes']);
         Route::put('/{id}', [RutaController::class, 'update']);
+        Route::put('/{id}/reasignar-vendedor', [RutaController::class, 'reasignarVendedor']);
         Route::delete('/{id}', [RutaController::class, 'destroy']);
         Route::post('/{rutaId}/clientes',
             [RutaController::class, 'asignarClientes']);

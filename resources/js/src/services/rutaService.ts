@@ -8,7 +8,11 @@ export interface RutaPayload {
   frecuencia: string;
   vendedor_id: number;
   clientes_estimados: number;
-  estado: string;
+  activo?: boolean;
+}
+
+export interface RutaVendedorPayload {
+  vendedor_id: number | null;
 }
 
 export const rutaService = {
@@ -30,6 +34,26 @@ export const rutaService = {
 
   async getById(id: number) {
     const response = await api.get(`/rutas/${id}`);
+    return response.data;
+  },
+
+  async getDetail(id: number) {
+    const response = await api.get(`/rutas/${id}/detalle`);
+    return response.data;
+  },
+
+  async update(id: number, data: Partial<RutaPayload>) {
+    const response = await api.put(`/rutas/${id}`, data);
+    return response.data;
+  },
+
+  async reassignSeller(id: number, data: RutaVendedorPayload) {
+    const response = await api.put(`/rutas/${id}/reasignar-vendedor`, data);
+    return response.data;
+  },
+
+  async getClientes(id: number) {
+    const response = await api.get(`/rutas/${id}/clientes`);
     return response.data;
   }
 
