@@ -27,12 +27,14 @@ import {
 } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from 'react';
+import { dashboardService } from '@/services/dashboardService';
 
 const Dashboard = () => {
   const { currentRole, roleLabels } = useRole();
   const { user } = useAuth();
   const userDisplayName = user?.nombre || user?.username || 'Usuario';
-  const kpis = mockDashboardKPIs;
+  const [kpis, setKpis] = useState<any>(null);
   const lowStockItems = mockStock.filter(s => s.quantity < s.minStock);
 
   // Datos mock para widgets específicos por rol
@@ -50,6 +52,20 @@ const Dashboard = () => {
     progress: 42,
   };
 
+  const getDashboardAGS = async () => {
+    try {
+      const response = await dashboardService.getDashboardAGS();
+      console.log(response);
+      setKpis(response.data);
+    } catch (error) {
+      console.error('Error al obtener el dashboard:', error);
+    }
+  };
+
+  useEffect(() => {
+    getDashboardAGS();
+  }, []);
+
   // Configuración de KPIs por rol
   const getRoleKPIs = () => {
     switch (currentRole) {
@@ -60,8 +76,8 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <KPICard
               title="Ventas Hoy"
-              value={`S/ ${kpis.sales.today.toLocaleString('es-PE')}`}
-              subtitle={`${kpis.sales.todayCount} transacciones`}
+              value={`S/ ${Number(kpis.ventas.hoy).toLocaleString('es-PE')}`}
+              subtitle={`${kpis.ventas.total_hoy} transacciones`}
               icon={DollarSign}
               variant="primary"
               trend={{ value: 12.5, isPositive: true }}
@@ -69,7 +85,7 @@ const Dashboard = () => {
             />
             <KPICard
               title="Ventas del Mes"
-              value={`S/ ${(kpis.sales.month / 1000).toFixed(1)}K`}
+              value={`S/ ${(Number(kpis.ventas.mes) / 1000).toFixed(1)}K`}
               subtitle="Meta: S/ 150K"
               icon={TrendingUp}
               trend={{ value: 8.2, isPositive: true }}
@@ -77,7 +93,7 @@ const Dashboard = () => {
             />
             <KPICard
               title="Cobros Hoy"
-              value={`S/ ${kpis.collections.today.toLocaleString('es-PE')}`}
+              value={`S/ ${Number(kpis.cobros.hoy).toLocaleString('es-PE')}`}
               subtitle="En efectivo"
               icon={ShoppingCart}
               variant="success"
@@ -85,24 +101,24 @@ const Dashboard = () => {
             />
             <KPICard
               title="Por Cobrar"
-              value={`S/ ${(kpis.collections.pending / 1000).toFixed(1)}K`}
-              subtitle={`S/ ${kpis.collections.overdue.toLocaleString()} vencido`}
+              value={`S/ ${(Number(kpis.cobros.pendientes) / 1000).toFixed(1)}K`}
+              subtitle={`S/ ${Number(kpis.cobros.vencido).toLocaleString()} vencido`}
               icon={Users}
               variant="warning"
               delay={150}
             />
             <KPICard
               title="Stock Bajo"
-              value={kpis.stock.lowStockCount}
-              subtitle={`de ${kpis.stock.totalProducts} productos`}
+              value={kpis.stock.cuenta_stock_bajo}
+              subtitle={`de ${kpis.stock.total_productos} productos`}
               icon={Package}
-              variant={kpis.stock.lowStockCount > 0 ? 'danger' : 'default'}
+              variant={Number(kpis.stock.cuenta_stock_bajo) > 0 ? 'danger' : 'default'}
               delay={200}
             />
             <KPICard
               title="Rutas Hoy"
-              value={`${kpis.routes.efficiency}%`}
-              subtitle={`${kpis.routes.visitedClients} clientes visitados`}
+              value={`${kpis.rutas.eficiencia}%`}
+              subtitle={`${kpis.rutas.clientes_visitados} clientes visitados`}
               icon={MapPin}
               delay={250}
             />
@@ -115,8 +131,8 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Ventas del Equipo"
-              value={`S/ ${kpis.sales.today.toLocaleString('es-PE')}`}
-              subtitle={`${kpis.sales.todayCount} ventas hoy`}
+              value={`S/ ${Number(kpis.ventas.hoy).toLocaleString('es-PE')}`}
+              subtitle={`${kpis.ventas.total_hoy} ventas hoy`}
               icon={TrendingUp}
               variant="primary"
               trend={{ value: 12.5, isPositive: true }}
@@ -124,14 +140,14 @@ const Dashboard = () => {
             />
             <KPICard
               title="Rutas Activas"
-              value={kpis.routes.completedToday}
-              subtitle={`${kpis.routes.visitedClients} clientes visitados`}
+              value={kpis.rutas.total_rutas ? kpis.rutas.total_rutas : 0}
+              subtitle={`${kpis.rutas.clientes_visitados} clientes visitados`}
               icon={MapPin}
               delay={50}
             />
             <KPICard
               title="Eficiencia"
-              value={`${kpis.routes.efficiency}%`}
+              value={`${kpis.rutas.eficiencia}%`}
               subtitle="Promedio del equipo"
               icon={BarChart3}
               variant="success"
@@ -139,7 +155,7 @@ const Dashboard = () => {
             />
             <KPICard
               title="Clientes Pendientes"
-              value={kpis.clients.total - kpis.routes.visitedClients}
+              value={Number(kpis.clientes.total) - Number(kpis.rutas.clientes_visitados)}
               subtitle="Por visitar hoy"
               icon={Users}
               variant="warning"
@@ -154,27 +170,30 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Mis Ventas Hoy"
-              value={`S/ ${(kpis.sales.today * 0.3).toLocaleString('es-PE')}`}
+              value={`S/ ${(Number(kpis.ventas.hoy) * 0.3).toLocaleString('es-PE')}`}
               subtitle="Meta diaria: S/ 2,000"
               icon={DollarSign}
               variant="primary"
               delay={0}
             />
+            {/*
             <KPICard
               title="Clientes Visitados"
-              value={todayRoute.visited}
+              value={todayRoute.visited ? todayRoute.visited : 0}
               subtitle={`de ${todayRoute.totalClients} programados`}
               icon={Users}
               delay={50}
             />
+            */}
             <KPICard
               title="Cobros del Día"
-              value={`S/ ${(kpis.collections.today * 0.25).toLocaleString('es-PE')}`}
+              value={`S/ ${(Number(kpis.cobros.hoy) * 0.25).toLocaleString('es-PE')}`}
               subtitle="En efectivo"
               icon={Wallet}
               variant="success"
               delay={100}
             />
+            {/*
             <KPICard
               title="Mi Ruta"
               value={`${todayRoute.progress}%`}
@@ -182,6 +201,7 @@ const Dashboard = () => {
               icon={MapPin}
               delay={150}
             />
+            */}
           </div>
         );
 
@@ -770,6 +790,10 @@ const Dashboard = () => {
         return null;
     }
   };
+
+  if (!kpis) {
+    return <div>Cargando dashboard...</div>;
+  }
 
   return (
     <div className="space-y-6">

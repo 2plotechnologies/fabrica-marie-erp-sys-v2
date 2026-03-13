@@ -158,6 +158,12 @@ class DashboardService
             ->distinct()
             ->count('cliente_id');
 
+        $rutasVisitadas = DB::table('ventas')
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->whereDate('ventas.fecha', $today)
+            ->distinct()
+            ->count('clientes.ruta_id');
+
         $clientesTotalesRutas = DB::table('clientes')->count();
 
         $eficiencia = 0;
@@ -167,7 +173,7 @@ class DashboardService
         }
 
         return [
-            'visitadas_hoy'      => 0, // Aun no hay relación directa de rutas en ventas
+            'visitadas_hoy'      => (int) $rutasVisitadas,
             'clientes_visitados' => (int) $clientesVisitados,
             'eficiencia'         => round($eficiencia, 1),
         ];

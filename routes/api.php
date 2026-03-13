@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\CuentaPorCobrarController;
 use App\Http\Controllers\Api\VehiculoController;
 use App\Http\Controllers\Api\GpsPointController;
 use App\Http\Controllers\Api\MantenimientoController;
+use App\Http\Controllers\Api\DashBoardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -313,4 +314,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/estado/{id}', [MantenimientoController::class, 'updateEstado']);
         Route::delete('/{id}', [MantenimientoController::class, 'destroy']);
     });
+
+    // Dashboard
+    Route::prefix('dashboard')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR')
+        ->group(function () {
+            Route::get('/ags', [DashBoardController::class, 'indexAGS']);
+        });
 });
