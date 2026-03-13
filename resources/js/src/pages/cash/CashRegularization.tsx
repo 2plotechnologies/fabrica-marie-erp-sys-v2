@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,9 +31,9 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { 
-  FileCheck, 
-  Plus, 
+import {
+  FileCheck,
+  Plus,
   Search,
   CalendarIcon,
   AlertTriangle,
@@ -46,65 +46,12 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-
-interface CashRegularization {
-  id: string;
-  date: Date;
-  originalClosing: number;
-  realAmount: number;
-  difference: number;
-  type: 'SOBRANTE' | 'FALTANTE';
-  reason: string;
-  approvedBy?: string;
-  status: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
-  createdAt: Date;
-  createdBy: string;
-}
-
-// Mock data
-const mockRegularizations: CashRegularization[] = [
-  {
-    id: '1',
-    date: new Date('2024-12-18'),
-    originalClosing: 2850.50,
-    realAmount: 2820.00,
-    difference: -30.50,
-    type: 'FALTANTE',
-    reason: 'Error en vuelto a cliente, se identificó la diferencia',
-    status: 'APROBADO',
-    approvedBy: 'Juan Domínguez',
-    createdAt: new Date('2024-12-18'),
-    createdBy: 'María Fernández',
-  },
-  {
-    id: '2',
-    date: new Date('2024-12-17'),
-    originalClosing: 3100.00,
-    realAmount: 3125.00,
-    difference: 25.00,
-    type: 'SOBRANTE',
-    reason: 'Cliente pagó de más y no se ubicó para devolución',
-    status: 'APROBADO',
-    approvedBy: 'Juan Domínguez',
-    createdAt: new Date('2024-12-17'),
-    createdBy: 'Carlos Pérez',
-  },
-  {
-    id: '3',
-    date: new Date('2024-12-16'),
-    originalClosing: 2500.00,
-    realAmount: 2450.00,
-    difference: -50.00,
-    type: 'FALTANTE',
-    reason: 'Faltante por revisar grabaciones',
-    status: 'PENDIENTE',
-    createdAt: new Date('2024-12-16'),
-    createdBy: 'María Fernández',
-  },
-];
+import { regularizacionService } from '@/services/regularizacionService';
+import { toast } from 'sonner';
 
 const CashRegularization = () => {
-  const { toast } = useToast();
+  const [regularizaciones, setRegularizaciones] = useState<any[]>([]);
+  const [cierreCajaId, setCierreCajaId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -115,18 +62,33 @@ const CashRegularization = () => {
     reason: '',
   });
 
-  const filteredRegularizations = mockRegularizations.filter((reg) => {
-    const matchesSearch = reg.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.createdBy.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || reg.status === statusFilter;
+  const getRegularizaciones = async () => {
+    const response = await regularizacionService.getAll();
+    setRegularizaciones(response);
+  };
+
+  useEffect(() => {
+    getRegularizaciones();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDate) {
+      handleGetCierreCajaSinCuadrar(selectedDate);
+    }
+  }, [selectedDate]);
+
+  const filteredRegularizations = regularizaciones.filter((reg) => {
+    const matchesSearch = reg.motivo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reg.cierre_caja.caja.usuario.nombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || reg.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: CashRegularization['status']) => {
-    const variants: Record<CashRegularization['status'], { variant: 'default' | 'secondary' | 'destructive'; label: string; icon: React.ReactNode }> = {
-      PENDIENTE: { variant: 'secondary', label: 'Pendiente', icon: <Clock className="h-3 w-3" /> },
-      APROBADO: { variant: 'default', label: 'Aprobado', icon: <CheckCircle className="h-3 w-3" /> },
-      RECHAZADO: { variant: 'destructive', label: 'Rechazado', icon: <AlertTriangle className="h-3 w-3" /> },
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive'; label: string; icon: React.ReactNode }> = {
+      PENDIENTE: { variant: 'secondary', label: 'PENDIENTE', icon: <Clock className="h-3 w-3" /> },
+      APROBADO: { variant: 'default', label: 'APROBADO', icon: <CheckCircle className="h-3 w-3" /> },
+      RECHAZADO: { variant: 'destructive', label: 'RECHAZADO', icon: <AlertTriangle className="h-3 w-3" /> },
     };
     const { variant, label, icon } = variants[status];
     return (
@@ -140,33 +102,57 @@ const CashRegularization = () => {
     ? parseFloat(formData.realAmount) - parseFloat(formData.originalClosing)
     : 0;
 
-  const handleCreateRegularization = () => {
+  const handleGetCierreCajaSinCuadrar = async (date: Date) => {
+    const response = await regularizacionService.getCierreCajaSinCuadrar(format(date, "yyyy-MM-dd"));
+    setCierreCajaId(response.id);
+    setFormData(prev => ({ ...prev, originalClosing: response.conteo_real }));
+  }
+
+  const handleCreateRegularization = async () => {
     if (!selectedDate || !formData.originalClosing || !formData.realAmount || !formData.reason) {
-      toast({
-        title: "Error",
-        description: "Por favor complete todos los campos",
-        variant: "destructive",
-      });
+      toast.error("Por favor complete todos los campos");
       return;
     }
 
-    toast({
-      title: "Regularización creada",
-      description: "La regularización ha sido enviada para aprobación.",
-    });
-    setIsAddDialogOpen(false);
-    setFormData({ originalClosing: '', realAmount: '', reason: '' });
-    setSelectedDate(undefined);
+    try {
+      const response = await regularizacionService.storeRegularizacion({
+        cierre_caja_id: cierreCajaId,
+        fecha_regularizacion: format(selectedDate, "yyyy-MM-dd"),
+        monto_cierre_original: formData.originalClosing,
+        monto_real: formData.realAmount,
+        motivo: formData.reason,
+      });
+      toast.success("Regularización creada");
+      setIsAddDialogOpen(false);
+      getRegularizaciones();
+      setFormData({ originalClosing: '', realAmount: '', reason: '' });
+      setSelectedDate(undefined);
+      setCierreCajaId(null);
+    } catch (error) {
+      toast.error("Error al crear la regularización: " + error.response.data.message || error.response || 'Error desconocido');
+    }
+  };
+
+  const handleUpdateEstadoRegularizacion = async (id: number, data: any) => {
+    try {
+      const response = await regularizacionService.updateEstadoRegularizacion(id, data);
+      toast.success("Regularización actualizada");
+      getRegularizaciones();
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al actualizar la regularización: " + error.response.data.message || error.response || 'Error desconocido');
+    }
   };
 
   const stats = {
-    pending: mockRegularizations.filter(r => r.status === 'PENDIENTE').length,
-    totalFaltante: mockRegularizations
-      .filter(r => r.type === 'FALTANTE' && r.status === 'APROBADO')
-      .reduce((sum, r) => sum + Math.abs(r.difference), 0),
-    totalSobrante: mockRegularizations
-      .filter(r => r.type === 'SOBRANTE' && r.status === 'APROBADO')
-      .reduce((sum, r) => sum + r.difference, 0),
+    pending: regularizaciones.filter(r => r.estado === 'PENDIENTE').length,
+    totalFaltante: regularizaciones
+      .filter(r => Number(r.diferencia) < 0 && r.estado === 'APROBADO')
+      .reduce((sum, r) => sum + Math.abs(Number(r.diferencia)), 0),
+    totalSobrante: regularizaciones
+      .filter(r => Number(r.diferencia) > 0 && r.estado === 'APROBADO')
+      .reduce((sum, r) => sum + Number(r.diferencia), 0),
   };
 
   return (
@@ -188,7 +174,7 @@ const CashRegularization = () => {
               Nueva Regularización
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>Crear Regularización</DialogTitle>
               <DialogDescription>
@@ -198,57 +184,45 @@ const CashRegularization = () => {
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label>Fecha del Cierre</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !selectedDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? format(selectedDate, "PPP", { locale: es }) : "Seleccionar fecha"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <div className="border rounded-md p-4">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      if (date) setSelectedDate(date);
+                    }}
+                    disabled={(date) => date > new Date()}
+                    className="rounded-md"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Cierre Original (S/)</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     placeholder="0.00"
                     value={formData.originalClosing}
-                    onChange={(e) => setFormData(prev => ({ ...prev, originalClosing: e.target.value }))}
+                    readOnly
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Monto Real (S/)</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     placeholder="0.00"
                     value={formData.realAmount}
                     onChange={(e) => setFormData(prev => ({ ...prev, realAmount: e.target.value }))}
                   />
                 </div>
               </div>
-              
+
               {formData.originalClosing && formData.realAmount && (
                 <div className={cn(
                   "p-4 rounded-lg",
-                  difference === 0 
-                    ? "bg-emerald-50 dark:bg-emerald-900/20" 
-                    : difference > 0 
+                  difference === 0
+                    ? "bg-emerald-50 dark:bg-emerald-900/20"
+                    : difference > 0
                       ? "bg-blue-50 dark:bg-blue-900/20"
                       : "bg-red-50 dark:bg-red-900/20"
                 )}>
@@ -256,9 +230,9 @@ const CashRegularization = () => {
                     <span className="font-medium">Diferencia:</span>
                     <span className={cn(
                       "font-bold text-lg",
-                      difference === 0 
-                        ? "text-emerald-600" 
-                        : difference > 0 
+                      difference === 0
+                        ? "text-emerald-600"
+                        : difference > 0
                           ? "text-blue-600"
                           : "text-red-600"
                     )}>
@@ -275,7 +249,7 @@ const CashRegularization = () => {
 
               <div className="space-y-2">
                 <Label>Motivo / Justificación</Label>
-                <Textarea 
+                <Textarea
                   placeholder="Describe el motivo de la diferencia..."
                   value={formData.reason}
                   onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
@@ -318,7 +292,7 @@ const CashRegularization = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Faltantes</p>
-                <p className="text-2xl font-bold text-red-600">S/ {stats.totalFaltante.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-red-600">S/ {Number(stats.totalFaltante).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -332,7 +306,7 @@ const CashRegularization = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Sobrantes</p>
-                <p className="text-2xl font-bold text-blue-600">S/ {stats.totalSobrante.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-600">S/ {Number(stats.totalSobrante).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -392,36 +366,56 @@ const CashRegularization = () => {
               {filteredRegularizations.map((reg) => (
                 <TableRow key={reg.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
-                    {format(reg.date, "dd/MM/yyyy", { locale: es })}
+                    {format(reg.fecha_regularizacion, "dd/MM/yyyy", { locale: es })}
                   </TableCell>
-                  <TableCell>S/ {reg.originalClosing.toFixed(2)}</TableCell>
-                  <TableCell>S/ {reg.realAmount.toFixed(2)}</TableCell>
+                  <TableCell>S/ {Number(reg.monto_cierre_original).toFixed(2)}</TableCell>
+                  <TableCell>S/ {Number(reg.monto_real).toFixed(2)}</TableCell>
                   <TableCell>
                     <span className={cn(
                       "font-medium flex items-center gap-1",
-                      reg.type === 'FALTANTE' ? "text-red-600" : "text-blue-600"
+                      Number(reg.diferencia) < 0 ? "text-red-600" : "text-blue-600"
                     )}>
-                      {reg.type === 'FALTANTE' ? (
+                      {Number(reg.diferencia) < 0 ? (
                         <ArrowDownCircle className="h-4 w-4" />
                       ) : (
                         <ArrowUpCircle className="h-4 w-4" />
                       )}
-                      S/ {Math.abs(reg.difference).toFixed(2)}
+                      S/ {Math.abs(Number(reg.diferencia)).toFixed(2)}
                     </span>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={reg.reason}>
-                    {reg.reason}
+                  <TableCell className="max-w-[200px] truncate" title={reg.motivo}>
+                    {reg.motivo}
                   </TableCell>
-                  <TableCell>{getStatusBadge(reg.status)}</TableCell>
+                  <TableCell>{getStatusBadge(reg.estado)}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="text-sm">{reg.createdBy}</p>
-                      {reg.approvedBy && (
+                      <p className="text-sm">{reg.cierre_caja.caja.usuario.nombre}</p>
+                      {reg.usuarioAprobador?.nombre && (
                         <p className="text-xs text-muted-foreground">
-                          Aprobado: {reg.approvedBy}
+                          Aprobado: {reg.usuarioAprobador.nombre}
                         </p>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {reg.estado === 'PENDIENTE' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdateEstadoRegularizacion(reg.id, { estado: 'APROBADO' })}
+                      >
+                        Aprobar
+                      </Button>
+                    )}
+                    {reg.estado === 'PENDIENTE' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdateEstadoRegularizacion(reg.id, { estado: 'RECHAZADO' })}
+                      >
+                        Rechazar
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

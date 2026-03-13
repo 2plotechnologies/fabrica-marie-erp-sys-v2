@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\RutaController;
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\VentaController;
 use App\Http\Controllers\Api\CajaController;
+use App\Http\Controllers\Api\RegularizacionController;
 use App\Http\Controllers\Api\ViaticoController;
 use App\Http\Controllers\Api\SalidaCajaController;
 use App\Http\Controllers\Api\AbonoController;
@@ -240,6 +241,17 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/salidas/{id}/entregar', [SalidaCajaController::class, 'entregar'])
                 ->middleware(['permiso:caja_registrar_egreso']);
     });
+
+    //Regularizaciones
+    Route::prefix('regularizaciones')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,CAJERO')
+        ->group(function () {
+            Route::get('/', [RegularizacionController::class, 'index']);
+            Route::post('/cierre_sin_cuadrar', [RegularizacionController::class, 'getCierreSinCuadrarPorFecha']);
+            Route::post('/', [RegularizacionController::class, 'store']);
+            Route::put('/{id}/estado', [RegularizacionController::class, 'updateEstado'])
+                ->middleware(['permiso:caja_registrar_egreso']);
+        });
 
     // Caja Chica
     Route::prefix('caja_chica')
