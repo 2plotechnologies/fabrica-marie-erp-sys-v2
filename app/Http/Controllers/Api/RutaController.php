@@ -10,8 +10,8 @@ class RutaController extends Controller
     public function index()
     {
         $rutas = Ruta::where('activo', true)
-            ->with('clientes') // si necesitas los datos
-            ->withCount('clientes') // 👈 agrega clientes_count
+            ->with('clientes')
+            ->withCount('clientes')
             ->get();
 
         return response()->json($rutas);
@@ -30,12 +30,40 @@ class RutaController extends Controller
         );
     }
 
+    public function detalle($id)
+    {
+        $ruta = Ruta::with('clientes')
+            ->withCount('clientes')
+            ->findOrFail($id);
+
+        return response()->json($ruta);
+    }
+
+    public function clientes($id)
+    {
+        $ruta = Ruta::with('clientes')->findOrFail($id);
+
+        return response()->json($ruta->clientes);
+    }
+
     public function update(Request $request, $id)
     {
         $ruta = Ruta::findOrFail($id);
         $ruta->update($request->all());
 
-        return response()->json($ruta);
+        return response()->json($ruta->fresh()->load('clientes'));
+    }
+
+    public function reasignarVendedor(Request $request, $id)
+    {
+        $ruta = Ruta::findOrFail($id);
+
+        // Nota: si se requiere almacenar historial de reasignaciones, hace falta agregar
+        // una tabla dedicada en base de datos mediante migración.
+        $ruta->vendedor_id = $request->input('vendedor_id');
+        $ruta->save();
+
+        return response()->json($ruta->fresh());
     }
 
     public function destroy($id)
@@ -51,14 +79,6 @@ class RutaController extends Controller
     public function asignarClientes(Request $request, $rutaId)
     {
         $ruta = Ruta::findOrFail($rutaId);
-
-        /*
-          Espera:
-          [
-            { "cliente_id": 1, "orden": 1 },
-            { "cliente_id": 2, "orden": 2 }
-          ]
-        */
 
         $syncData = [];
         foreach ($request->clientes as $item) {
