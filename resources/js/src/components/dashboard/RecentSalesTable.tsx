@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 
 interface RecentSalesTableProps {
-  sales: Sale[];
+  sales: any[];
 }
 
 export const RecentSalesTable = ({ sales }: RecentSalesTableProps) => {
@@ -21,7 +21,7 @@ export const RecentSalesTable = ({ sales }: RecentSalesTableProps) => {
         <h3 className="font-display text-lg font-semibold">Ventas Recientes</h3>
         <p className="text-sm text-muted-foreground">Últimas transacciones del día</p>
       </div>
-      
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -35,15 +35,15 @@ export const RecentSalesTable = ({ sales }: RecentSalesTableProps) => {
           </TableHeader>
           <TableBody>
             {sales.map((sale, index) => (
-              <TableRow 
+              <TableRow
                 key={sale.id}
                 className="animate-fade-in"
                 style={{ animationDelay: `${400 + index * 100}ms` }}
               >
                 <TableCell>
                   <div>
-                    <p className="font-medium">{sale.client?.businessName}</p>
-                    <p className="text-xs text-muted-foreground">{sale.client?.ownerName}</p>
+                    <p className="font-medium">{sale.cliente}</p>
+                    <p className="text-xs text-muted-foreground">{sale.estado}</p>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -53,24 +53,24 @@ export const RecentSalesTable = ({ sales }: RecentSalesTableProps) => {
                 </TableCell>
                 <TableCell>
                   <span className="font-semibold">
-                    S/ {sale.total.toFixed(2)}
+                    S/ {Number(sale.total_neto).toFixed(2)}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={sale.paymentType === 'CONTADO' ? 'default' : 'secondary'}>
-                    {sale.paymentType}
+                  <Badge variant={sale.tipo_pago === '1' ? 'default' : 'secondary'}>
+                    {sale.tipo_pago}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge 
+                  <Badge
                     variant="outline"
                     className={cn(
-                      sale.status === 'CONFIRMADA' && 'border-success text-success',
-                      sale.status === 'PENDIENTE' && 'border-warning text-warning',
-                      sale.status === 'ANULADA' && 'border-destructive text-destructive'
+                      sale.estado === 'CONFIRMADA' && 'border-success text-success',
+                      sale.estado === 'PENDIENTE' && 'border-warning text-warning',
+                      sale.estado === 'ANULADA' && 'border-destructive text-destructive'
                     )}
                   >
-                    {sale.status}
+                    {sale.estado}
                   </Badge>
                 </TableCell>
               </TableRow>

@@ -406,11 +406,11 @@ const Dashboard = () => {
       case 'GERENTE':
         return (
           <>
-            <RecentSalesTable sales={mockSales} />
+            <RecentSalesTable sales={kpis.ultimas_ventas} />
             <div className="space-y-6">
               <QuickActions />
-              <StockAlerts lowStockItems={lowStockItems} />
-              <ClientsOverview clients={mockClients} />
+              <StockAlerts lowStockItems={kpis.stock_bajo} />
+              <ClientsOverview clients={kpis.clientes_totales} />
             </div>
           </>
         );

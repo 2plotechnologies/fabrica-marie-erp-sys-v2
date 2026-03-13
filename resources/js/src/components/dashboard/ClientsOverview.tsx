@@ -3,13 +3,13 @@ import { Users, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ClientsOverviewProps {
-  clients: Client[];
+  clients: any[];
 }
 
 export const ClientsOverview = ({ clients }: ClientsOverviewProps) => {
   const activeClients = clients.filter(c => c.status === 'ACTIVO').length;
   const delinquentClients = clients.filter(c => c.status === 'MOROSO').length;
-  const totalDebt = clients.reduce((sum, c) => sum + c.currentDebt, 0);
+  const totalDebt = clients.reduce((sum, c) => sum + Number(c.deuda_actual), 0);
 
   const stats = [
     {
@@ -48,10 +48,10 @@ export const ClientsOverview = ({ clients }: ClientsOverviewProps) => {
           </div>
         </div>
       </div>
-      
+
       <div className="p-5 space-y-4">
         {stats.map((stat, index) => (
-          <div 
+          <div
             key={stat.label}
             className="flex items-center justify-between animate-fade-in"
             style={{ animationDelay: `${600 + index * 100}ms` }}
@@ -74,13 +74,13 @@ export const ClientsOverview = ({ clients }: ClientsOverviewProps) => {
             <p className="text-xs font-medium text-destructive mb-2">Clientes con deuda vencida:</p>
             <div className="space-y-1">
               {clients
-                .filter(c => c.status === 'MOROSO')
+                .filter(c => c.estado === 'MOROSO')
                 .slice(0, 3)
                 .map(client => (
                   <div key={client.id} className="flex items-center justify-between text-xs">
-                    <span className="text-foreground">{client.businessName}</span>
+                    <span className="text-foreground">{client.razon_social}</span>
                     <span className="font-medium text-destructive">
-                      S/ {client.currentDebt.toLocaleString('es-PE')}
+                      S/ {Number(client.deuda_actual).toLocaleString('es-PE')}
                     </span>
                   </div>
                 ))

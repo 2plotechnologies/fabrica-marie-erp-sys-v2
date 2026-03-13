@@ -21,6 +21,10 @@ class DashboardService
                 'stock'    => $this->getStockStats(),
                 'clientes' => $this->getClientesStats(),
                 'rutas'    => $this->getRutasStats(),
+                'ultimas_ventas' => $this->getUltimasVentas(),
+                'stock_bajo' => $this->getStockBajo(),
+                'clientes_totales' => $this->getClientesTotales(),
+                'clientes_morosos' => $this->getClientesMorosos(),
             ];
         });
     }
@@ -177,5 +181,55 @@ class DashboardService
             'clientes_visitados' => (int) $clientesVisitados,
             'eficiencia'         => round($eficiencia, 1),
         ];
+    }
+
+    //Obtener ultimas 2 ventas con venta_items y data de cada producto en un subarray
+    public function getUltimasVentas()
+    {
+        $ventas = DB::table('ventas')
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->select('ventas.*', 'clientes.razon_social as cliente')
+            ->orderBy('ventas.fecha', 'desc')
+            ->limit(2)
+            ->get();
+
+        foreach ($ventas as $venta) {
+            $venta->items = DB::table('venta_items')
+                ->join('productos', 'venta_items.producto_id', '=', 'productos.id')
+                ->select('venta_items.*', 'productos.nombre as producto')
+                ->where('venta_items.venta_id', $venta->id)
+                ->get();
+        }
+
+        return $ventas;
+    }
+
+    //Obtener stock bajo 
+    //Listar productos con stock bajo
+    public function getStockBajo()
+    {
+        return DB::table('stock_actual')
+            ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->whereColumn('stock_actual.cantidad', '<', 'productos.stock_minimo')
+            ->distinct()
+            ->get();
+    }
+
+    //Obtener clientes totales
+    public function getClientesTotales()
+    {
+        return DB::table('clientes')->get();
+    }
+
+    //Clientes morosos, estado PENDIENTE O PARCIAL, listar clientes.
+    public function getClientesMorosos()
+    {
+        return DB::table('clientes')
+            ->join('cuentas_por_cobrar', 'clientes.id', '=', 'cuentas_por_cobrar.cliente_id')
+            ->where('cuentas_por_cobrar.fecha_vencimiento', '<', Carbon::today())
+            ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
+            ->select('clientes.*', 'cuentas_por_cobrar.saldo as deuda_actual')
+            ->distinct()
+            ->get();
     }
 }

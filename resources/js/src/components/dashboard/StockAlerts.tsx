@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 interface StockAlertsProps {
-  lowStockItems: Stock[];
+  lowStockItems: any[];
 }
 
 export const StockAlerts = ({ lowStockItems }: StockAlertsProps) => {
@@ -23,7 +23,7 @@ export const StockAlerts = ({ lowStockItems }: StockAlertsProps) => {
           </div>
         </div>
       </div>
-      
+
       <div className="p-5 space-y-4">
         {lowStockItems.length === 0 ? (
           <div className="text-center py-6">
@@ -32,34 +32,34 @@ export const StockAlerts = ({ lowStockItems }: StockAlertsProps) => {
           </div>
         ) : (
           lowStockItems.map((item, index) => {
-            const percentage = (item.quantity / item.minStock) * 100;
+            const percentage = (Number(item.cantidad) / Number(item.stock_minimo)) * 100;
             const isCritical = percentage < 50;
-            
+
             return (
-              <div 
-                key={item.id} 
+              <div
+                key={item.id}
                 className="space-y-2 animate-fade-in"
                 style={{ animationDelay: `${500 + index * 100}ms` }}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-sm">{item.product?.name}</p>
-                    <p className="text-xs text-muted-foreground">SKU: {item.product?.sku}</p>
+                    <p className="font-medium text-sm">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                   </div>
                   <div className="text-right">
                     <p className={cn(
                       "font-semibold",
                       isCritical ? 'text-destructive' : 'text-warning'
                     )}>
-                      {item.quantity} unidades
+                      {item.cantidad} unidades
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Mínimo: {item.minStock}
+                      Mínimo: {item.stock_minimo}
                     </p>
                   </div>
                 </div>
-                <Progress 
-                  value={Math.min(percentage, 100)} 
+                <Progress
+                  value={Math.min(percentage, 100)}
                   className={cn(
                     "h-2",
                     isCritical ? '[&>div]:bg-destructive' : '[&>div]:bg-warning'
