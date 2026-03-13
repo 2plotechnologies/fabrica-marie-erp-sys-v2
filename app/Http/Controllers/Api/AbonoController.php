@@ -36,6 +36,7 @@ class AbonoController extends Controller
                 'tipo' => 'INGRESO',
                 'estado' => 'APROBADO',
                 'monto' => $request->monto,
+                'usuario_id' => auth()->id(),
                 'categoria' => 'ABONO',
                 'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id,
                 'referencia_tipo' => 'ABONO',

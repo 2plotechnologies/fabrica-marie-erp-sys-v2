@@ -62,7 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('inventario')
-        ->middleware('role:ADMIN,ALMACENERO,VENDEDOR,GERENTE')
+        ->middleware('role:ADMIN,ALMACENERO,VENDEDOR,GERENTE,CAJERO')
         ->group(function () {
 
         // Productos
@@ -149,7 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('clientes')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,FIDELIZACION')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO,FIDELIZACION')
         ->group(function () {
         Route::get('/', [ClienteController::class, 'index']);
         Route::get('/crm', [ClienteController::class, 'listaCRM']);
@@ -165,7 +165,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('rutas')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,FIDELIZACION,MANTENIMIENTO')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO,FIDELIZACION,MANTENIMIENTO')
         ->group(function () {
         Route::get('/', [RutaController::class, 'index']);
         Route::post('/', [RutaController::class, 'store']);
@@ -320,8 +320,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Dashboard
     Route::prefix('dashboard')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR')
         ->group(function () {
-            Route::get('/ags', [DashBoardController::class, 'indexAGS']);
+            Route::get('/ags', [DashBoardController::class, 'indexAGS'])
+                ->middleware('role:ADMIN,GERENTE,SUPERVISOR');
+            Route::get('/vendedor', [DashBoardController::class, 'indexVendedor'])
+                ->middleware('role:ADMIN,VENDEDOR');
+            Route::get('/almacenero', [DashBoardController::class, 'indexAlmacenero'])
+                ->middleware('role:ADMIN,ALMACENERO');
+            Route::get('/cajero', [DashBoardController::class, 'indexCajero'])
+                ->middleware('role:ADMIN,CAJERO');
+            Route::get('/mantenimiento', [DashBoardController::class, 'indexMantenimiento'])
+                ->middleware('role:ADMIN,MANTENIMIENTO');
         });
 });

@@ -29,6 +29,73 @@ class DashboardService
         });
     }
 
+    public function getDashboardKPIsVendedor()
+    {
+        return Cache::remember('dashboard_kpis_vendedor', 60, function () {
+
+            return [
+                'ventas_hoy' => $this->getVentasPorVendedor(),
+                'cobros_hoy' => $this->getCobrosPorVendedor(),
+                'rutas_hoy' => $this->getRutasPorVendedor(),
+                'clientes_visitados' => $this->getClientesVisitadosPorVendedor(),
+                'total_clientes' => $this->getClientesStats(),
+                'tareas_hoy' => $this->getTareasPorVendedor(),
+            ];
+        });
+    }
+
+    public function getDashboardKPIsAlmacenero()
+    {
+        return Cache::remember('dashboard_kpis_almacenero', 60, function () {
+
+            return [
+                'total_productos' => $this->getTotalProductos(),
+                'total_stock' => $this->getTotalStock(),
+                'total_stock_bajo' => $this->getStockBajoCantidad(),
+                'valor_inventario' => $this->getValorInventario(),
+                'total_movimientos_hoy' => $this->getTotalMovimientosHoy(),
+                'stock_bajo' => $this->getStockBajo(),
+                'ultimos_movimientos' => $this->getUltimosMovimientos(),
+            ];
+        });
+    }
+
+    public function getDashboardKPIsCajero()
+    {
+        return Cache::remember('dashboard_kpis_cajero', 60, function () {
+
+            return [
+                'total_ingresos_hoy' => $this->getTotalIngresosHoy(),
+                'total_ventas_contado_hoy' => $this->getTotalVentasContadoHoy(),
+                'total_cobros_hoy' => $this->getTotalCobrosHoy(),
+                'estado_caja' => $this->getEstadoCaja(),
+                'ventas_mas_recientes' => $this->getVentasMasRecientes(),
+                'resumen_caja' => $this->getResumenCaja(),
+            ];
+        });
+    }
+
+    public function getDashboardKPIsMantenimiento()
+    {
+        return Cache::remember('dashboard_kpis_mantenimiento', 60, function () {
+
+            return [
+                'total_vehiculos' => $this->getTotalVehiculos(),
+                'total_vehiculos_mantenimiento' => $this->getTotalVehiculosMantenimiento(),
+                'rutas_activas' => $this->getRutasActivas(),
+                'mantenimiento_mas_proximo' => $this->getMantenimientoMasProximo(),
+                'mantenimientos_mas_proximos' => $this->getMantenimientosMasProximos(),
+                'vehiculos' => $this->getVehiculos(),
+            ];
+        });
+    }
+
+    /**
+     * ==========================
+     * ADMIN, GERENTE, SUPERVISOR
+     * ==========================
+     */
+
     /**
      * ==========================
      * VENTAS
@@ -232,4 +299,287 @@ class DashboardService
             ->distinct()
             ->get();
     }
+
+    /**
+     * ==========================
+     * VENDEDOR
+     * ==========================
+     */
+
+    //Total neto de ventas por vendedor autenticado
+    public function getVentasPorVendedor(){
+
+        $vendedor_id = auth()->user()->id;
+
+        $ventas = DB::table('ventas')
+            ->where('vendedor_id', $vendedor_id)
+            ->whereDate('fecha', Carbon::today())
+            ->sum('total_neto');
+
+        return $ventas;
+    }
+
+    //Total de cobros del vendedor autenticado
+    public function getCobrosPorVendedor(){
+
+        $vendedor_id = auth()->user()->id;
+
+        $cobros = DB::table('abonos')
+            ->where('usuario_id', $vendedor_id)
+            ->sum('monto');
+
+        return $cobros;
+    }
+
+    //Total de rutas visitadas por vendedor autenticado
+    public function getRutasPorVendedor(){
+
+        $vendedor_id = auth()->user()->id;
+
+        $rutas_visitadas = DB::table('salidas')
+            ->where('vendedor_id', $vendedor_id)
+            ->where('estado', 'COMPLETADO')
+            ->distinct()
+            ->count('ruta_id');
+
+        //Calcular porcentaje de rutas visitadas
+        $totalRutas = DB::table('rutas')->count();
+        $porcentaje = ($rutas_visitadas / $totalRutas) * 100;
+
+        return $porcentaje;
+    }
+
+    //Total de clientes visitados por vendedor autenticado
+    public function getClientesVisitadosPorVendedor(){
+
+        $vendedor_id = auth()->user()->id;
+
+        $clientes = DB::table('ventas')
+            ->where('vendedor_id', $vendedor_id)
+            ->distinct()
+            ->count('cliente_id');
+
+        return $clientes;
+    }
+
+    //Obtener tareas de vendedor autenticado
+    public function getTareasPorVendedor(){
+
+        $vendedor_id = auth()->user()->id;
+
+        $tareas = DB::table('tareas')
+            ->where('usuario_id', $vendedor_id)    
+            ->where('fecha_limite', Carbon::today())
+            ->where('estado', 'PENDIENTE')
+            ->get();
+
+        return $tareas;
+    }
+
+    /**
+     * ==========================
+     * ALMACENERO
+     * ==========================
+     */
+
+    //Obtener total de productos
+    public function getTotalProductos()
+    {
+        return DB::table('productos')->count();
+    }
+
+    //Obtener total de stock
+    public function getTotalStock()
+    {
+        return DB::table('stock_actual')->sum('cantidad');
+    }
+
+    //Obtener cantidad de prodctos con stock bajo
+    public function getStockBajoCantidad()
+    {
+        return DB::table('stock_actual')
+            ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->whereColumn('stock_actual.cantidad', '<', 'productos.stock_minimo')
+            ->distinct()
+            ->count('productos.id');
+    }
+
+    //Obtener valor del inventario actual
+    public function getValorInventario()
+    {
+        return DB::table('stock_actual')
+            ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->sum(DB::raw('stock_actual.cantidad * productos.precio_base'));
+    }
+
+    //Obtener total de movimientos hoy
+    public function getTotalMovimientosHoy()
+    {
+        return DB::table('movimiento_stock')
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+    }
+
+    //Ultimos tres movimientos con productos
+    public function getUltimosMovimientos()
+    {
+        return DB::table('movimiento_stock')
+            ->join('productos', 'movimiento_stock.producto_id', '=', 'productos.id')
+            ->orderBy('movimiento_stock.created_at', 'desc')
+            ->limit(3)
+            ->get();
+    }
+
+     /**
+     * ==========================
+     * CAJERO
+     * ==========================
+     */
+
+     //Total ingresos hoy
+     public function getTotalIngresosHoy()
+     {
+         return DB::table('cajas')
+             ->whereDate('fecha', Carbon::today())
+             ->sum('total_ingresos');
+     }
+
+     //Total ventas contado
+     public function getTotalVentasContadoHoy()
+     {
+         return DB::table('ventas')
+             ->where('tipo_pago', 'CONTADO')
+             ->whereDate('fecha', Carbon::today())
+             ->sum('total_neto');
+     }
+
+     //Total cobros hoy
+     public function getTotalCobrosHoy()
+     {
+         return DB::table('abonos')
+             ->whereDate('fecha', Carbon::today())
+             ->sum('monto');
+     }
+
+     //Obtener estado de caja
+     public function getEstadoCaja()
+     {
+        $caja = DB::table('cajas')
+            ->whereDate('fecha', Carbon::today())
+            ->first();
+
+        if ($caja) {
+            return $caja->estado;
+        }
+
+        return 'Cerrada';
+     }
+
+     //Obtener venta mas reciente
+     public function getVentasMasRecientes()
+     {
+         return DB::table('ventas')
+             ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+             ->select('ventas.*', 'clientes.razon_social as cliente')
+             ->orderBy('ventas.fecha', 'desc')
+             ->limit(5)
+             ->get();
+     }
+
+     //Resumen de caja (Ingresos, egresos, saldo actual)
+     public function getResumenCaja()
+     {
+        $ingresos = DB::table('movimiento_caja')
+            ->where('tipo', 'INGRESO')
+            ->whereDate('created_at', Carbon::today())
+            ->sum('monto');
+        $egresos = DB::table('movimiento_caja')
+            ->where('tipo', 'EGRESO')
+            ->whereDate('created_at', Carbon::today())
+            ->sum('monto');
+        $caja = DB::table('cajas')
+            ->whereDate('fecha', Carbon::today())
+            ->first();
+
+        if ($caja) {
+            return [
+                'ingresos' => $ingresos,
+                'egresos' => $egresos,
+                'saldo' => $caja->saldo_inicial + $ingresos - $egresos,
+            ];
+        }
+
+        return [
+            'ingresos' => 0,
+            'egresos' => 0,
+            'saldo' => 0,
+        ];
+     }
+
+     //FIDELIZACION Y RRHH AUN NO ESTAN IMPLEMENTADOS
+
+     /**
+     * ==========================
+     * MANTENIMIENTO VEHICULAR
+     * ==========================
+     */
+
+     //Obtener total de vehiculos disponibles
+     public function getTotalVehiculos()
+     {
+         return DB::table('vehiculos')
+         ->where('estado', 'DISPONIBLE')
+         ->count();
+     }
+
+     //Obtener total de vehiculos en mantenimiento
+     public function getTotalVehiculosMantenimiento()
+     {
+         return DB::table('vehiculos')
+         ->where('estado', 'MANTENIMIENTO')
+         ->count();
+     }
+
+     //Obtener rutas activas
+     public function getRutasActivas()
+     {
+         return DB::table('rutas')
+         ->where('activo', true)
+         ->count();
+     }
+
+     //Obtener mantenimiento mas proximo
+     public function getMantenimientoMasProximo()
+     {
+        $mantenimiento = DB::table('mantenimiento_vehiculo')
+         ->join('vehiculos', 'mantenimiento_vehiculo.vehiculo_id', '=', 'vehiculos.id')
+         ->where('mantenimiento_vehiculo.estado', 'PENDIENTE')
+         ->orderBy('mantenimiento_vehiculo.fecha_programada', 'asc')
+         ->first();
+
+         if (!$mantenimiento) {
+             return 'No hay mantenimientos programados';
+         }
+
+         return $mantenimiento;
+     }
+
+     //Obtener los tres mantenimientos mas proximos
+     public function getMantenimientosMasProximos()
+     {
+         return DB::table('mantenimiento_vehiculo')
+         ->join('vehiculos', 'mantenimiento_vehiculo.vehiculo_id', '=', 'vehiculos.id')
+         ->where('mantenimiento_vehiculo.estado', 'PENDIENTE')
+         ->orderBy('mantenimiento_vehiculo.fecha_programada', 'asc')
+         ->limit(3)
+         ->get();
+     }
+
+     //Obtener todos los vehiculos y su mantenimiento mas proximo
+     public function getVehiculos()
+     {
+         return DB::table('vehiculos')
+         ->join('mantenimiento_vehiculo', 'vehiculos.id', '=', 'mantenimiento_vehiculo.vehiculo_id')
+         ->get();
+     }
 }

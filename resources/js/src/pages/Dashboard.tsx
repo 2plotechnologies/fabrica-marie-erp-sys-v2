@@ -62,8 +62,69 @@ const Dashboard = () => {
     }
   };
 
+  const getDashboardVendedor = async () => {
+    try {
+      const response = await dashboardService.getDashboardVendedor();
+      console.log(response);
+      setKpis(response.data);
+    } catch (error) {
+      console.error('Error al obtener el dashboard:', error);
+    }
+  };
+
+  const getDashboardAlmacenero = async () => {
+    try {
+      const response = await dashboardService.getDashboardAlmacenero();
+      console.log(response);
+      setKpis(response.data);
+    } catch (error) {
+      console.error('Error al obtener el dashboard:', error);
+    }
+  };
+
+  const getDashboardCajero = async () => {
+    try {
+      const response = await dashboardService.getDashboardCajero();
+      console.log(response);
+      setKpis(response.data);
+    } catch (error) {
+      console.error('Error al obtener el dashboard:', error);
+    }
+  };
+
+  const getDashboardMantenimiento = async () => {
+    try {
+      const response = await dashboardService.getDashboardMantenimiento();
+      console.log(response);
+      setKpis(response.data);
+    } catch (error) {
+      console.error('Error al obtener el dashboard:', error);
+    }
+  };
+
   useEffect(() => {
-    getDashboardAGS();
+    //Enviar peticion de acuerdo al rol con switch
+    switch (currentRole) {
+      case 'ADMIN':
+      case 'GERENTE':
+      case 'SUPERVISOR':
+        getDashboardAGS();
+        break;
+      case 'VENDEDOR':
+        getDashboardVendedor();
+        break;
+      case 'ALMACENERO':
+        getDashboardAlmacenero();
+        break;
+      case 'CAJERO':
+        getDashboardCajero();
+        break;
+      case 'MANTENIMIENTO':
+        getDashboardMantenimiento();
+        break;
+      default:
+        break;
+    }
   }, []);
 
   // Configuración de KPIs por rol
@@ -170,38 +231,34 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Mis Ventas Hoy"
-              value={`S/ ${(Number(kpis.ventas.hoy) * 0.3).toLocaleString('es-PE')}`}
+              value={`S/ ${(Number(kpis.ventas_hoy) * 0.3).toLocaleString('es-PE')}`}
               subtitle="Meta diaria: S/ 2,000"
               icon={DollarSign}
               variant="primary"
               delay={0}
             />
-            {/*
             <KPICard
               title="Clientes Visitados"
-              value={todayRoute.visited ? todayRoute.visited : 0}
-              subtitle={`de ${todayRoute.totalClients} programados`}
+              value={kpis.clientes_visitados ? kpis.clientes_visitados : 0}
+              subtitle={`de ${kpis.total_clientes.total} programados`}
               icon={Users}
               delay={50}
             />
-            */}
             <KPICard
               title="Cobros del Día"
-              value={`S/ ${(Number(kpis.cobros.hoy) * 0.25).toLocaleString('es-PE')}`}
+              value={`S/ ${(Number(kpis.cobros_hoy) * 0.25).toLocaleString('es-PE')}`}
               subtitle="En efectivo"
               icon={Wallet}
               variant="success"
               delay={100}
             />
-            {/*
             <KPICard
               title="Mi Ruta"
-              value={`${todayRoute.progress}%`}
-              subtitle={`${todayRoute.pending} pendientes`}
+              value={`${kpis.rutas_hoy}%`}
+              subtitle={`${kpis.total_clientes.total - kpis.clientes_visitados} pendientes`}
               icon={MapPin}
               delay={150}
             />
-            */}
           </div>
         );
 
@@ -211,7 +268,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Productos Totales"
-              value={kpis.stock.totalProducts}
+              value={kpis.total_productos}
               subtitle="En inventario"
               icon={Package}
               variant="primary"
@@ -219,22 +276,22 @@ const Dashboard = () => {
             />
             <KPICard
               title="Stock Bajo"
-              value={kpis.stock.lowStockCount}
+              value={kpis.total_stock_bajo}
               subtitle="Requieren reposición"
               icon={AlertTriangle}
-              variant={kpis.stock.lowStockCount > 0 ? 'danger' : 'success'}
+              variant={kpis.total_stock_bajo > 0 ? 'danger' : 'success'}
               delay={50}
             />
             <KPICard
               title="Valor Inventario"
-              value={`S/ ${(kpis.stock.totalValue / 1000).toFixed(1)}K`}
+              value={`S/ ${(Number(kpis.valor_inventario) / 1000).toFixed(1)}K`}
               subtitle="Total valorizado"
               icon={DollarSign}
               delay={100}
             />
             <KPICard
               title="Movimientos Hoy"
-              value={8}
+              value={kpis.total_movimientos_hoy}
               subtitle="Entradas y salidas"
               icon={Truck}
               delay={150}
@@ -248,7 +305,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Ingresos Hoy"
-              value={`S/ ${kpis.collections.today.toLocaleString('es-PE')}`}
+              value={`S/ ${Number(kpis.total_ingresos_hoy).toLocaleString('es-PE')}`}
               subtitle="Total recibido"
               icon={DollarSign}
               variant="success"
@@ -256,25 +313,25 @@ const Dashboard = () => {
             />
             <KPICard
               title="Ventas Contado"
-              value={`S/ ${(kpis.sales.today * 0.4).toLocaleString('es-PE')}`}
-              subtitle={`${Math.floor(kpis.sales.todayCount * 0.4)} transacciones`}
+              value={`S/ ${Number(kpis.total_ventas_contado_hoy).toLocaleString('es-PE')}`}
+              subtitle={`${Math.floor(kpis.total_ventas_contado_hoy * 0.4)} transacciones`}
               icon={ShoppingCart}
               variant="primary"
               delay={50}
             />
             <KPICard
               title="Cobros Crédito"
-              value={`S/ ${(kpis.collections.today * 0.6).toLocaleString('es-PE')}`}
+              value={`S/ ${Number(kpis.total_cobros_hoy).toLocaleString('es-PE')}`}
               subtitle="Pagos recibidos"
               icon={Wallet}
               delay={100}
             />
             <KPICard
               title="Estado Caja"
-              value="Abierta"
-              subtitle="Desde 8:00 AM"
+              value={kpis.estado_caja}
+              subtitle="Hoy"
               icon={CheckCircle}
-              variant="success"
+              variant={kpis.estado_caja === 'ABIERTA' ? 'success' : 'danger'}
               delay={150}
             />
           </div>
@@ -362,23 +419,23 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Vehículos Operativos"
-              value={6}
-              subtitle="De 8 en flota"
+              value={kpis.total_vehiculos}
+              subtitle="En flota"
               icon={Truck}
               variant="success"
               delay={0}
             />
             <KPICard
               title="En Mantenimiento"
-              value={2}
-              subtitle="Reparación activa"
+              value={kpis.total_vehiculos_mantenimiento}
+              subtitle="En reparación"
               icon={AlertTriangle}
               variant="warning"
               delay={50}
             />
             <KPICard
               title="Rutas Activas"
-              value={kpis.routes.completedToday}
+              value={kpis.rutas_activas}
               subtitle="Hoy en circulación"
               icon={MapPin}
               variant="primary"
@@ -386,8 +443,8 @@ const Dashboard = () => {
             />
             <KPICard
               title="Próx. Mantenimiento"
-              value="3 días"
-              subtitle="ABC-123 - Cambio aceite"
+              value={kpis.mantenimiento_mas_proximo?.fecha || 'N/A'}
+              subtitle={kpis.mantenimiento_mas_proximo?.vehiculo?.placa || 'N/A'}
               icon={Clock}
               delay={150}
             />
@@ -418,8 +475,10 @@ const Dashboard = () => {
       case 'SUPERVISOR':
         return (
           <>
-            <RecentSalesTable sales={mockSales} />
+
+            {kpis.ultimas_ventas.length > 0 && <RecentSalesTable sales={kpis.ultimas_ventas} />}
             <div className="space-y-6">
+              {/*
               <Card className="shadow-card animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -448,7 +507,8 @@ const Dashboard = () => {
                   ))}
                 </CardContent>
               </Card>
-              <StockAlerts lowStockItems={lowStockItems} />
+              */}
+              {kpis.stock_bajo.length > 0 && <StockAlerts lowStockItems={kpis.stock_bajo} />}
             </div>
           </>
         );
@@ -456,34 +516,37 @@ const Dashboard = () => {
       case 'VENDEDOR':
         return (
           <>
-            <Card className="shadow-card animate-fade-in lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Mis Tareas de Hoy
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {pendingTasks.map((task) => (
-                  <div key={task.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="h-2 w-2 rounded-full bg-primary" />
-                      <div>
-                        <p className="font-medium">{task.task}</p>
-                        <p className="text-xs text-muted-foreground">{task.client}</p>
-                      </div>
-                    </div>
-                    <Badge variant="outline">{task.time}</Badge>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-            <div className="space-y-6">
-              <Card className="shadow-card animate-fade-in">
+            {kpis.tareas_hoy.length > 0 && (
+              <Card className="shadow-card animate-fade-in lg:col-span-2">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-primary" />
-                    Mi Ruta: {todayRoute.name}
+                    <Clock className="h-5 w-5 text-primary" />
+                    Mis Tareas de Hoy
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {kpis.tareas_hoy.map((task) => (
+                    <div key={task.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                        <div>
+                          <p className="font-medium">{task.titulo}</p>
+                          <p className="text-xs text-muted-foreground">{task.descripcion}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline">{task.fecha_limite}</Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+            <div className="space-y-6">
+              {/*
+            <Card className="shadow-card animate-fade-in">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-primary" />
+                    Mi Ruta: {kpis.rutas_hoy.name}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -511,6 +574,7 @@ const Dashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+              */}
               <QuickActions />
             </div>
           </>
@@ -519,7 +583,7 @@ const Dashboard = () => {
       case 'ALMACENERO':
         return (
           <>
-            <StockAlerts lowStockItems={lowStockItems} />
+            <StockAlerts lowStockItems={kpis.stock_bajo} />
             <div className="space-y-6">
               <QuickActions />
               <Card className="shadow-card animate-fade-in">
@@ -530,21 +594,17 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {[
-                    { tipo: 'ENTRADA', producto: 'Galletas Premium', qty: 100, hora: '09:30' },
-                    { tipo: 'SALIDA', producto: 'Galletas Chocolate', qty: 50, hora: '10:15' },
-                    { tipo: 'SALIDA', producto: 'Galletas Integrales', qty: 30, hora: '11:00' },
-                  ].map((mov, i) => (
+                  {kpis.ultimos_movimientos.map((mov, i) => (
                     <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <Badge variant={mov.tipo === 'ENTRADA' ? 'default' : 'secondary'}>
                           {mov.tipo}
                         </Badge>
-                        <span className="font-medium">{mov.producto}</span>
+                        <span className="font-medium">{mov.nombre}</span>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold">{mov.qty} und</p>
-                        <p className="text-xs text-muted-foreground">{mov.hora}</p>
+                        <p className="font-bold">{mov.cantidad} und</p>
+                        <p className="text-xs text-muted-foreground">{mov.created_at}</p>
                       </div>
                     </div>
                   ))}
@@ -557,7 +617,9 @@ const Dashboard = () => {
       case 'CAJERO':
         return (
           <>
-            <RecentSalesTable sales={mockSales.filter(s => s.paymentType === 'CONTADO')} />
+            {kpis.ventas_mas_reciente && (
+              <RecentSalesTable sales={kpis.ventas_mas_reciente} />
+            )}
             <div className="space-y-6">
               <QuickActions />
               <Card className="shadow-card animate-fade-in">
@@ -570,15 +632,15 @@ const Dashboard = () => {
                 <CardContent className="space-y-4">
                   <div className="flex justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                     <span>Ingresos</span>
-                    <span className="font-bold text-emerald-600">S/ {kpis.collections.today.toLocaleString()}</span>
+                    <span className="font-bold text-emerald-600">S/ {Number(kpis.resumen_caja.ingresos).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                     <span>Egresos</span>
-                    <span className="font-bold text-red-600">S/ 350.00</span>
+                    <span className="font-bold text-red-600">S/ {Number(kpis.resumen_caja.egresos).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between p-3 bg-primary/10 rounded-lg border-2 border-primary/20">
                     <span className="font-medium">Saldo Actual</span>
-                    <span className="font-bold text-primary">S/ {(kpis.collections.today - 350).toLocaleString()}</span>
+                    <span className="font-bold text-primary">S/ {Number(kpis.resumen_caja.saldo).toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -697,30 +759,21 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { placa: 'ABC-123', tipo: 'Camión', estado: 'Operativo', km: 45230, proxMant: '15 días' },
-                    { placa: 'DEF-456', tipo: 'Furgón', estado: 'En Mantenimiento', km: 62100, proxMant: 'Hoy' },
-                    { placa: 'GHI-789', tipo: 'Camioneta', estado: 'Operativo', km: 28500, proxMant: '30 días' },
-                    { placa: 'JKL-012', tipo: 'Camión', estado: 'Operativo', km: 51800, proxMant: '7 días' },
-                  ].map((vehiculo) => (
-                    <div key={vehiculo.placa} className={`p-4 rounded-lg border ${vehiculo.estado === 'Operativo' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200'}`}>
+                  {kpis.vehiculos.map((vehiculo) => (
+                    <div key={vehiculo.placa} className={`p-4 rounded-lg border ${vehiculo.estado === 'DISPONIBLE' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200'}`}>
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-bold text-lg">{vehiculo.placa}</p>
-                          <p className="text-sm text-muted-foreground">{vehiculo.tipo}</p>
+                          <p className="text-sm text-muted-foreground">{vehiculo.marca}</p>
                         </div>
-                        <Badge variant={vehiculo.estado === 'Operativo' ? 'default' : 'secondary'}>
+                        <Badge variant={vehiculo.estado === 'DISPONIBLE' ? 'default' : 'secondary'}>
                           {vehiculo.estado}
                         </Badge>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                         <div>
-                          <p className="text-muted-foreground">Kilometraje</p>
-                          <p className="font-medium">{vehiculo.km.toLocaleString()} km</p>
-                        </div>
-                        <div>
                           <p className="text-muted-foreground">Próx. Mant.</p>
-                          <p className={`font-medium ${vehiculo.proxMant === 'Hoy' ? 'text-amber-600' : ''}`}>{vehiculo.proxMant}</p>
+                          <p className={`font-medium ${vehiculo.fecha_programada ? 'text-amber-600' : 'text-emerald-600'}`}>{vehiculo.fecha_programada ? vehiculo.fecha_programada : 'Sin Mant.'}</p>
                         </div>
                       </div>
                     </div>
@@ -728,35 +781,33 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            <div className="space-y-6">
-              <Card className="shadow-card animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-500" />
-                    Mantenimientos Pendientes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {[
-                    { vehiculo: 'DEF-456', tipo: 'Cambio de aceite', prioridad: 'Alta', fecha: 'Hoy' },
-                    { vehiculo: 'JKL-012', tipo: 'Revisión frenos', prioridad: 'Media', fecha: 'En 7 días' },
-                    { vehiculo: 'ABC-123', tipo: 'Cambio llantas', prioridad: 'Baja', fecha: 'En 15 días' },
-                  ].map((mant, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-2 w-2 rounded-full ${mant.prioridad === 'Alta' ? 'bg-red-500' : mant.prioridad === 'Media' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                        <div>
-                          <p className="font-medium">{mant.tipo}</p>
-                          <p className="text-xs text-muted-foreground">{mant.vehiculo}</p>
+            {kpis.mantenimientos_mas_proximos.length > 0 && (
+              <div className="space-y-6">
+                <Card className="shadow-card animate-fade-in">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      Mantenimientos Pendientes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {kpis.mantenimientos_mas_proximos.map((mant, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-2 w-2 rounded-full ${mant.tipo === 'PREVENTIVO' ? 'bg-red-500' : mant.tipo === 'CORRECTIVO' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                          <div>
+                            <p className="font-medium">{mant.tipo}</p>
+                            <p className="text-xs text-muted-foreground">{mant.placa}</p>
+                          </div>
                         </div>
+                        <Badge variant={mant.tipo === 'PREVENTIVO' ? 'destructive' : 'outline'}>
+                          {mant.fecha_programada}
+                        </Badge>
                       </div>
-                      <Badge variant={mant.prioridad === 'Alta' ? 'destructive' : 'outline'}>
-                        {mant.fecha}
-                      </Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
+                    ))}
+                  </CardContent>
+                </Card>
+                {/*
               <Card className="shadow-card animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -782,7 +833,9 @@ const Dashboard = () => {
                   ))}
                 </CardContent>
               </Card>
-            </div>
+              */}
+              </div>
+            )}
           </>
         );
 

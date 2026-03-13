@@ -30,4 +30,48 @@ class DashBoardController extends Controller
             'data' => $data
         ]);
     }
+
+    //Vendedor
+    public function indexVendedor(): JsonResponse
+    {
+        $data = $this->dashboardService->getDashboardKPIsVendedor();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    //Almacenero
+    public function indexAlmacenero(): JsonResponse
+    {
+        $data = $this->dashboardService->getDashboardKPIsAlmacenero();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    //Cajero
+    public function indexCajero(): JsonResponse
+    {
+        $data = $this->dashboardService->getDashboardKPIsCajero();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    //Mantenimiento
+    public function indexMantenimiento(): JsonResponse
+    {
+        $data = $this->dashboardService->getDashboardKPIsMantenimiento();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
 }

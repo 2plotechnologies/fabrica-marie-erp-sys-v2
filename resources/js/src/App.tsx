@@ -46,6 +46,7 @@ import ReportsMain from "@/pages/reports/ReportsMain";
 import SalesGrowthByZone from "@/pages/reports/SalesGrowthByZone";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import NotFound from "@/pages/NotFound";
+import ErrorBoundary from "@/components/error/ErrorBoundary";
 import { JSX } from "react";
 
 const queryClient = new QueryClient();
@@ -129,7 +130,11 @@ const AppRoutes = () => {
         </ProtectedRoute>
       }>
         {/* Dashboard */}
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={
+          <ErrorBoundary key={location.pathname}>
+            <Dashboard />
+          </ErrorBoundary>
+        } />
 
         {/* Almacén */}
         <Route path="/almacen" element={<StockList />} />
