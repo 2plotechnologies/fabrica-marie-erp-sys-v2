@@ -37,6 +37,9 @@ const ExpenseValidation = () => {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
       toast.error("Error al obtener egresos: " + error.response?.data.message || error?.message || "Error desconocido.");
+      if (error.response?.status === 403) {
+        toast.error("Usted no tiene autorización para ver los egresos.");
+      }
     } finally {
       setIsLoading(false);
     }
