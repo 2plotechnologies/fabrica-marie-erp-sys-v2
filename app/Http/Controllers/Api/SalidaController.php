@@ -52,25 +52,25 @@ class SalidaController
             'items.*.cantidad' => 'required|integer|min:1',
         ]);
 
-        //Verificar que el vendedor no este en una salida con estado PENDIENTE O EN RUTA.
+        //Verificar que el vendedor no este en una salida con estado EN RUTA.
         $vendedorSalida = Salida::where('vendedor_id', $request->vendedor_id)
-            ->where('estado', '!=', 'COMPLETADO')
+            ->where('estado', 'EN_RUTA')
             ->first();
 
         if ($vendedorSalida) {
             return response()->json([
-                'error' => 'El vendedor ya tiene una salida pendiente o en ruta'
+                'error' => 'El vendedor ya tiene una salida en ruta'
             ], 400);
         }
 
-        //Verificar que el vehiculo no este en una salida con estado PENDIENTE O EN RUTA.
+        //Verificar que el vehiculo no este en una salida con estado EN RUTA.
         $vehiculoSalida = Salida::where('vehiculo_id', $request->vehiculo_id)
-            ->where('estado', '!=', 'COMPLETADO')
+            ->where('estado', 'EN_RUTA')
             ->first();
 
         if ($vehiculoSalida) {
             return response()->json([
-                'error' => 'El vehiculo ya tiene una salida pendiente o en ruta'
+                'error' => 'El vehiculo ya tiene una salida en ruta'
             ], 400);
         }
 
@@ -81,7 +81,7 @@ class SalidaController
 
         if ($vehiculoMantenimiento) {
             return response()->json([
-                'error' => 'El vehiculo no esta disponible'
+                'error' => 'El vehiculo no esta disponible.'
             ], 400);
         }
 
@@ -153,7 +153,26 @@ class SalidaController
         $request->validate([
             'estado' => 'required|in:PENDIENTE,EN_RUTA,COMPLETADO'
         ]);
+
         $salida = Salida::findOrFail($id);
+
+        //No permitir despacho si el vendedor o el vehiculo ya estan en ruta
+        if ($request->estado == 'EN_RUTA') {
+            $vendedorSalida = Salida::where('vendedor_id', $salida->vendedor_id)
+                ->where('estado', 'EN_RUTA')
+                ->first();
+
+            $vehiculoSalida = Salida::where('vehiculo_id', $salida->vehiculo_id)
+                ->where('estado', 'EN_RUTA')
+                ->first();
+
+            if ($vendedorSalida || $vehiculoSalida) {
+                return response()->json([
+                    'error' => 'No se puede despachar la salida, el vendedor o el vehiculo ya estan en ruta.'
+                ], 400);
+            }
+        }
+
         $salida->estado = $request->estado;
         $salida->save();
 

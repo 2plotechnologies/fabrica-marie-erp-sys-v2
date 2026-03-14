@@ -48,6 +48,7 @@ import SettingsPage from "@/pages/settings/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import ErrorBoundary from "@/components/error/ErrorBoundary";
 import { JSX } from "react";
+import ComingSoon from "./pages/ComingSoon";
 
 const queryClient = new QueryClient();
 
@@ -155,10 +156,18 @@ const AppRoutes = () => {
         <Route path="/ventas/nueva" element={<NewSale />} />
         <Route path="/ventas/historial" element={<SalesHistory />} />
         <Route path="/ventas/detalle" element={<SalesDetail />} />
-        <Route path="/ventas/cobranzas" element={<Collections />} />
-        <Route path="/ventas/resumen-diario" element={<DailySummary />} />
+        <Route path="/ventas/cobranzas" element={
+          <ErrorBoundary key={location.pathname}>
+            <Collections />
+          </ErrorBoundary>
+        } />
+        <Route path="/ventas/resumen-diario" element={
+          <ErrorBoundary key={location.pathname}>
+            <DailySummary />
+          </ErrorBoundary>
+        } />
         <Route path="/ventas/validacion-egresos" element={<ExpenseValidation />} />
-        <Route path="/ventas/reportes" element={<SalesReports />} />
+        <Route path="/ventas/reportes" element={<ComingSoon />} />
         <Route path="/ventas/caja-chica" element={<ViaticosPage />} />
 
         {/* Clientes */}
@@ -182,20 +191,20 @@ const AppRoutes = () => {
         <Route path="/rutas" element={<RoutesList />} />
 
         {/* GPS */}
-        <Route path="/gps" element={<GPSTracking />} />
-        <Route path="/gps/seguimiento" element={<GPSTracking />} />
-        <Route path="/gps/reportes" element={<GPSReports />} />
+        <Route path="/gps" element={<ComingSoon />} />
+        <Route path="/gps/seguimiento" element={<ComingSoon />} />
+        <Route path="/gps/reportes" element={<ComingSoon />} />
 
         {/* Otros módulos */}
         <Route path="/vehiculos" element={<VehiclesList />} />
         <Route path="/mantenimiento" element={<MaintenanceList />} />
         <Route path="/rrhh" element={<EmployeesList />} />
         <Route path="/rrhh/empleados" element={<EmployeesList />} />
-        <Route path="/rrhh/bonos" element={<EmployeeBonuses />} />
-        <Route path="/rrhh/asistencia" element={<EmployeeAttendance />} />
-        <Route path="/fidelizacion" element={<LoyaltyProgram />} />
-        <Route path="/reportes" element={<ReportsMain />} />
-        <Route path="/reportes/crecimiento-zonas" element={<SalesGrowthByZone />} />
+        <Route path="/rrhh/bonos" element={<ComingSoon />} />
+        <Route path="/rrhh/asistencia" element={<ComingSoon />} />
+        <Route path="/fidelizacion" element={<ComingSoon />} />
+        <Route path="/reportes" element={<ComingSoon />} />
+        <Route path="/reportes/crecimiento-zonas" element={<ComingSoon />} />
         <Route path="/configuracion" element={<SettingsPage />} />
       </Route>
 

@@ -46,6 +46,7 @@ class AbonoController extends Controller
 
             $abono = Abono::create([
                 'cuenta_id' => $cuenta->id,
+                'usuario_id' => auth()->id(),
                 'monto' => $request->monto,
                 'metodo_pago' => $request->metodo_pago,
                 'fecha' => now(),

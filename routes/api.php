@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\VehiculoController;
 use App\Http\Controllers\Api\GpsPointController;
 use App\Http\Controllers\Api\MantenimientoController;
 use App\Http\Controllers\Api\DashBoardController;
+use App\Http\Controllers\Api\ResumenDiarioController;
 
 /*
 |--------------------------------------------------------------------------
@@ -332,5 +333,16 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('role:ADMIN,CAJERO');
             Route::get('/mantenimiento', [DashBoardController::class, 'indexMantenimiento'])
                 ->middleware('role:ADMIN,MANTENIMIENTO');
+        });
+
+    // Resumen Diario
+    Route::prefix('resumen-diario')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR')
+        ->group(function () {
+            Route::get('/', [ResumenDiarioController::class, 'index']);
+            Route::get('/{vendedor_id}', [ResumenDiarioController::class, 'autoResumenDiario']);
+            Route::post('/', [ResumenDiarioController::class, 'store']);
+            Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado']);
+            Route::put('/gasto/{id}/estado', [ResumenDiarioController::class, 'aprobarGasto']);
         });
 });
