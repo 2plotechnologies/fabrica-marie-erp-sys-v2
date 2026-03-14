@@ -118,6 +118,7 @@ class SalidaController
                     'producto_id' => $item['producto_id'],
                     'vendedor_id' => $request->vendedor_id,
                     'cantidad' => $item['cantidad'],
+                    'cantidad_entregada' => $item['cantidad'],
                 ]);
 
                 StockService::registrarMovimiento([

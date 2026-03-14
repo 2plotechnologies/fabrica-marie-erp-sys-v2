@@ -43,9 +43,9 @@ const StockVendedoresPage = () => {
     sv.vendedor?.usuario?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalAsignado = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_despachada), 0);
+  const totalAsignado = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada), 0);
   const totalVendido = stockVendedores.reduce((s, sv) => s + Number(sv.vendido), 0);
-  const totalDisponible = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_despachada) - Number(sv.vendido), 0);
+  const totalDisponible = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada) - Number(sv.vendido), 0);
 
   if (isLoading) return <div className="flex items-center justify-center h-96"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 
@@ -77,10 +77,10 @@ const StockVendedoresPage = () => {
                 <TableCell className="font-medium">{sv.vendedor?.usuario?.nombre} ({sv.vendedor?.id})</TableCell>
                 <TableCell>{sv.producto?.nombre}<br /><span className="text-xs text-muted-foreground">{sv.producto?.marca} • {sv.producto?.presentacion}</span></TableCell>
                 <TableCell className="text-sm">{sv.salida.fecha}</TableCell>
-                <TableCell className="text-right font-semibold">{Number(sv.cantidad)}</TableCell>
+                <TableCell className="text-right font-semibold">{Number(sv.cantidad_entregada)}</TableCell>
                 <TableCell className="text-right text-emerald-600 font-semibold">{Number(sv.vendido)}</TableCell>
                 <TableCell className="text-right text-amber-600">{Number(sv.devuelto)}</TableCell>
-                <TableCell className="text-right"><Badge variant={Number(sv.cantidad) > 0 ? 'default' : 'secondary'}>{Number(sv.cantidad)}</Badge></TableCell>
+                <TableCell className="text-right"><Badge variant={Number(sv.cantidad_entregada) > 0 ? 'default' : 'secondary'}>{Number(sv.cantidad_entregada)}</Badge></TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay stock asignado a vendedores. Crea una Salida de Fábrica y despacha.</TableCell></TableRow>}

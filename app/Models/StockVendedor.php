@@ -14,6 +14,7 @@ class StockVendedor extends Model
         'vendedor_id',
         'salida_id',
         'cantidad',
+        'cantidad_entregada',
         'stock_reservado',
         'vendido',
         'devuelto',
