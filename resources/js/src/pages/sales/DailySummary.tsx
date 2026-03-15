@@ -82,6 +82,16 @@ const DailySummaryPage = () => {
   const [saldo_a_entregar, setSaldo_a_entregar] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+
+  const handleVehiculoChange = (vehiculoId: string) => {
+    const vehiculoSeleccionado = vehiculos.find(v => String(v.id) === vehiculoId);
+    setNewResumen(prev => ({
+      ...prev,
+      vehiculo_id: vehiculoId,
+      conductor: vehiculoSeleccionado?.chofer || prev.conductor,
+    }));
+  }
+
   const getResumenesDiarios = async () => {
     try {
       const response = await resumenDiarioService.getAll();
@@ -421,7 +431,7 @@ const DailySummaryPage = () => {
                     {/* Cargar Vehículos de la base de datos */}
                     <Select
                       value={newResumen.vehiculo_id}
-                      onValueChange={(v) => setNewResumen({ ...newResumen, vehiculo_id: v })}
+                      onValueChange={handleVehiculoChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar vehículo" />
