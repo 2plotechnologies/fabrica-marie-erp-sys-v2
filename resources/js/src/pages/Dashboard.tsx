@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
 import { dashboardService } from '@/services/dashboardService';
+import { toast } from 'sonner';
 
 const Dashboard = () => {
   const { currentRole, roleLabels } = useRole();
@@ -68,7 +69,9 @@ const Dashboard = () => {
       console.log(response);
       setKpis(response.data);
     } catch (error) {
-      console.error('Error al obtener el dashboard:', error);
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error("Error al obtener el dashboard: " + error.response?.data.message || error?.message || "Error al obtener el dashboard desconocido.");
     }
   };
 

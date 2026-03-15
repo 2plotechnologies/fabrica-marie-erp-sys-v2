@@ -24,6 +24,7 @@ import SalesReports from "@/pages/sales/SalesReports";
 import SalesDetail from "@/pages/sales/SalesDetail";
 import Collections from "@/pages/sales/Collections";
 import DailySummary from "@/pages/sales/DailySummary";
+import ExpenseList from "@/pages/sales/ExpenseList";
 import ExpenseValidation from "@/pages/sales/ExpenseValidation";
 import FactoryOutput from "@/pages/stock/FactoryOutput";
 import WarehouseReturns from "@/pages/stock/WarehouseReturns";
@@ -164,6 +165,11 @@ const AppRoutes = () => {
         <Route path="/ventas/resumen-diario" element={
           <ErrorBoundary key={location.pathname}>
             <DailySummary />
+          </ErrorBoundary>
+        } />
+        <Route path="/ventas/gastos" element={
+          <ErrorBoundary key={location.pathname}>
+            <ExpenseList />
           </ErrorBoundary>
         } />
         <Route path="/ventas/validacion-egresos" element={<ExpenseValidation />} />

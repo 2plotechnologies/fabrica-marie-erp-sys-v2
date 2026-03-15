@@ -9,6 +9,7 @@ use App\Models\Gasto;
 use App\Models\Abono;
 use App\Models\Viatico;
 use App\Models\Vendedor;
+use App\Models\Salida;
 use Carbon\Carbon;
 
 class ResumenDiarioController extends Controller
@@ -17,6 +18,15 @@ class ResumenDiarioController extends Controller
     {
         $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')->get();
         return response()->json($resumenDiario);
+    }
+
+    public function getSalidas()
+    {
+        $salidas = Salida::with('vendedor.usuario', 'vehiculo', 'ruta')
+        ->whereDate('fecha', Carbon::today())
+        ->where('estado', '!=', 'PENDIENTE')
+        ->get();
+        return response()->json($salidas);
     }
 
     public function autoResumenDiario($vendedor_id)
@@ -38,7 +48,7 @@ class ResumenDiarioController extends Controller
 
         $gastos = Gasto::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
-            ->where('estado', 'APROBADO')
+            ->where('estado','!=', 'RECHAZADO')
             ->get();
 
         $cobranzas = Abono::where('usuario_id', $vendedor->usuario_id)
@@ -176,6 +186,36 @@ class ResumenDiarioController extends Controller
         $resumenDiario->estado = $request->estado;
         $resumenDiario->save();
         return response()->json($resumenDiario);
+    }
+
+    //Listar gastos
+    public function getGastos()
+    {
+        $gastos = Gasto::with('vendedor.usuario')->orderBy('id', 'desc')->get();
+        return response()->json($gastos);
+    }
+
+    //Crear gasto
+    public function storeGasto(Request $request)
+    {
+        $request->validate([
+            'vendedor_id' => 'required',
+            'monto' => 'required',
+            'comprobante' => 'nullable',
+            'tipo' => 'required',
+            'fecha' => 'required',
+        ]);
+        $gasto = Gasto::create(
+            [
+                'vendedor_id' => $request->vendedor_id,
+                'monto' => $request->monto,
+                'comprobante' => $request->comprobante,
+                'tipo' => $request->tipo,
+                'fecha' => $request->fecha,
+                'estado' => 'PENDIENTE',
+            ]
+        );
+        return response()->json($gasto, 201);
     }
 
     //Aprobar gasto

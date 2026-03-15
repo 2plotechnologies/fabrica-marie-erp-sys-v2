@@ -13,7 +13,7 @@ export const resumenDiarioService = {
     },
 
     async getSalidas() {
-        const response = await api.get('/inventario/salidas');
+        const response = await api.get('/resumen-diario/salidas');
         return response.data;
     },
 

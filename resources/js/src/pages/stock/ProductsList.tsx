@@ -176,11 +176,11 @@ const ProductsList = () => {
               </div>
               <div className="space-y-2"><Label>Descripción</Label><Textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Describe el producto..." /></div>
               <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2"><Label>Unidad Medida</Label><Input value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Peso (Kg)</Label><Input type="number" step="0.01" value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Stock Mínimo </Label><Input type="number" value={form.stock_minimo} onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Costo (S/)</Label><Input type="number" step="0.01" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Venta (S/)</Label><Input type="number" step="0.01" value={form.precio_base} onChange={(e) => setForm({ ...form, precio_base: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Unidad Medida</Label><Input placeholder="kilos" value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Peso (Kg)</Label><Input type="number" step="0.01" placeholder="1.5" value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Stock Mínimo </Label><Input type="number" placeholder="100" value={form.stock_minimo} onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Costo (S/)</Label><Input type="number" step="0.01" placeholder="10.50" value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Venta (S/)</Label><Input type="number" step="0.01" placeholder="10.50" value={form.precio_base} onChange={(e) => setForm({ ...form, precio_base: e.target.value })} /></div>
               </div>
             </div>
             <DialogFooter>

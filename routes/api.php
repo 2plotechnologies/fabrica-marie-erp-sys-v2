@@ -290,7 +290,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Vehículos
     Route::prefix('vehiculos')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,MANTENIMIENTO')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,MANTENIMIENTO')
         ->group(function () {
         Route::get('/', [VehiculoController::class, 'index']);
         Route::post('/', [VehiculoController::class, 'store']);
@@ -340,6 +340,9 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR')
         ->group(function () {
             Route::get('/', [ResumenDiarioController::class, 'index']);
+            Route::get('/salidas', [ResumenDiarioController::class, 'getSalidas']);
+            Route::get('/gastos/all', [ResumenDiarioController::class, 'getGastos']);
+            Route::post('/gastos', [ResumenDiarioController::class, 'storeGasto']);
             Route::get('/{vendedor_id}', [ResumenDiarioController::class, 'autoResumenDiario']);
             Route::post('/', [ResumenDiarioController::class, 'store']);
             Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado']);

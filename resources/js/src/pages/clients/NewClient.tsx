@@ -153,6 +153,7 @@ const NewClient = () => {
                 <Label>Código Cliente *</Label>
                 <Input
                   value={formData.codigo_cliente}
+                  placeholder="Ej: CLI-001"
                   onChange={(e) =>
                     handleInputChange('codigo_cliente', e.target.value)
                   }
@@ -168,6 +169,7 @@ const NewClient = () => {
                 <Label>Razón Social *</Label>
                 <Input
                   value={formData.razon_social}
+                  placeholder="Ej: Tienda Maria"
                   onChange={(e) =>
                     handleInputChange('razon_social', e.target.value)
                   }
@@ -216,6 +218,7 @@ const NewClient = () => {
                 <Label>Teléfono</Label>
                 <Input
                   value={formData.telefono}
+                  placeholder="Ej: 12345678"
                   onChange={(e) =>
                     handleInputChange('telefono', e.target.value)
                   }
@@ -226,6 +229,7 @@ const NewClient = () => {
                 <Label>Dirección</Label>
                 <Input
                   value={formData.direccion}
+                  placeholder="Ej: Calle San Martin 123 - Chilca - Huancayo"
                   onChange={(e) =>
                     handleInputChange('direccion', e.target.value)
                   }

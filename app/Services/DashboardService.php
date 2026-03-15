@@ -309,12 +309,20 @@ class DashboardService
     //Total neto de ventas por vendedor autenticado
     public function getVentasPorVendedor(){
 
-        $vendedor_id = auth()->user()->id;
+        $usuario_id = auth()->user()->id;
 
-        $ventas = DB::table('ventas')
-            ->where('vendedor_id', $vendedor_id)
+        $vendedor = DB::table('vendedores')
+            ->where('usuario_id', $usuario_id)
+            ->first();
+
+        if($vendedor){
+            $ventas = DB::table('ventas')
+            ->where('vendedor_id', $vendedor->id)
             ->whereDate('fecha', Carbon::today())
             ->sum('total_neto');
+        }else{
+            $ventas = 0;
+        }
 
         return $ventas;
     }
@@ -322,11 +330,15 @@ class DashboardService
     //Total de cobros del vendedor autenticado
     public function getCobrosPorVendedor(){
 
-        $vendedor_id = auth()->user()->id;
+        $usuario_id = auth()->user()->id;
 
-        $cobros = DB::table('abonos')
-            ->where('usuario_id', $vendedor_id)
+        if($usuario_id){
+            $cobros = DB::table('abonos')
+            ->where('usuario_id', $usuario_id)
             ->sum('monto');
+        }else{
+            $cobros = 0;
+        }
 
         return $cobros;
     }
@@ -334,13 +346,21 @@ class DashboardService
     //Total de rutas visitadas por vendedor autenticado
     public function getRutasPorVendedor(){
 
-        $vendedor_id = auth()->user()->id;
+        $usuario_id = auth()->user()->id;
 
-        $rutas_visitadas = DB::table('salidas')
-            ->where('vendedor_id', $vendedor_id)
+        $vendedor = DB::table('vendedores')
+            ->where('usuario_id', $usuario_id)
+            ->first();
+
+        if($vendedor){
+            $rutas_visitadas = DB::table('salidas')
+            ->where('vendedor_id', $vendedor->id)
             ->where('estado', 'COMPLETADO')
             ->distinct()
             ->count('ruta_id');
+        }else{
+            $rutas_visitadas = 0;
+        }
 
         //Calcular porcentaje de rutas visitadas
         $totalRutas = DB::table('rutas')->count();
@@ -352,12 +372,21 @@ class DashboardService
     //Total de clientes visitados por vendedor autenticado
     public function getClientesVisitadosPorVendedor(){
 
-        $vendedor_id = auth()->user()->id;
+        $usuario_id = auth()->user()->id;
 
-        $clientes = DB::table('ventas')
-            ->where('vendedor_id', $vendedor_id)
+        $vendedor = DB::table('vendedores')
+            ->where('usuario_id', $usuario_id)
+            ->first();
+
+        if($vendedor){
+            $clientes = DB::table('ventas')
+            ->where('vendedor_id', $vendedor->id)
+            ->whereDate('fecha', Carbon::today())
             ->distinct()
             ->count('cliente_id');
+        }else{
+            $clientes = 0;
+        }
 
         return $clientes;
     }
@@ -365,10 +394,10 @@ class DashboardService
     //Obtener tareas de vendedor autenticado
     public function getTareasPorVendedor(){
 
-        $vendedor_id = auth()->user()->id;
+        $usuario_id = auth()->user()->id;
 
         $tareas = DB::table('tareas')
-            ->where('usuario_id', $vendedor_id)    
+            ->where('usuario_id', $usuario_id)    
             ->where('fecha_limite', Carbon::today())
             ->where('estado', 'PENDIENTE')
             ->get();

@@ -199,12 +199,12 @@ const DailySummaryPage = () => {
   });
 
   // KPIs (Solo aprobados)
-  const totalContado = filteredResumenes.filter(r => r.estado === 'APROBADO').reduce((acc, r) => acc + Number(r.contado), 0);
-  const totalCredito = filteredResumenes.filter(r => r.estado === 'APROBADO').reduce((acc, r) => acc + Number(r.credito), 0);
-  const totalCobranza = filteredResumenes.filter(r => r.estado === 'APROBADO').reduce((acc, r) => acc + Number(r.cobranza), 0);
-  const totalGastos = filteredResumenes.filter(r => r.estado === 'APROBADO').reduce((acc, r) => acc + Number(r.total_gastos), 0);
-  const totalEntregado = filteredResumenes.filter(r => r.estado === 'APROBADO').reduce((acc, r) => acc + Number(r.saldo_entregado), 0);
-  const totalDiferencias = filteredResumenes.filter(r => r.estado === 'APROBADO').reduce((acc, r) => acc + Number(r.diferencia), 0);
+  const totalContado = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.contado), 0);
+  const totalCredito = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.credito), 0);
+  const totalCobranza = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.cobranza), 0);
+  const totalGastos = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.total_gastos), 0);
+  const totalEntregado = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.saldo_entregado), 0);
+  const totalDiferencias = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.diferencia), 0);
   const totalIngresos = totalContado + totalCobranza;
 
   const getEstadoBadge = (estado: string) => {
@@ -213,8 +213,8 @@ const DailySummaryPage = () => {
         return <Badge variant="outline" className="bg-gray-500/10 text-gray-500 border-gray-500/30">PENDIENTE</Badge>;
       case 'ENVIADO':
         return <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">ENVIADO</Badge>;
-      case 'APROBADO':
-        return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30">APROBADO</Badge>;
+      case 'CONFIRMADO':
+        return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30">CONFIRMADO</Badge>;
       case 'RECHAZADO':
         return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">RECHAZADO</Badge>;
       default:
@@ -409,7 +409,7 @@ const DailySummaryPage = () => {
                       <SelectContent>
                         {(Array.isArray(salidas) ? salidas : []).map(s => (
                           <SelectItem key={s.id} value={String(s.id)}>
-                            {s.fecha}
+                            {s.fecha} - {s.vehiculo.placa} - {s.ruta.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -757,7 +757,7 @@ const DailySummaryPage = () => {
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="PENDIENTE">Pendiente</SelectItem>
                 <SelectItem value="ENVIADO">Enviado</SelectItem>
-                <SelectItem value="APROBADO">Aprobado</SelectItem>
+                <SelectItem value="CONFIRMADO">Confirmado</SelectItem>
                 <SelectItem value="RECHAZADO">Rechazado</SelectItem>
               </SelectContent>
             </Select>
@@ -974,13 +974,13 @@ const DailySummaryPage = () => {
                                   <div key={gasto.id} className="flex justify-between items-center pl-2 gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
                                       <span className="text-muted-foreground truncate">{gasto.comprobante}</span>
-                                      {estadoVerif === 'APROBADO' && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs shrink-0"><ShieldCheck className="h-3 w-3 mr-1" />Verificado</Badge>}
+                                      {estadoVerif === 'CONFIRMADO' && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs shrink-0"><ShieldCheck className="h-3 w-3 mr-1" />Verificado</Badge>}
                                       {estadoVerif === 'PENDIENTE' && <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs shrink-0"><ShieldAlert className="h-3 w-3 mr-1" />No Verificado</Badge>}
                                       {estadoVerif === 'RECHAZADO' && <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 text-xs shrink-0"><ShieldX className="h-3 w-3 mr-1" />No Aceptado</Badge>}
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                       <span className="font-medium">S/ {Number(gasto.monto).toLocaleString()}</span>
-                                      {selectedResumen.estado !== 'APROBADO' && estadoVerif === 'PENDIENTE' && (
+                                      {selectedResumen.estado !== 'CONFIRMADO' && estadoVerif === 'PENDIENTE' && (
                                         <div className="flex gap-1">
                                           <Button variant="ghost" size="sm" className="h-7 px-2 text-emerald-600 hover:bg-emerald-50" onClick={() => handleVerificarGasto(gasto.id, 'CONFIRMADO')}>
                                             <ShieldCheck className="h-3.5 w-3.5" />
@@ -1013,7 +1013,7 @@ const DailySummaryPage = () => {
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span className="font-medium">S/ {Number(gasto.monto).toLocaleString()}</span>
-                                  {selectedResumen.estado !== 'APROBADO' && estadoVerif === 'PENDIENTE' && (
+                                  {selectedResumen.estado !== 'CONFIRMADO' && estadoVerif === 'PENDIENTE' && (
                                     <div className="flex gap-1">
                                       <Button variant="ghost" size="sm" className="h-7 px-2 text-emerald-600 hover:bg-emerald-50" onClick={() => handleVerificarGasto(gasto.id, 'CONFIRMADO')}>
                                         <ShieldCheck className="h-3.5 w-3.5" />
@@ -1122,17 +1122,17 @@ const DailySummaryPage = () => {
                     </div>
                   </div>
 
-                  {selectedResumen.estado === 'aprobado' && (
+                  {selectedResumen.estado === 'CONFIRMADO' && (
                     <div className="mt-6 pt-4 border-t flex items-center justify-center gap-2 text-muted-foreground">
                       <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      <span>Aprobado y verificado</span>
+                      <span>Confirmado y verificado</span>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Botón de aprobar */}
-              {selectedResumen.estado !== 'aprobado' && (
+              {selectedResumen.estado !== 'CONFIRMADO' && (
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setSelectedResumen(null)}>
                     Cerrar
@@ -1150,7 +1150,7 @@ const DailySummaryPage = () => {
                       className="bg-emerald-600 hover:bg-emerald-700"
                       onClick={() => handleAprobar(selectedResumen.id)}>
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Aprobar Resumen
+                      Confirmar Resumen
                     </Button>
                   )}
                 </div>

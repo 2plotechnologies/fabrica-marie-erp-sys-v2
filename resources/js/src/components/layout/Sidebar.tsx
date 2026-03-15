@@ -138,6 +138,7 @@ const navigation: NavItemConfig[] = [
       { to: '/ventas/caja-chica', label: 'Caja Chica' },
       { to: '/ventas/validacion-egresos', label: 'Validación Egresos' },
       { to: '/ventas/resumen-diario', label: 'Resumen Diario' },
+      { to: '/ventas/gastos', label: 'Gastos' },
       { to: '/ventas/reportes', label: 'Reportes KPIs' },
     ]
   },
