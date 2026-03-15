@@ -34,6 +34,24 @@ const FactoryOutput = () => {
   const [tempItem, setTempItem] = useState({ producto_id: '', cantidad: '', ruma_id: '' });
   const [isLoading, setIsLoading] = useState(true);
 
+  const handleVehiculoChange = (vehiculoId: string) => {
+    const vehiculoSeleccionado = vehiculos.find(v => String(v.id) === vehiculoId);
+    setForm(prev => ({
+      ...prev,
+      vehiculo_id: vehiculoId,
+      conductor: vehiculoSeleccionado?.chofer || prev.conductor,
+    }));
+  };
+
+  const handleRutaChange = (rutaId: string) => {
+    const rutaSeleccionada = rutas.find(r => String(r.id) === rutaId);
+    setForm(prev => ({
+      ...prev,
+      ruta: rutaId,
+      zona: rutaSeleccionada?.zona || prev.zona,
+    }));
+  };
+
   const filtered = salidas.filter(s => {
     const matchSearch = s.vendedor?.usuario.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || s.vehiculo.placa?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchEstado = filterEstado === 'all' || s.estado === filterEstado;
@@ -203,12 +221,12 @@ const FactoryOutput = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Vendedor *</Label><Select value={form.vendedor_id} onValueChange={v => setForm({ ...form, vendedor_id: v })}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.usuario.nombre}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>Vehiculo *</Label><Select value={form.vehiculo_id} onValueChange={v => setForm({ ...form, vehiculo_id: v })}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Vehiculo *</Label><Select value={form.vehiculo_id} onValueChange={handleVehiculoChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa}</SelectItem>)}</SelectContent></Select></div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Zona</Label><Input value={form.zona} onChange={e => setForm({ ...form, zona: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={v => setForm({ ...form, ruta: v })}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={handleRutaChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
               </div>
 
               <Card>

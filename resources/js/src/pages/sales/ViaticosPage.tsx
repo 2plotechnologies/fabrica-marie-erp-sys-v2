@@ -132,6 +132,15 @@ const ViaticosPage = () => {
     setFormFecha(format(new Date(), 'yyyy-MM-dd'));
   };
 
+
+  const handleRutaChange = (rutaId: string) => {
+    const rutaSeleccionada = rutas.find(r => String(r.id) === rutaId);
+    setFormRuta(rutaId);
+    if (rutaSeleccionada?.zona) {
+      setFormZona(rutaSeleccionada.zona);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formVendedor || !formMonto || Number(formMonto) <= 0) {
       return;
@@ -299,7 +308,7 @@ const ViaticosPage = () => {
                   <Label>Ruta</Label>
                   <Select
                     value={formRuta}
-                    onValueChange={v => setFormRuta(v)}>
+                    onValueChange={handleRutaChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
