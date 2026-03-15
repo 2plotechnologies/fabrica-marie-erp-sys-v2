@@ -604,11 +604,30 @@ class DashboardService
          ->get();
      }
 
-     //Obtener todos los vehiculos y su mantenimiento mas proximo
-     public function getVehiculos()
-     {
-         return DB::table('vehiculos')
-         ->join('mantenimiento_vehiculo', 'vehiculos.id', '=', 'mantenimiento_vehiculo.vehiculo_id')
-         ->get();
-     }
+    public function getVehiculos()
+    {
+        $today = now();
+
+        $subquery = DB::table('mantenimiento_vehiculo')
+            ->select('vehiculo_id', DB::raw('MIN(fecha_programada) as proximo_mantenimiento'))
+            ->where('fecha_programada', '>=', $today)
+            ->groupBy('vehiculo_id');
+
+        return DB::table('vehiculos')
+            ->leftJoinSub($subquery, 'm', function ($join) {
+                $join->on('vehiculos.id', '=', 'm.vehiculo_id');
+            })
+            ->leftJoin('mantenimiento_vehiculo as mv', function ($join) {
+                $join->on('vehiculos.id', '=', 'mv.vehiculo_id')
+                    ->on('mv.fecha_programada', '=', 'm.proximo_mantenimiento');
+            })
+            ->select(
+                'vehiculos.*',
+                'mv.id as mantenimiento_id',
+                'mv.fecha_programada',
+                'mv.descripcion',
+                'mv.estado as estado_mantenimiento'
+            )
+            ->get();
+    }
 }

@@ -762,28 +762,57 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {kpis.vehiculos.map((vehiculo) => (
-                    <div key={vehiculo.placa} className={`p-4 rounded-lg border ${vehiculo.estado === 'DISPONIBLE' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200'}`}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-bold text-lg">{vehiculo.placa}</p>
-                          <p className="text-sm text-muted-foreground">{vehiculo.marca}</p>
+                  {kpis.vehiculos.map((vehiculo) => {
+
+                    const tieneMantenimientoPendiente =
+                      vehiculo.fecha_programada &&
+                      vehiculo.estado_mantenimiento !== 'COMPLETADO';
+
+                    return (
+                      <div
+                        key={vehiculo.id}
+                        className={`p-4 rounded-lg border ${vehiculo.estado === 'DISPONIBLE'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200'
+                            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200'
+                          }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-lg">{vehiculo.placa}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {vehiculo.marca} {vehiculo.modelo}
+                            </p>
+                          </div>
+
+                          <Badge
+                            variant={vehiculo.estado === 'DISPONIBLE' ? 'default' : 'secondary'}
+                          >
+                            {vehiculo.estado}
+                          </Badge>
                         </div>
-                        <Badge variant={vehiculo.estado === 'DISPONIBLE' ? 'default' : 'secondary'}>
-                          {vehiculo.estado}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Próx. Mant.</p>
-                          <p className={`font-medium ${vehiculo.fecha_programada ? 'text-amber-600' : 'text-emerald-600'}`}>{vehiculo.fecha_programada ? vehiculo.fecha_programada : 'Sin Mant.'}</p>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Próx. Mant.</p>
+
+                            {tieneMantenimientoPendiente ? (
+                              <p className="font-medium text-amber-600">
+                                {vehiculo.fecha_programada}
+                              </p>
+                            ) : (
+                              <p className="font-medium text-emerald-600">
+                                Sin Mant.
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
+
             {kpis.mantenimientos_mas_proximos.length > 0 && (
               <div className="space-y-6">
                 <Card className="shadow-card animate-fade-in">
@@ -793,50 +822,68 @@ const Dashboard = () => {
                       Mantenimientos Pendientes
                     </CardTitle>
                   </CardHeader>
+
                   <CardContent className="space-y-3">
                     {kpis.mantenimientos_mas_proximos.map((mant, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`h-2 w-2 rounded-full ${mant.tipo === 'PREVENTIVO' ? 'bg-red-500' : mant.tipo === 'CORRECTIVO' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                          <div
+                            className={`h-2 w-2 rounded-full ${mant.tipo === 'PREVENTIVO'
+                                ? 'bg-red-500'
+                                : mant.tipo === 'CORRECTIVO'
+                                  ? 'bg-amber-500'
+                                  : 'bg-emerald-500'
+                              }`}
+                          />
+
                           <div>
                             <p className="font-medium">{mant.tipo}</p>
-                            <p className="text-xs text-muted-foreground">{mant.placa}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {mant.placa}
+                            </p>
                           </div>
                         </div>
-                        <Badge variant={mant.tipo === 'PREVENTIVO' ? 'destructive' : 'outline'}>
+
+                        <Badge
+                          variant={mant.tipo === 'PREVENTIVO' ? 'destructive' : 'outline'}
+                        >
                           {mant.fecha_programada}
                         </Badge>
                       </div>
                     ))}
                   </CardContent>
                 </Card>
+
                 {/*
-              <Card className="shadow-card animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-primary" />
-                    Rutas Activas Hoy
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {[
-                    { ruta: 'Ruta Norte', vehiculo: 'ABC-123', conductor: 'Juan Pérez', estado: 'En curso' },
-                    { ruta: 'Ruta Sur', vehiculo: 'GHI-789', conductor: 'Carlos Ruiz', estado: 'En curso' },
-                    { ruta: 'Ruta Centro', vehiculo: 'JKL-012', conductor: 'Pedro Sánchez', estado: 'Completada' },
-                  ].map((ruta, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">{ruta.ruta}</p>
-                        <p className="text-xs text-muted-foreground">{ruta.vehiculo} - {ruta.conductor}</p>
+                <Card className="shadow-card animate-fade-in">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-primary" />
+                      Rutas Activas Hoy
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {[
+                      { ruta: 'Ruta Norte', vehiculo: 'ABC-123', conductor: 'Juan Pérez', estado: 'En curso' },
+                      { ruta: 'Ruta Sur', vehiculo: 'GHI-789', conductor: 'Carlos Ruiz', estado: 'En curso' },
+                      { ruta: 'Ruta Centro', vehiculo: 'JKL-012', conductor: 'Pedro Sánchez', estado: 'Completada' },
+                    ].map((ruta, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{ruta.ruta}</p>
+                          <p className="text-xs text-muted-foreground">{ruta.vehiculo} - {ruta.conductor}</p>
+                        </div>
+                        <Badge variant={ruta.estado === 'Completada' ? 'default' : 'secondary'}>
+                          {ruta.estado}
+                        </Badge>
                       </div>
-                      <Badge variant={ruta.estado === 'Completada' ? 'default' : 'secondary'}>
-                        {ruta.estado}
-                      </Badge>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-              */}
+                    ))}
+                  </CardContent>
+                </Card>
+                */}
               </div>
             )}
           </>
