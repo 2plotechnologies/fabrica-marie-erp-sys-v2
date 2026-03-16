@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\GpsPointController;
 use App\Http\Controllers\Api\MantenimientoController;
 use App\Http\Controllers\Api\DashBoardController;
 use App\Http\Controllers\Api\ResumenDiarioController;
+use App\Http\Controllers\Api\ReporteDetalleVentaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -210,6 +211,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [VentaController::class, 'show']);
         // Confirmar
         Route::post('/{id}/confirmar', [VentaController::class, 'confirmar']);
+        //Reporte Detalle
+        Route::get('/reportes/detalle-ventas', [ReporteDetalleVentaController::class, 'detalleVentas']);
     });
 
     // Caja

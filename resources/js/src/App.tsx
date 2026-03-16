@@ -156,7 +156,11 @@ const AppRoutes = () => {
         <Route path="/ventas" element={<SalesHistory />} />
         <Route path="/ventas/nueva" element={<NewSale />} />
         <Route path="/ventas/historial" element={<SalesHistory />} />
-        <Route path="/ventas/detalle" element={<SalesDetail />} />
+        <Route path="/ventas/detalle" element={
+          <ErrorBoundary key={location.pathname}>
+            <SalesDetail />
+          </ErrorBoundary>
+        } />
         <Route path="/ventas/cobranzas" element={
           <ErrorBoundary key={location.pathname}>
             <Collections />

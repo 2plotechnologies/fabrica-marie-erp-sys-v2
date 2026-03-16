@@ -23,7 +23,7 @@ class UsuarioController extends Controller
 
     public function getVendedores(){
         return response()->json(
-            Vendedor::with(['usuario'])
+            Vendedor::with(['usuario', 'vehiculos'])
                 ->where('activo', true)
                 ->get()
         );
