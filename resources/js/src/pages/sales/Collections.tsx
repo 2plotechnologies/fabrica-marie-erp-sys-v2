@@ -124,6 +124,15 @@ const CollectionsPage = () => {
     return matchesSearch && matchesVendedor;
   });
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredCuentas.length / itemsPerPage);
+
+  const paginatedCuentas = filteredCuentas.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const totalDeuda = filteredCuentas.reduce((acc, c) => acc + Number(c.saldo), 0);
   const totalCobrado = filteredCuentas.reduce((acc, c) => acc + Number(c.monto_pagado), 0);
   const cuentasActivas = filteredCuentas.filter(c => c.estado !== 'PAGADO').length;
@@ -230,7 +239,7 @@ const CollectionsPage = () => {
                   {filteredCuentas.length === 0 ? (
                     <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay cobranzas registradas</TableCell></TableRow>
                   ) : (
-                    filteredCuentas.map((cuenta) => (
+                    paginatedCuentas.map((cuenta) => (
                       <TableRow key={cuenta.id} className="hover:bg-muted/50">
                         <TableCell>
                           <p className="font-medium">{cuenta.cliente?.razon_social}</p>
@@ -285,6 +294,27 @@ const CollectionsPage = () => {
                   )}
                 </TableBody>
               </Table>
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    Anterior
+                  </Button>
+
+                  <span className="px-3 py-2 text-sm">
+                    Página {page} de {totalPages}
+                  </span>
+
+                  <Button
+                    disabled={page === totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -31,73 +31,73 @@ const StockList = () => {
   const [discardMotivo, setDiscardMotivo] = useState('');
 
   const fetchStock = async () => {
-        try {
-          setIsLoading(true);
-          const data = await stockService.getAll();
-          console.log('Stock:', data);
-          setStock(data);
-        } catch (err: any) {
-          setError(err?.message || 'Error al obtener productos');
-        } finally {
-          setIsLoading(false);
-        }
-      };
+    try {
+      setIsLoading(true);
+      const data = await stockService.getAll();
+      console.log('Stock:', data);
+      setStock(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener productos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      const fetchRumas = async () => {
-        try {
-            const data = await stockService.getRumas();
-            setRumas(data);
-        } catch (error) {
-            console.log(error);
-        }
-      };
+  const fetchRumas = async () => {
+    try {
+      const data = await stockService.getRumas();
+      setRumas(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-      useEffect(() => {
-        fetchStock();
-        fetchRumas();
-      }, []);
+  useEffect(() => {
+    fetchStock();
+    fetchRumas();
+  }, []);
 
   const [form, setForm] = useState({
+    tipo: '',
+    cantidad: 0,
+    ruma_id: '',
+    producto_id: '',
+    motivo: '',
+  });
+
+
+  const createMovimiento = async () => {
+    try {
+      await movimientoService.create({
+        tipo: discardType,
+        cantidad: Number(discardQty),
+        ruma_id: discardRuma === "none" ? null : discardRuma,
+        producto_id: discardDialog.productoId,
+        motivo: discardMotivo
+      });
+
+      await fetchStock();
+
+      setDiscardDialog(null)
+
+      setForm({
         tipo: '',
         cantidad: 0,
         ruma_id: '',
         producto_id: '',
         motivo: '',
-    });
+      });
 
-
-  const createMovimiento = async () => {
-        try {
-            await movimientoService.create({
-                tipo: discardType,
-                cantidad: Number(discardQty),
-                ruma_id: discardRuma === "none" ? null : discardRuma,
-                producto_id: discardDialog.productoId,
-                motivo: discardMotivo
-            });
-
-            await fetchStock();
-
-            setDiscardDialog(null)
-
-            setForm({
-                tipo: '',
-                cantidad: 0,
-                ruma_id: '',
-                producto_id: '',
-                motivo: '',
-            });
-
-        } catch (err: any) {
-            console.log("ERROR COMPLETO:", err);
-            console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
-            toast({
-                title: "Error",
-                description: err?.message || "No se pudo registrar el movimiento.",
-                variant: "destructive",
-            });
-        }
-      }
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo registrar el movimiento.",
+        variant: "destructive",
+      });
+    }
+  }
 
 
   const filteredStock = stock.filter(item => {
@@ -107,6 +107,15 @@ const StockList = () => {
     const matchesLowStock = !showLowStock || item.cantidad < item.producto.stock_minimo;
     return matchesSearch && matchesLowStock;
   });
+
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredStock.length / itemsPerPage);
+
+  const paginatedStock = filteredStock.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   const totalValue = stock.reduce((sum, item) =>
     sum + (Number(item.cantidad) * Number(item.producto?.precio_base || 0)), 0
@@ -168,7 +177,7 @@ const StockList = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredStock.map((item) => {
+            {paginatedStock.map((item) => {
               const status = getStockStatus(Number(item.cantidad), Number(item.stock_minimo), Number(item.ruma.capacidad_unidades));
               const percentage = item.ruma.capacidad_unidades > 0 ? (Number(item.cantidad) / Number(item.ruma.capacidad_unidades)) * 100 : 50;
               return (
@@ -205,6 +214,27 @@ const StockList = () => {
             {filteredStock.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay stock registrado. Registra movimientos para ver stock aquí.</TableCell></TableRow>}
           </TableBody>
         </Table>
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Anterior
+            </Button>
+
+            <span className="px-3 py-2 text-sm">
+              Página {page} de {totalPages}
+            </span>
+
+            <Button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Discard Dialog */}

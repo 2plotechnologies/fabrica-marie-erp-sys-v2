@@ -61,31 +61,31 @@ const MaintenanceList = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchMantenimientos = async () => {
-      try {
-          setIsLoading(true);
-          const data = await mantenimientoService.getAll();
-          console.log('Mantenimientos:', data);
-          setMantenimientos(data);
-      } catch (err: any) {
-          setError(err?.message || 'Error al obtener mantenimientos.');
-      } finally {
-          setIsLoading(false);
-      }
+    try {
+      setIsLoading(true);
+      const data = await mantenimientoService.getAll();
+      console.log('Mantenimientos:', data);
+      setMantenimientos(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener mantenimientos.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchVehiculos = async () => {
     try {
-        const data = await vehiculoService.getAll();
-        console.log('Vehiculos:', data);
-        setVehiculos(data);
+      const data = await vehiculoService.getAll();
+      console.log('Vehiculos:', data);
+      setVehiculos(data);
     } catch (err: any) {
-        setError(err?.message || 'Error al obtener vehiculos.');
+      setError(err?.message || 'Error al obtener vehiculos.');
     }
   };
 
   useEffect(() => {
-      fetchMantenimientos();
-      fetchVehiculos();
+    fetchMantenimientos();
+    fetchVehiculos();
   }, []);
 
   const [form, setForm] = useState({
@@ -106,6 +106,15 @@ const MaintenanceList = () => {
     const matchesStatus = statusFilter === 'all' || record.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+
+  const paginatedRecords = filteredRecords.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   const handleUpdateStatus = async (id: number, estado: string) => {
     try {
@@ -173,44 +182,44 @@ const MaintenanceList = () => {
   const handleAddMaintenance = async () => {
     if (!form.tipo || !form.fecha_programada) return;
 
-    try{
-        await mantenimientoService.create({
-            tipo: form.tipo,
-            descripcion: form.descripcion,
-            fecha_programada: form.fecha_programada,
-            costo_estimado: form.costo_estimado,
-            taller: form.taller,
-            vehiculo_id: Number(form.vehiculo_id),
-            estado: form.estado,
-        });
+    try {
+      await mantenimientoService.create({
+        tipo: form.tipo,
+        descripcion: form.descripcion,
+        fecha_programada: form.fecha_programada,
+        costo_estimado: form.costo_estimado,
+        taller: form.taller,
+        vehiculo_id: Number(form.vehiculo_id),
+        estado: form.estado,
+      });
 
-        await fetchMantenimientos();
+      await fetchMantenimientos();
 
-        setForm({
-            tipo: '',
-            descripcion: '',
-            fecha_programada: '',
-            costo_estimado: '',
-            taller: '',
-            vehiculo_id: '',
-            estado: 'PENDIENTE',
-        });
+      setForm({
+        tipo: '',
+        descripcion: '',
+        fecha_programada: '',
+        costo_estimado: '',
+        taller: '',
+        vehiculo_id: '',
+        estado: 'PENDIENTE',
+      });
 
-        toast({
-            title: "Mantenimiento programado",
-            description: "El mantenimiento ha sido registrado correctamente",
-        });
-        setIsAddDialogOpen(false);
+      toast({
+        title: "Mantenimiento programado",
+        description: "El mantenimiento ha sido registrado correctamente",
+      });
+      setIsAddDialogOpen(false);
 
-    }catch(err: any){
-        setIsAddDialogOpen(false);
-        console.log("ERROR COMPLETO:", err);
-        console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
-        toast({
-            title: "Error",
-            description: err?.message || "No se pudo programar el mantenimiento.",
-            variant: "destructive",
-        });
+    } catch (err: any) {
+      setIsAddDialogOpen(false);
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo programar el mantenimiento.",
+        variant: "destructive",
+      });
     }
 
   };
@@ -253,18 +262,18 @@ const MaintenanceList = () => {
                 <div className="space-y-2">
                   <Label>Vehículo</Label>
                   <Select value={form.vehiculo_id}
-                          onValueChange={v => setForm({ ...form, vehiculo_id: v })}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa}</SelectItem>)}
-                        </SelectContent>
+                    onValueChange={v => setForm({ ...form, vehiculo_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Tipo</Label>
                   <Select value={form.tipo}
-                          onValueChange={v => setForm({ ...form, tipo: v })}>
+                    onValueChange={v => setForm({ ...form, tipo: v })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
@@ -278,23 +287,23 @@ const MaintenanceList = () => {
               <div className="space-y-2">
                 <Label>Descripción</Label>
                 <Textarea value={form.descripcion}
-                placeholder="Detalle del trabajo a realizar..." onChange={e => setForm({ ...form, descripcion: e.target.value })}/>
+                  placeholder="Detalle del trabajo a realizar..." onChange={e => setForm({ ...form, descripcion: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Fecha Programada</Label>
-                  <Input type="date" value={form.fecha_programada} onChange={e => setForm({ ...form, fecha_programada: e.target.value })}/>
+                  <Input type="date" value={form.fecha_programada} onChange={e => setForm({ ...form, fecha_programada: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Costo Estimado (S/)</Label>
                   <Input type="number" placeholder="0.00"
-                  value={form.costo_estimado} onChange={e => setForm({ ...form, costo_estimado: e.target.value })}/>
+                    value={form.costo_estimado} onChange={e => setForm({ ...form, costo_estimado: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Taller / Técnico</Label>
                 <Input placeholder="Nombre del taller o técnico"
-                value={form.taller} onChange={e => setForm({ ...form, taller: e.target.value })}/>
+                  value={form.taller} onChange={e => setForm({ ...form, taller: e.target.value })} />
               </div>
             </div>
             <DialogFooter>
@@ -420,7 +429,7 @@ const MaintenanceList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRecords.map((record) => (
+              {paginatedRecords.map((record) => (
                 <TableRow key={record.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -488,6 +497,27 @@ const MaintenanceList = () => {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

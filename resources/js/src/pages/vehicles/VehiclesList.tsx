@@ -69,6 +69,15 @@ const VehiclesList = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
+
+  const paginatedVehicles = filteredVehicles.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const fetchVehiculos = async () => {
     try {
       setIsLoading(true);
@@ -464,7 +473,7 @@ const VehiclesList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredVehicles.map((vehicle) => (
+              {paginatedVehicles.map((vehicle) => (
                 <TableRow key={vehicle.id} className="hover:bg-muted/50">
                   <TableCell>
                     <code className="text-sm bg-muted px-2 py-1 rounded font-bold">
@@ -512,6 +521,27 @@ const VehiclesList = () => {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

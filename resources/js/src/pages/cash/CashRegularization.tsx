@@ -84,6 +84,15 @@ const CashRegularization = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredRegularizations.length / itemsPerPage);
+
+  const paginatedRegularizations = filteredRegularizations.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive'; label: string; icon: React.ReactNode }> = {
       PENDIENTE: { variant: 'secondary', label: 'PENDIENTE', icon: <Clock className="h-3 w-3" /> },
@@ -363,7 +372,7 @@ const CashRegularization = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRegularizations.map((reg) => (
+              {paginatedRegularizations.map((reg) => (
                 <TableRow key={reg.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
                     {format(reg.fecha_regularizacion, "dd/MM/yyyy", { locale: es })}
@@ -421,6 +430,27 @@ const CashRegularization = () => {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

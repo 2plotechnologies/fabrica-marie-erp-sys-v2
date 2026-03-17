@@ -37,7 +37,7 @@ const ExpenseList = () => {
   const { currentRole } = useRole();
   const { user } = useAuth();
   const isVendedor = currentRole === 'VENDEDOR';
-  
+
   const [gastos, setGastos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,7 +99,7 @@ const ExpenseList = () => {
         tipo: formTipo,
         fecha: formFecha,
       });
-      
+
       const gastosData = await gastoService.getGastos();
       setGastos(gastosData);
       resetForm();
@@ -109,6 +109,15 @@ const ExpenseList = () => {
       toast.error("Error al crear gasto: " + (error?.response?.data?.message || 'Error desconocido'));
     }
   };
+
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(gastos.length / itemsPerPage);
+
+  const paginatedGastos = gastos.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   return (
     <div className="space-y-6">
@@ -227,7 +236,7 @@ const ExpenseList = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              gastos.map((g) => (
+              paginatedGastos.map((g) => (
                 <TableRow key={g.id}>
                   <TableCell className="font-medium">
                     {format(new Date(g.fecha + 'T00:00:00'), 'dd/MM/yyyy')}
@@ -248,6 +257,27 @@ const ExpenseList = () => {
             )}
           </TableBody>
         </Table>
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Anterior
+            </Button>
+
+            <span className="px-3 py-2 text-sm">
+              Página {page} de {totalPages}
+            </span>
+
+            <Button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

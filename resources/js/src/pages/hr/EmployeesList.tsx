@@ -124,7 +124,73 @@ const EmployeesList = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-    const [form, setForm] = useState({
+  const [form, setForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    nombre: '',
+    rol: '',
+    sueldo_base: '',
+    horas_extra: '',
+    afp: '',
+  });
+
+  /* =========================
+      OBTENER empleados
+   ========================= */
+
+  const fetchEmployees = async () => {
+    try {
+      setIsLoading(true);
+      const data = await empleadoService.getAll();
+      console.log('Usuarios:', data);
+      setEmployees(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener productos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await empleadoService.getRoles();
+        setRoles(data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchRoles();
+  }, []);
+
+  /* =========================
+    CREAR Usuario/empleado
+========================= */
+
+  const handleCreate = async () => {
+    if (!form.username || !form.nombre) return;
+
+    try {
+      await empleadoService.create({
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        nombre: form.nombre,
+        rol: Number(form.rol),
+        sueldo_base: Number(form.sueldo_base),
+        horas_extra: Number(form.horas_extra),
+        afp: Number(form.afp),
+      });
+
+      await fetchEmployees();
+
+      setForm({
         username: '',
         email: '',
         password: '',
@@ -133,86 +199,20 @@ const EmployeesList = () => {
         sueldo_base: '',
         horas_extra: '',
         afp: '',
-    });
+      });
 
-   /* =========================
-       OBTENER empleados
-    ========================= */
+      setIsAddDialogOpen(false);
 
-    const fetchEmployees = async () => {
-      try {
-        setIsLoading(true);
-        const data = await empleadoService.getAll();
-        console.log('Usuarios:', data);
-        setEmployees(data);
-      } catch (err: any) {
-        setError(err?.message || 'Error al obtener productos');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    useEffect(() => {
-      fetchEmployees();
-    }, []);
-
-    useEffect(() => {
-        const fetchRoles = async () => {
-            try {
-                const data = await empleadoService.getRoles();
-                setRoles(data);
-            } catch (error) {
-                console.log(error);
-            }
-        };
-
-        fetchRoles();
-    }, []);
-
-      /* =========================
-        CREAR Usuario/empleado
-    ========================= */
-
-    const handleCreate = async () => {
-        if (!form.username || !form.nombre) return;
-
-        try {
-            await empleadoService.create({
-                username: form.username,
-                email: form.email,
-                password: form.password,
-                nombre: form.nombre,
-                rol: Number(form.rol),
-                sueldo_base: Number(form.sueldo_base),
-                horas_extra: Number(form.horas_extra),
-                afp: Number(form.afp),
-            });
-
-            await fetchEmployees();
-
-            setForm({
-                username: '',
-                email: '',
-                password: '',
-                nombre: '',
-                rol: '',
-                sueldo_base: '',
-                horas_extra: '',
-                afp: '',
-            });
-
-            setIsAddDialogOpen(false);
-
-        } catch (err: any) {
-            console.log("ERROR COMPLETO:", err);
-            console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
-            toast({
-                title: "Error",
-                description: err?.message || "No se pudo registrar el usuario.",
-                variant: "destructive",
-            });
-        }
-    };
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo registrar el usuario.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredEmployees = employees.filter((employee) => {
     const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
@@ -223,6 +223,15 @@ const EmployeesList = () => {
     const matchesStatus = statusFilter === 'all' || employee.status === statusFilter;
     return matchesSearch && matchesRole && matchesStatus;
   });
+
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+  const paginatedEmployees = filteredEmployees.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   const getRoleBadge = (role: UserRole) => {
     const colors: Record<UserRole, string> = {
@@ -286,27 +295,27 @@ const EmployeesList = () => {
                 <div className="space-y-2">
                   <Label>Nombres</Label>
                   <Input placeholder="Juan Quispe"
-                  value={form.nombre}
-                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>
+                    value={form.nombre}
+                    onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                    <Label>Nombre de Usuario</Label>
-                    <Input type="email" placeholder="juanquispe02"
+                  <Label>Nombre de Usuario</Label>
+                  <Input type="email" placeholder="juanquispe02"
                     value={form.username}
-                    onChange={(e) => setForm({ ...form, username: e.target.value })}/>
+                    onChange={(e) => setForm({ ...form, username: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Correo Electrónico</Label>
                 <Input type="email" placeholder="juan.quispe@fabrica.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}/>
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Password</Label>
                 <Input type="password" placeholder="******"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}/>
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -314,24 +323,24 @@ const EmployeesList = () => {
                   <Select
                     value={form.rol}
                     onValueChange={(v) =>
-                        setForm({ ...form, rol: v })
+                      setForm({ ...form, rol: v })
                     }
-                    >
+                  >
                     <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar" />
+                      <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
 
                     <SelectContent>
-                        {roles.map((role) => (
+                      {roles.map((role) => (
                         <SelectItem
-                            key={role.id}
-                            value={role.id.toString()} // 👈 convertir a string
+                          key={role.id}
+                          value={role.id.toString()} // 👈 convertir a string
                         >
-                            {role.nombre}
+                          {role.nombre}
                         </SelectItem>
-                        ))}
+                      ))}
                     </SelectContent>
-                    </Select>
+                  </Select>
                 </div>
               </div>
 
@@ -342,17 +351,17 @@ const EmployeesList = () => {
                   <div className="space-y-2">
                     <Label>Sueldo Base (S/)</Label>
                     <Input type="number" placeholder="1500" min="0"
-                    onChange={(e) => setForm({ ...form, sueldo_base: e.target.value })}/>
+                      onChange={(e) => setForm({ ...form, sueldo_base: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label>Hora Extra (S/)</Label>
                     <Input type="number" placeholder="15" min="0"
-                    onChange={(e) => setForm({ ...form, horas_extra: e.target.value })}/>
+                      onChange={(e) => setForm({ ...form, horas_extra: e.target.value })} />
                   </div>
                   <div className="space-y-2">
                     <Label>AFP (%)</Label>
                     <Input type="number" placeholder="13" min="0" max="100"
-                    onChange={(e) => setForm({ ...form, afp: e.target.value })}/>
+                      onChange={(e) => setForm({ ...form, afp: e.target.value })} />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -478,7 +487,7 @@ const EmployeesList = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEmployees.map((employee) => (
+              {paginatedEmployees.map((employee) => (
                 <TableRow key={employee.id} className="hover:bg-muted/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -508,18 +517,18 @@ const EmployeesList = () => {
                   <TableCell>{getRoleBadge(employee.roles[0]?.nombre)}</TableCell>
                   <TableCell>
                     <Badge variant={!employee.deleted ? 'default' : 'secondary'}>
-                        {!employee.deleted ? (
-                         <><UserCheck className="h-3 w-3 mr-1" /> Activo</>
-                        ) : (
-                         <><UserX className="h-3 w-3 mr-1" /> Inactivo</>
-                        )}
+                      {!employee.deleted ? (
+                        <><UserCheck className="h-3 w-3 mr-1" /> Activo</>
+                      ) : (
+                        <><UserX className="h-3 w-3 mr-1" /> Inactivo</>
+                      )}
                     </Badge>
                   </TableCell>
-                 <TableCell className="text-muted-foreground">
+                  <TableCell className="text-muted-foreground">
                     {employee.created_at && !isNaN(new Date(employee.created_at).getTime())
-                        ? format(new Date(employee.created_at.replace(" ", "T")), "dd MMM yyyy", { locale: es })
-                        : "—"}
-                </TableCell>
+                      ? format(new Date(employee.created_at.replace(" ", "T")), "dd MMM yyyy", { locale: es })
+                      : "—"}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="ghost" size="icon">
@@ -534,6 +543,27 @@ const EmployeesList = () => {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

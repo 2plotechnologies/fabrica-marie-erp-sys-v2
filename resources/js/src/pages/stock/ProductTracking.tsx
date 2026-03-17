@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Package, Truck, ShoppingCart } from 'lucide-react';
 import { stockService } from '@/services/stockService';
+import { Button } from '@/components/ui/button';
 
 const StockVendedoresPage = () => {
   const [stockVendedores, setStockVendedores] = useState<any[]>([]);
@@ -43,6 +44,15 @@ const StockVendedoresPage = () => {
     sv.vendedor?.usuario?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const paginatedRecords = filtered.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const totalAsignado = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada), 0);
   const totalVendido = stockVendedores.reduce((s, sv) => s + Number(sv.vendido), 0);
   const totalDisponible = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada) - Number(sv.vendido), 0);
@@ -72,7 +82,7 @@ const StockVendedoresPage = () => {
         <Table>
           <TableHeader><TableRow><TableHead>Vendedor</TableHead><TableHead>Producto</TableHead><TableHead>Fecha</TableHead><TableHead className="text-right">Asignado</TableHead><TableHead className="text-right">Vendido</TableHead><TableHead className="text-right">Devuelto</TableHead><TableHead className="text-right">Disponible</TableHead></TableRow></TableHeader>
           <TableBody>
-            {filtered.map(sv => (
+            {paginatedRecords.map(sv => (
               <TableRow key={sv.id}>
                 <TableCell className="font-medium">{sv.vendedor?.usuario?.nombre} ({sv.vendedor?.id})</TableCell>
                 <TableCell>{sv.producto?.nombre}<br /><span className="text-xs text-muted-foreground">{sv.producto?.marca} • {sv.producto?.presentacion}</span></TableCell>
@@ -86,6 +96,27 @@ const StockVendedoresPage = () => {
             {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay stock asignado a vendedores. Crea una Salida de Fábrica y despacha.</TableCell></TableRow>}
           </TableBody>
         </Table>
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Anterior
+            </Button>
+
+            <span className="px-3 py-2 text-sm">
+              Página {page} de {totalPages}
+            </span>
+
+            <Button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -58,6 +58,15 @@ const FactoryOutput = () => {
     return matchSearch && matchEstado;
   });
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const paginatedRecords = filtered.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const fetchSalidas = async () => {
     try {
       const data = await salidaService.getAll();
@@ -283,7 +292,7 @@ const FactoryOutput = () => {
           <Table>
             <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Vendedor</TableHead><TableHead>Conductor</TableHead><TableHead>Vehículo</TableHead><TableHead>Zona/Ruta</TableHead><TableHead>Items</TableHead><TableHead>Estado</TableHead><TableHead>Acciones</TableHead></TableRow></TableHeader>
             <TableBody>
-              {filtered.map(s => (
+              {paginatedRecords.map(s => (
                 <TableRow key={s.id}>
                   <TableCell>{format(new Date(s.fecha + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                   <TableCell className="font-medium">{s.vendedor?.usuario.nombre}</TableCell>
@@ -301,9 +310,30 @@ const FactoryOutput = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay salidas registradas</TableCell></TableRow>}
+              {paginatedRecords.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay salidas registradas</TableCell></TableRow>}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

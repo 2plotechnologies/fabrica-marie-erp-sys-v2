@@ -208,6 +208,15 @@ const DailySummaryPage = () => {
     return matchesSearch;
   });
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredResumenes.length / itemsPerPage);
+
+  const paginatedResumenes = filteredResumenes.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   // KPIs (Solo aprobados)
   const totalContado = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.contado), 0);
   const totalCredito = filteredResumenes.filter(r => r.estado === 'CONFIRMADO').reduce((acc, r) => acc + Number(r.credito), 0);
@@ -850,7 +859,7 @@ const DailySummaryPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredResumenes.map((resumen) => (
+                paginatedResumenes.map((resumen) => (
                   <TableRow key={resumen.id}>
                     <TableCell>{format(new Date(resumen.fecha), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="font-medium">{resumen.vendedor?.usuario?.nombre || '-'}</TableCell>
@@ -876,6 +885,27 @@ const DailySummaryPage = () => {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

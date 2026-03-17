@@ -123,6 +123,16 @@ const ProductsList = () => {
     (p.nombre ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (p.sku ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+  const paginatedRecords = filteredProducts.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const categories = [...new Set(productos.map(p => p.categoria))];
 
   /* =========================
@@ -236,7 +246,7 @@ const ProductsList = () => {
             </TableHeader>
 
             <TableBody>
-              {filteredProducts.map((p) => (
+              {paginatedRecords.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>{p.sku}</TableCell>
                   <TableCell>{p.nombre}</TableCell>
@@ -257,6 +267,27 @@ const ProductsList = () => {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

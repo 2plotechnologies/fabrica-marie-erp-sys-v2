@@ -127,6 +127,15 @@ const CurrentCash = () => {
     }
   };
 
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(movimientos.length / itemsPerPage);
+
+  const paginatedMovimientos = movimientos.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -390,7 +399,7 @@ const CurrentCash = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                movimientos.map((mov) => (
+                paginatedMovimientos.map((mov) => (
                   <TableRow key={mov.id}>
                     <TableCell className="text-sm">
                       {format(new Date(mov.created_at), 'dd/MM HH:mm', { locale: es })}
@@ -410,6 +419,27 @@ const CurrentCash = () => {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

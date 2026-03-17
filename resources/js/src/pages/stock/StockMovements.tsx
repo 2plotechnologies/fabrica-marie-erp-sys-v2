@@ -26,82 +26,82 @@ const StockMovements = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchMovimientos = async () => {
-        try {
-          setIsLoading(true);
-          const data = await movimientoService.getAll();
-          console.log('Movimientos:', data);
-          setMovimientos(data);
-        } catch (err: any) {
-          setError(err?.message || 'Error al obtener movimientos');
-        } finally {
-          setIsLoading(false);
-        }
-      };
+    try {
+      setIsLoading(true);
+      const data = await movimientoService.getAll();
+      console.log('Movimientos:', data);
+      setMovimientos(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener movimientos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-      const fetchProductos = async () => {
-        try {
-            const data = await movimientoService.getProductos();
-            setProductos(data);
-        } catch (error) {
-            console.log(error);
-        }
-      };
+  const fetchProductos = async () => {
+    try {
+      const data = await movimientoService.getProductos();
+      setProductos(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-      const fetchRumas = async () => {
-        try {
-            const data = await movimientoService.getRumas();
-            setRumas(data);
-        } catch (error) {
-            console.log(error);
-        }
-      };
+  const fetchRumas = async () => {
+    try {
+      const data = await movimientoService.getRumas();
+      setRumas(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-      useEffect(() => {
-        fetchMovimientos();
-        fetchProductos();
-        fetchRumas();
-      }, []);
+  useEffect(() => {
+    fetchMovimientos();
+    fetchProductos();
+    fetchRumas();
+  }, []);
 
-      const [form, setForm] = useState({
+  const [form, setForm] = useState({
+    tipo: '',
+    cantidad: 0,
+    ruma_id: '',
+    producto_id: '',
+    motivo: '',
+  });
+
+  const createMovimiento = async () => {
+    try {
+      await movimientoService.create({
+        tipo: form.tipo,
+        cantidad: Number(form.cantidad),
+        ruma_id: form.ruma_id,
+        producto_id: form.producto_id,
+        motivo: form.motivo
+      });
+
+      await fetchMovimientos();
+
+      setForm({
         tipo: '',
         cantidad: 0,
         ruma_id: '',
         producto_id: '',
         motivo: '',
-    });
+      });
 
-      const createMovimiento = async () => {
-        try {
-            await movimientoService.create({
-                tipo: form.tipo,
-                cantidad: Number(form.cantidad),
-                ruma_id: form.ruma_id,
-                producto_id: form.producto_id,
-                motivo: form.motivo
-            });
+      setIsDialogOpen(false);
 
-            await fetchMovimientos();
-
-            setForm({
-                tipo: '',
-                cantidad: 0,
-                ruma_id: '',
-                producto_id: '',
-                motivo: '',
-            });
-
-            setIsDialogOpen(false);
-
-        } catch (err: any) {
-            console.log("ERROR COMPLETO:", err);
-            console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
-            toast({
-                title: "Error",
-                description: err?.message || "No se pudo registrar el movimiento.",
-                variant: "destructive",
-            });
-        }
-      }
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo registrar el movimiento.",
+        variant: "destructive",
+      });
+    }
+  }
 
   /*
   const [formData, setFormData] = useState({
@@ -111,6 +111,15 @@ const StockMovements = () => {
 
   const filteredMovements = movimientos.filter((m) =>
     m.producto?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
+
+  const paginatedMovements = filteredMovements.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
   );
 
   const getTypeIcon = (tipo: string) => {
@@ -227,7 +236,7 @@ const StockMovements = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMovements.map((m) => (
+              {paginatedMovements.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="font-medium">{format(new Date(m.created_at), "dd MMM yyyy, HH:mm", { locale: es })}</TableCell>
                   <TableCell><div className="flex items-center gap-2">{getTypeIcon(m.tipo)}{getTypeBadge(m.tipo)}</div></TableCell>
@@ -242,6 +251,27 @@ const StockMovements = () => {
               {filteredMovements.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay movimientos registrados</TableCell></TableRow>}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

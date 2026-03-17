@@ -55,7 +55,7 @@ interface Ruma {
   ubicacion_fisica: string;
   capacidad: number;
   stockActual: number;
-  condiciones:string;
+  condiciones: string;
   estado: 'ACTIVA' | 'LLENA' | 'MANTENIMIENTO' | 'INACTIVA';
   products: RumaProduct[];
   descripcion: string;
@@ -63,7 +63,7 @@ interface Ruma {
 
 interface RumaProduct {
   id: string;
-  sku:string;
+  sku: string;
   nombre: string;
   cantidad: number;
 }
@@ -80,29 +80,29 @@ const RumaManagement = () => {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   const fetchRumas = async () => {
-        try {
-          setIsLoading(true);
-          const data = await rumaService.getAll();
-          console.log('Rumas:', data);
-          setRumas(data);
-        } catch (err: any) {
-          setError(err?.message || 'Error al obtener rumas');
-        } finally {
-          setIsLoading(false);
-        }
-      };
-    useEffect(() => {
-        fetchRumas();
-    }, []);
+    try {
+      setIsLoading(true);
+      const data = await rumaService.getAll();
+      console.log('Rumas:', data);
+      setRumas(data);
+    } catch (err: any) {
+      setError(err?.message || 'Error al obtener rumas');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchRumas();
+  }, []);
   const [form, setForm] = useState({
-        codigo: '',
-        nombre: '',
-        descripcion: '',
-        condiciones: '',
-        capacidad_unidades: '',
-        ubicacion_fisica: '',
-        estado: 'ACTIVA',
-    });
+    codigo: '',
+    nombre: '',
+    descripcion: '',
+    condiciones: '',
+    capacidad_unidades: '',
+    ubicacion_fisica: '',
+    estado: 'ACTIVA',
+  });
 
   const filteredRumas = rumas.filter((ruma) => {
     const matchesSearch =
@@ -112,6 +112,15 @@ const RumaManagement = () => {
     const matchesStatus = statusFilter === 'all' || ruma.estado === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredRumas.length / itemsPerPage);
+
+  const paginatedRecords = filteredRumas.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   const getStatusBadge = (status: Ruma['estado']) => {
     const variants: Record<Ruma['estado'], { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
@@ -144,46 +153,46 @@ const RumaManagement = () => {
   const handleCreateRuma = async () => {
     if (!form.codigo || !form.nombre) return;
 
-        try {
-            await rumaService.create({
-                codigo: form.codigo,
-                nombre: form.nombre,
-                descripcion: form.descripcion,
-                condiciones: form.condiciones,
-                capacidad_unidades: Number(form.capacidad_unidades),
-                ubicacion_fisica: form.ubicacion_fisica,
-                estado: form.estado,
-            });
+    try {
+      await rumaService.create({
+        codigo: form.codigo,
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        condiciones: form.condiciones,
+        capacidad_unidades: Number(form.capacidad_unidades),
+        ubicacion_fisica: form.ubicacion_fisica,
+        estado: form.estado,
+      });
 
-            await fetchRumas();
+      await fetchRumas();
 
-            setForm({
-                codigo: '',
-                nombre: '',
-                descripcion: '',
-                condiciones: '',
-                capacidad_unidades: '',
-                ubicacion_fisica: '',
-                estado: 'ACTIVA',
-            });
+      setForm({
+        codigo: '',
+        nombre: '',
+        descripcion: '',
+        condiciones: '',
+        capacidad_unidades: '',
+        ubicacion_fisica: '',
+        estado: 'ACTIVA',
+      });
 
-            setIsAddDialogOpen(false);
+      setIsAddDialogOpen(false);
 
-            toast({
-                title: "Ruma creada",
-                description: "La nueva ruma ha sido registrada exitosamente.",
-            });
+      toast({
+        title: "Ruma creada",
+        description: "La nueva ruma ha sido registrada exitosamente.",
+      });
 
-        } catch (err: any) {
-            setIsAddDialogOpen(false);
-            console.log("ERROR COMPLETO:", err);
-            console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
-            toast({
-                title: "Error",
-                description: err?.message || "No se pudo registrar la ruma.",
-                variant: "destructive",
-            });
-        }
+    } catch (err: any) {
+      setIsAddDialogOpen(false);
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo registrar la ruma.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -217,34 +226,34 @@ const RumaManagement = () => {
                 <div className="space-y-2">
                   <Label>Código</Label>
                   <Input placeholder="R-005"
-                  value={form.codigo}
-                  onChange={(e) => setForm({ ...form, codigo: e.target.value })}/>
+                    value={form.codigo}
+                    onChange={(e) => setForm({ ...form, codigo: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Nombre</Label>
                   <Input placeholder="Ruma E"
-                  value={form.nombre}
-                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}/>
+                    value={form.nombre}
+                    onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Ubicación</Label>
                 <Input placeholder="Almacén Central - Zona E"
-                value={form.ubicacion_fisica}
-                onChange={(e) => setForm({ ...form, ubicacion_fisica: e.target.value })}/>
+                  value={form.ubicacion_fisica}
+                  onChange={(e) => setForm({ ...form, ubicacion_fisica: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Capacidad (unidades)</Label>
                   <Input type="number" placeholder="5000" min="0"
-                  value={form.capacidad_unidades}
-                  onChange={(e) => setForm({ ...form, capacidad_unidades: e.target.value })}/>
+                    value={form.capacidad_unidades}
+                    onChange={(e) => setForm({ ...form, capacidad_unidades: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Estado</Label>
                   <Select defaultValue="ACTIVA"
-                  value={form.estado}
-                  onValueChange={(v) => setForm({...form, estado: v})}>
+                    value={form.estado}
+                    onValueChange={(v) => setForm({ ...form, estado: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -260,15 +269,15 @@ const RumaManagement = () => {
                 <div className="space-y-2">
                   <Label>Condiciones</Label>
                   <Input placeholder="18-22°C, 45-55%"
-                  value={form.condiciones}
-                  onChange={(e) => setForm({ ...form, condiciones: e.target.value })}/>
+                    value={form.condiciones}
+                    onChange={(e) => setForm({ ...form, condiciones: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Notas</Label>
                 <Textarea placeholder="Observaciones adicionales..."
-                value={form.descripcion}
-                onChange={(e) => setForm({ ...form, descripcion: e.target.value })}/>
+                  value={form.descripcion}
+                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
               </div>
             </div>
             <DialogFooter>
@@ -393,12 +402,12 @@ const RumaManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRumas.map((ruma) => {
+              {paginatedRecords.map((ruma) => {
                 const stock = Number(ruma.stockActual ?? 0);
                 const capacidad = Number(ruma.capacidad ?? 0);
 
                 const percentage =
-                capacidad === 0 ? 0 : (stock / capacidad) * 100;
+                  capacidad === 0 ? 0 : (stock / capacidad) * 100;
                 return (
                   <TableRow key={ruma.id} className="hover:bg-muted/50">
                     <TableCell className="font-mono font-medium">{ruma.codigo}</TableCell>
@@ -448,6 +457,27 @@ const RumaManagement = () => {
               })}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

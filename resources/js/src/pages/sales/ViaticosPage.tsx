@@ -90,6 +90,15 @@ const ViaticosPage = () => {
     return matchVendedor && matchTipo && matchEstado;
   });
 
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredViaticos.length / itemsPerPage);
+
+  const paginatedViaticos = filteredViaticos.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   // Stats
   const totalPendiente = viaticos.filter(v => v.estado === 'PENDIENTE').reduce((s, v) => s + Number(v.monto), 0);
   const totalAprobado = viaticos.filter(v => v.estado === 'APROBADO').reduce((s, v) => s + Number(v.monto), 0);
@@ -463,7 +472,7 @@ const ViaticosPage = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredViaticos.map((v) => {
+              paginatedViaticos.map((v) => {
                 const badge = estadoBadge[v.estado] ?? estadoBadge.pendiente;
                 return (
                   <TableRow key={v.id}>
@@ -527,6 +536,27 @@ const ViaticosPage = () => {
             )}
           </TableBody>
         </Table>
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Anterior
+            </Button>
+
+            <span className="px-3 py-2 text-sm">
+              Página {page} de {totalPages}
+            </span>
+
+            <Button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
         {/* Liquidar Dialog */}
         <Dialog open={isLiquidarDialog} onOpenChange={setIsLiquidarDialog}>
           <DialogContent>

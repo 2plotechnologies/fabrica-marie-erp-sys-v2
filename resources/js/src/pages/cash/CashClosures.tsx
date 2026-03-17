@@ -52,6 +52,15 @@ const CashClosures = () => {
     fetchCajasCerradas();
   }, []);
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(cajasCerradas.length / itemsPerPage);
+
+  const paginatedCajasCerradas = cajasCerradas.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const getStatusBadge = (status: string, difference: number) => {
     switch (status) {
       case 'CUADRADO':
@@ -209,7 +218,7 @@ const CashClosures = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cajasCerradas.map((closure) => (
+              {paginatedCajasCerradas.map((closure) => (
                 <TableRow key={closure.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
                     {format(closure.cerrado_at, "EEEE, dd MMM yyyy", { locale: es })}
@@ -310,6 +319,27 @@ const CashClosures = () => {
               ))}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

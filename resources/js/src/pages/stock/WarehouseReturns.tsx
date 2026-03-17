@@ -29,41 +29,41 @@ const WarehouseReturns = () => {
   const [detailItems, setDetailItems] = useState<any[]>([]);
 
   const fetchDevoluciones = async () => {
-          try {
-              const data = await devolucionService.getAll();
-              console.log(data);
-              setDevoluciones(data);
-              setIsLoading(true);
-          } catch (error) {
-              console.log(error);
-          }finally {
-            setIsLoading(false);
-          }
-    };
+    try {
+      const data = await devolucionService.getAll();
+      console.log(data);
+      setDevoluciones(data);
+      setIsLoading(true);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchProductos = async () => {
-            try {
-                const data = await devolucionService.getProductos();
-                setProductos(data);
-            } catch (error) {
-                console.log(error);
-            }
-      };
+    try {
+      const data = await devolucionService.getProductos();
+      setProductos(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-    const fetchVendedores = async () => {
-              try {
-                  const data = await devolucionService.getVendedores();
-                  setVendedores(data);
-              } catch (error) {
-                  console.log(error);
-              }
-    };
+  const fetchVendedores = async () => {
+    try {
+      const data = await devolucionService.getVendedores();
+      setVendedores(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-    useEffect(() => {
-            fetchDevoluciones();
-            fetchProductos();
-            fetchVendedores();
-    }, []);
+  useEffect(() => {
+    fetchDevoluciones();
+    fetchProductos();
+    fetchVendedores();
+  }, []);
 
   const [formData, setFormData] = useState({
     fecha: format(new Date(), 'yyyy-MM-dd'),
@@ -85,6 +85,15 @@ const WarehouseReturns = () => {
     return matchSearch && matchTipo && matchEstado;
   });
 
+  const itemsPerPage = 6;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredDevoluciones.length / itemsPerPage);
+
+  const paginatedDevoluciones = filteredDevoluciones.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const handleAddProduct = () => {
     if (!selectedProduct) { toast.error('Selecciona un producto'); return; }
     const product = productos.find(p => p.id === selectedProduct);
@@ -100,54 +109,54 @@ const WarehouseReturns = () => {
     if (!formData.vendedor_id) { toast.error('Selecciona un vendedor'); return; }
     if (formItems.length === 0) { toast.error('Agrega al menos un producto'); return; }
     try {
-            await devolucionService.create({
-                fecha: formData.fecha,
-                vendedor_id: Number(formData.vendedor_id),
-                tipo: formData.tipo_devolucion,
-                motivo: formData.motivo,
-                observaciones: formData.observaciones,
-                estado: "PENDIENTE",
-                items: formItems
-            });
+      await devolucionService.create({
+        fecha: formData.fecha,
+        vendedor_id: Number(formData.vendedor_id),
+        tipo: formData.tipo_devolucion,
+        motivo: formData.motivo,
+        observaciones: formData.observaciones,
+        estado: "PENDIENTE",
+        items: formItems
+      });
 
-            toast.success("Devolución creada correctamente");
+      toast.success("Devolución creada correctamente");
 
-            // refrescar lista
-            await fetchDevoluciones();
+      // refrescar lista
+      await fetchDevoluciones();
 
-            setFormData({ fecha: format(new Date(), 'yyyy-MM-dd'), vendedor_id: '', tipo_devolucion: 'BUENA', motivo: '', observaciones: '' });
-            setFormItems([]);
-            setIsDialogOpen(false);
+      setFormData({ fecha: format(new Date(), 'yyyy-MM-dd'), vendedor_id: '', tipo_devolucion: 'BUENA', motivo: '', observaciones: '' });
+      setFormItems([]);
+      setIsDialogOpen(false);
 
-            } catch (error) {
-                console.log("ERROR COMPLETO:", error);
-                console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-                toast.error( error?.message || "Error al crear Devolución");
-            }
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error(error?.message || "Error al crear Devolución");
+    }
   };
 
   const handleViewDetail = async (devolucion: typeof devoluciones[0]) => {
-        setSelectedDevolucion(devolucion);
+    setSelectedDevolucion(devolucion);
 
-        const data = await devolucionService.getById(devolucion.id);
+    const data = await devolucionService.getById(devolucion.id);
 
-        console.log("Respuesta completa:", data);
-        console.log("Items:", data.items);
+    console.log("Respuesta completa:", data);
+    console.log("Items:", data.items);
 
-        setDetailItems(data.items ?? []);
+    setDetailItems(data.items ?? []);
 
-        setIsDetailOpen(true);
+    setIsDetailOpen(true);
   };
 
   const handleUpdateEstado = async (id: string, estado: string) => {
-    try{
-        await devolucionService.updateEstado(Number(id), estado);
-        await fetchDevoluciones();
-        setIsDetailOpen(false);
-    }catch (error) {
-        console.log("ERROR COMPLETO:", error);
-        console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-        toast.error( error?.message || "Error al actualizar estado de la devolución");
+    try {
+      await devolucionService.updateEstado(Number(id), estado);
+      await fetchDevoluciones();
+      setIsDetailOpen(false);
+    } catch (error) {
+      console.log("ERROR COMPLETO:", error);
+      console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+      toast.error(error?.message || "Error al actualizar estado de la devolución");
     }
   };
 
@@ -201,7 +210,7 @@ const WarehouseReturns = () => {
           <TableBody>
             {filteredDevoluciones.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay devoluciones</TableCell></TableRow>
-            ) : filteredDevoluciones.map(d => (
+            ) : paginatedDevoluciones.map(d => (
               <TableRow key={d.id}>
                 <TableCell>{format(new Date(d.fecha), 'dd/MM/yyyy')}</TableCell>
                 <TableCell className="font-medium">{d.vendedor?.usuario.nombre || '-'}</TableCell>
@@ -213,6 +222,27 @@ const WarehouseReturns = () => {
             ))}
           </TableBody>
         </Table>
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            <Button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Anterior
+            </Button>
+
+            <span className="px-3 py-2 text-sm">
+              Página {page} de {totalPages}
+            </span>
+
+            <Button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* New Return Dialog */}
@@ -242,14 +272,14 @@ const WarehouseReturns = () => {
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {formItems.map((item, index) => {
                     const prod = productos.find(p => p.id === item.producto_id);
-                      return (
-                        <div key={index} className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg">
-                            <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{prod?.nombre}</p><p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p></div>
-                            <Input type="number" min="1" value={item.cantidad} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, cantidad: Math.max(1, parseInt(e.target.value) || 1) } : it))} className="w-20" />
-                            <Input placeholder="Motivo" value={item.motivo || ''} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, motivo: e.target.value || null } : it))} className="w-40" />
-                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setFormItems(formItems.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      );
+                    return (
+                      <div key={index} className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg">
+                        <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{prod?.nombre}</p><p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p></div>
+                        <Input type="number" min="1" value={item.cantidad} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, cantidad: Math.max(1, parseInt(e.target.value) || 1) } : it))} className="w-20" />
+                        <Input placeholder="Motivo" value={item.motivo || ''} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, motivo: e.target.value || null } : it))} className="w-40" />
+                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setFormItems(formItems.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    );
                   })}
                 </div>
               )}

@@ -116,6 +116,15 @@ const ClientsCRM = () => {
     return matchesSearch;
   });
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+
+  const paginatedClients = filteredClients.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const stats = {
     totalClients: clients.length,
     purchasedToday: clients.filter(c => c.compro_hoy).length,
@@ -315,7 +324,7 @@ const ClientsCRM = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredClients.map((client) => (
+                {paginatedClients.map((client) => (
                   <TableRow
                     key={client.id}
                     className={`cursor-pointer transition-colors ${client.compro_hoy
@@ -390,6 +399,27 @@ const ClientsCRM = () => {
                 ))}
               </TableBody>
             </Table>
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-2 mt-4">
+                <Button
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Anterior
+                </Button>
+
+                <span className="px-3 py-2 text-sm">
+                  Página {page} de {totalPages}
+                </span>
+
+                <Button
+                  disabled={page === totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

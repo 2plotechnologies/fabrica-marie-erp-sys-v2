@@ -129,6 +129,15 @@ const CashDisbursements = () => {
         }
     };
 
+    const itemsPerPage = 6;
+    const [page, setPage] = useState(1);
+    const totalPages = Math.ceil(salidas.length / itemsPerPage);
+
+    const paginatedSalidas = salidas.slice(
+        (page - 1) * itemsPerPage,
+        page * itemsPerPage
+    );
+
     const openLiquidar = (salida: any) => {
         setSelectedSalida(salida);
         const montoEntregado = Number(salida.entregado);
@@ -290,7 +299,7 @@ const CashDisbursements = () => {
                                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay salidas registradas</TableCell>
                                 </TableRow>
                             ) : (
-                                salidas.map((salida) => (
+                                paginatedSalidas.map((salida) => (
                                     <TableRow key={salida.id}>
                                         <TableCell>{format(new Date(salida.fecha), 'dd/MM/yyyy', { locale: es })}</TableCell>
                                         <TableCell className="font-medium">{salida.destinatario}</TableCell>
@@ -316,6 +325,27 @@ const CashDisbursements = () => {
                             )}
                         </TableBody>
                     </Table>
+                    {totalPages > 1 && (
+                        <div className="flex justify-center gap-2 mt-4">
+                            <Button
+                                disabled={page === 1}
+                                onClick={() => setPage(page - 1)}
+                            >
+                                Anterior
+                            </Button>
+
+                            <span className="px-3 py-2 text-sm">
+                                Página {page} de {totalPages}
+                            </span>
+
+                            <Button
+                                disabled={page === totalPages}
+                                onClick={() => setPage(page + 1)}
+                            >
+                                Siguiente
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

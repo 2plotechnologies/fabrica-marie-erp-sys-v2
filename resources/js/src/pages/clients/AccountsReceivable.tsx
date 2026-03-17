@@ -83,6 +83,15 @@ const AccountsReceivable = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const itemsPerPage = 4;
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
+
+  const paginatedAccounts = filteredAccounts.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
       PENDIENTE: { variant: 'secondary', label: 'PENDIENTE' },
@@ -270,7 +279,7 @@ const AccountsReceivable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAccounts.map((account) => {
+              {paginatedAccounts.map((account) => {
                 const daysInfo = getDaysInfo(account.fecha_vencimiento);
                 return (
                   <TableRow key={account.id} className="hover:bg-muted/50">
@@ -367,6 +376,27 @@ const AccountsReceivable = () => {
               })}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
