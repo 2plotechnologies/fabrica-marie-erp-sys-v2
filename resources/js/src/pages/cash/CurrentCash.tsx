@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cajaService } from '@/services/cajaService';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const CurrentCash = () => {
   const [isOpenCashDialog, setIsOpenCashDialog] = useState(false);
@@ -230,6 +231,7 @@ const CurrentCash = () => {
                 </DialogContent>
               </Dialog>
 
+              {/* Mostrar adevertencia indicando que si no se cierra la caja se cerrara automaticamente a las 00:00 */}
               <Dialog open={isCloseCashDialog} onOpenChange={setIsCloseCashDialog}>
                 <DialogTrigger asChild>
                   <Button variant="destructive"><Lock className="h-4 w-4 mr-2" />Cerrar Caja</Button>
@@ -239,6 +241,10 @@ const CurrentCash = () => {
                     <DialogTitle>Cerrar Caja</DialogTitle>
                     <DialogDescription>Realiza el conteo final y cierra la caja del día</DialogDescription>
                   </DialogHeader>
+                  <Alert className="bg-red-500 text-white">
+                    <AlertTitle>⚠️ Advertencia</AlertTitle>
+                    <AlertDescription>Si la caja no se cierra manualmente antes de medianoche, el sistema realizará un cierre automático asumiendo que el saldo real coincide con el saldo del sistema.</AlertDescription>
+                  </Alert>
                   <div className="space-y-4 py-4">
                     <div className="p-4 bg-muted rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
