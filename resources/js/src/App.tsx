@@ -34,6 +34,7 @@ import CashMovements from "@/pages/cash/CashMovements";
 import CashClosures from "@/pages/cash/CashClosures";
 import CashRegularization from "@/pages/cash/CashRegularization";
 import CashDisbursements from "@/pages/cash/CashDisbursements";
+import SalesProjection from "@/pages/cash/SalesProjection";
 import RoutesList from "@/pages/routes/RoutesList";
 import VehiclesList from "@/pages/vehicles/VehiclesList";
 import MaintenanceList from "@/pages/maintenance/MaintenanceList";
@@ -196,6 +197,11 @@ const AppRoutes = () => {
         <Route path="/caja/salidas" element={<CashDisbursements />} />
         <Route path="/caja/cierres" element={<CashClosures />} />
         <Route path="/caja/regularizacion" element={<CashRegularization />} />
+        <Route path="/caja/proyeccion" element={
+          <ErrorBoundary key={location.pathname}>
+            <SalesProjection />
+          </ErrorBoundary>
+        } />
 
         {/* Rutas */}
         <Route path="/rutas" element={

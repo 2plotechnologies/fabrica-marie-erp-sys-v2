@@ -165,6 +165,7 @@ const navigation: NavItemConfig[] = [
       { to: '/caja/salidas', label: 'Salidas de Caja' },
       { to: '/caja/cierres', label: 'Cierres' },
       { to: '/caja/regularizacion', label: 'Regularización' },
+      { to: '/caja/proyeccion', label: 'Proyectado de Ventas' },
     ]
   },
   { to: '/rutas', icon: <MapPin className="h-5 w-5" />, label: 'Rutas', module: 'rutas' },

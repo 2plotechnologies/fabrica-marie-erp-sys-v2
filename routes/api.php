@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\MantenimientoController;
 use App\Http\Controllers\Api\DashBoardController;
 use App\Http\Controllers\Api\ResumenDiarioController;
 use App\Http\Controllers\Api\ReporteDetalleVentaController;
+use App\Http\Controllers\Api\ProyeccionVentaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -350,5 +351,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', [ResumenDiarioController::class, 'store']);
             Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado']);
             Route::put('/gasto/{id}/estado', [ResumenDiarioController::class, 'aprobarGasto']);
+        });
+
+    // Proyeccion de Ventas
+    Route::prefix('proyeccion-ventas')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,CAJERO')
+        ->group(function () {
+            Route::get('/', [ProyeccionVentaController::class, 'index']);
+            Route::post('/', [ProyeccionVentaController::class, 'store']);
+            Route::get('/resumen-mes-actual', [ProyeccionVentaController::class, 'resumenMesActual']);
         });
 });
