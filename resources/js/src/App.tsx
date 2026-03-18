@@ -198,7 +198,11 @@ const AppRoutes = () => {
         <Route path="/caja/regularizacion" element={<CashRegularization />} />
 
         {/* Rutas */}
-        <Route path="/rutas" element={<RoutesList />} />
+        <Route path="/rutas" element={
+          <ErrorBoundary key={location.pathname}>
+            <RoutesList />
+          </ErrorBoundary>
+        } />
 
         {/* GPS */}
         <Route path="/gps" element={<ComingSoon />} />

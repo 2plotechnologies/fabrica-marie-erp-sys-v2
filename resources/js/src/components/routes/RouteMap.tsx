@@ -19,12 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  MapPin, 
-  Route, 
-  Store, 
-  Plus, 
-  Trash2, 
+import {
+  MapPin,
+  Route,
+  Store,
+  Plus,
+  Trash2,
   Save,
   Navigation,
   Key,
@@ -45,12 +45,12 @@ interface MapPoint {
 
 interface SavedRoute {
   id: string;
-  name: string;
-  zone: string;
-  description?: string;
-  assignedSellerId?: string;
-  clientCount: number;
-  status: 'ACTIVA' | 'INACTIVA';
+  nombre: string;
+  zona: string;
+  descripcion?: string;
+  vendedor_id?: string;
+  clientes_count: number;
+  activo: boolean;
   points: MapPoint[];
 }
 
@@ -69,8 +69,8 @@ interface NewClient {
 }
 
 interface RouteMapProps {
-  routes: RouteType[];
-  onRoutesChange: (routes: RouteType[]) => void;
+  routes: any[];
+  onRoutesChange: (routes: any[]) => void;
 }
 
 type MapMode = 'view' | 'create-route' | 'create-client' | 'create-zone' | 'edit-routes' | 'edit-zones';
@@ -80,7 +80,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const modeRef = useRef<MapMode>('view');
-  
+
   const [mapboxToken, setMapboxToken] = useState<string>(() => {
     return localStorage.getItem('mapbox_token') || '';
   });
@@ -95,7 +95,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const [editRouteZone, setEditRouteZone] = useState('Norte');
   const [editZoneName, setEditZoneName] = useState('');
   const [editZoneColor, setEditZoneColor] = useState('#d97706');
-  
+
   // Convert routes from props to map routes with points
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>(() => {
     // Generate mock points for each route based on zone
@@ -108,18 +108,18 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     };
 
     return routes.map(route => {
-      const offset = zoneOffsets[route.zone] || { lng: 0, lat: 0 };
+      const offset = zoneOffsets[route.zona] || { lng: 0, lat: 0 };
       const baseLng = -75.2048 + offset.lng;
       const baseLat = -12.0651 + offset.lat;
-      
+
       return {
         id: route.id,
-        name: route.name,
-        zone: route.zone,
-        description: route.description,
-        assignedSellerId: route.assignedSellerId,
-        clientCount: route.clientCount,
-        status: route.status,
+        nombre: route.nombre,
+        zona: route.zona,
+        descripcion: route.descripcion,
+        vendedor_id: route.vendedor_id,
+        clientes_count: route.clientes_count,
+        activo: route.activo,
         points: [
           { id: `${route.id}-p1`, lng: baseLng - 0.01, lat: baseLat - 0.005, type: 'route-point' as const },
           { id: `${route.id}-p2`, lng: baseLng, lat: baseLat + 0.005, type: 'route-point' as const },
@@ -148,14 +148,14 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     };
 
     // Get unique zones
-    const uniqueZones = [...new Set(routes.map(r => r.zone))];
-    
+    const uniqueZones = [...new Set(routes.map(r => r.zona))];
+
     return uniqueZones.map(zoneName => {
       const offset = zoneOffsets[zoneName] || { lng: 0, lat: 0 };
       const baseLng = -75.2048 + offset.lng;
       const baseLat = -12.0651 + offset.lat;
       const size = 0.015;
-      
+
       return {
         id: `zone-${zoneName.toLowerCase()}`,
         name: `Zona ${zoneName}`,
@@ -262,7 +262,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           { id: 'c3', lng: -75.1950, lat: -12.0550, type: 'client', name: 'Bodega La Esquina' },
         ];
         setClients(mockClients);
-        
+
         // Mark map as fully loaded for style operations
         setIsMapLoaded(true);
       });
@@ -302,7 +302,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           </svg>
         </div>
       `;
-      
+
       const marker = new mapboxgl.Marker(el)
         .setLngLat([client.lng, client.lat])
         .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
@@ -312,7 +312,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           </div>
         `))
         .addTo(map.current!);
-      
+
       markersRef.current.push(marker);
     });
 
@@ -325,18 +325,18 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           ${index + 1}
         </div>
       `;
-      
+
       const marker = new mapboxgl.Marker(el)
         .setLngLat([point.lng, point.lat])
         .addTo(map.current!);
-      
+
       markersRef.current.push(marker);
     });
 
     // Draw route line if we have multiple points
     if (routePoints.length >= 2) {
       const sourceId = 'route-line';
-      
+
       if (map.current.getSource(sourceId)) {
         (map.current.getSource(sourceId) as mapboxgl.GeoJSONSource).setData({
           type: 'Feature',
@@ -390,7 +390,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
         coordinates.push(coordinates[0]);
       }
 
-      const geometry = zonePoints.length >= 3 
+      const geometry = zonePoints.length >= 3
         ? { type: 'Polygon' as const, coordinates: [coordinates] }
         : { type: 'LineString' as const, coordinates: coordinates };
 
@@ -546,7 +546,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     setRoutePoints([]);
     setRouteName('');
     setMode('view');
-    
+
     // Clear the route line from map
     if (map.current?.getLayer('route-line-layer')) {
       map.current.removeLayer('route-line-layer');
@@ -582,7 +582,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
 
     setZones(prev => [...prev, newZone]);
     toast.success(`Zona "${zoneName}" guardada con ${zonePoints.length} vértices`);
-    
+
     // Clear temp zone from map
     clearZone();
     setShowZoneDialog(false);
@@ -608,8 +608,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     const route = savedRoutes.find(r => r.id === routeId);
     if (route) {
       setSelectedRouteId(routeId);
-      setEditRouteName(route.name);
-      setEditRouteZone(route.zone);
+      setEditRouteName(route.nombre);
+      setEditRouteZone(route.zona);
       setShowEditRouteDialog(true);
     }
   };
@@ -629,22 +629,22 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
       toast.error('Por favor ingresa un nombre para la ruta');
       return;
     }
-    
+
     // Update savedRoutes local state
-    setSavedRoutes(prev => prev.map(r => 
-      r.id === selectedRouteId 
+    setSavedRoutes(prev => prev.map(r =>
+      r.id === selectedRouteId
         ? { ...r, name: editRouteName, zone: editRouteZone }
         : r
     ));
-    
+
     // Update parent routes
-    const updatedRoutes = routes.map(r => 
-      r.id === selectedRouteId 
+    const updatedRoutes = routes.map(r =>
+      r.id === selectedRouteId
         ? { ...r, name: editRouteName, zone: editRouteZone }
         : r
     );
     onRoutesChange(updatedRoutes);
-    
+
     toast.success(`Ruta "${editRouteName}" actualizada`);
     setShowEditRouteDialog(false);
     setSelectedRouteId(null);
@@ -653,15 +653,15 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const handleDeleteRoute = () => {
     if (!selectedRouteId) return;
     const route = savedRoutes.find(r => r.id === selectedRouteId);
-    
+
     // Update local state
     setSavedRoutes(prev => prev.filter(r => r.id !== selectedRouteId));
-    
+
     // Update parent routes
     const updatedRoutes = routes.filter(r => r.id !== selectedRouteId);
     onRoutesChange(updatedRoutes);
-    
-    toast.success(`Ruta "${route?.name}" eliminada`);
+
+    toast.success(`Ruta "${route?.nombre}" eliminada`);
     setShowEditRouteDialog(false);
     setSelectedRouteId(null);
   };
@@ -671,10 +671,10 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
       toast.error('Por favor ingresa un nombre para la zona');
       return;
     }
-    
+
     // Update zone in state
-    setZones(prev => prev.map(z => 
-      z.id === selectedZoneId 
+    setZones(prev => prev.map(z =>
+      z.id === selectedZoneId
         ? { ...z, name: editZoneName, color: editZoneColor }
         : z
     ));
@@ -698,7 +698,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const handleDeleteZone = () => {
     if (!selectedZoneId) return;
     const zone = zones.find(z => z.id === selectedZoneId);
-    
+
     // Remove from map
     if (map.current) {
       const sourceId = `zone-${selectedZoneId}`;
@@ -729,11 +729,11 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           <div>
             <h3 className="text-xl font-display font-semibold mb-2">Configurar Mapbox</h3>
             <p className="text-muted-foreground text-sm">
-              Para usar el mapa interactivo, necesitas un token de Mapbox. 
+              Para usar el mapa interactivo, necesitas un token de Mapbox.
               Puedes obtenerlo gratis en{' '}
-              <a 
-                href="https://mapbox.com/" 
-                target="_blank" 
+              <a
+                href="https://mapbox.com/"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
@@ -764,7 +764,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
       <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-xl border">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">Modo:</span>
-          <Badge 
+          <Badge
             variant={mode === 'view' ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer transition-colors",
@@ -775,7 +775,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
             <Navigation className="h-3 w-3 mr-1" />
             Ver
           </Badge>
-          <Badge 
+          <Badge
             variant={mode === 'create-route' ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer transition-colors",
@@ -786,7 +786,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
             <Route className="h-3 w-3 mr-1" />
             Crear Ruta
           </Badge>
-          <Badge 
+          <Badge
             variant={mode === 'create-client' ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer transition-colors",
@@ -797,7 +797,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
             <Store className="h-3 w-3 mr-1" />
             Crear Cliente
           </Badge>
-          <Badge 
+          <Badge
             variant={mode === 'create-zone' ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer transition-colors",
@@ -808,7 +808,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
             <Pentagon className="h-3 w-3 mr-1" />
             Crear Zona
           </Badge>
-          <Badge 
+          <Badge
             variant={mode === 'edit-routes' ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer transition-colors",
@@ -819,7 +819,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
             <Pencil className="h-3 w-3 mr-1" />
             Editar Rutas
           </Badge>
-          <Badge 
+          <Badge
             variant={mode === 'edit-zones' ? 'default' : 'outline'}
             className={cn(
               "cursor-pointer transition-colors",
@@ -843,8 +843,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
               <Trash2 className="h-4 w-4 mr-1" />
               Limpiar
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="gradient"
               onClick={() => setShowRouteDialog(true)}
               disabled={routePoints.length < 2}
@@ -864,8 +864,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
               <Trash2 className="h-4 w-4 mr-1" />
               Limpiar
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="gradient"
               onClick={() => setShowZoneDialog(true)}
               disabled={zonePoints.length < 3}
@@ -903,7 +903,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
                     onClick={() => handleSelectRouteForEdit(route.id)}
                   >
                     <Route className="h-3 w-3 mr-1" />
-                    {route.name}
+                    {route.nombre}
                   </Badge>
                 ))}
               </div>
@@ -943,7 +943,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
       {/* Map Container */}
       <div className="relative w-full h-[600px] rounded-xl overflow-hidden border shadow-card">
         <div ref={mapContainer} className="absolute inset-0 w-full h-full" style={{ minHeight: '600px' }} />
-        
+
         {/* Legend */}
         <div className="absolute bottom-4 left-4 bg-card/95 backdrop-blur-sm rounded-lg border p-3 shadow-lg">
           <p className="text-xs font-medium mb-2">Leyenda</p>
@@ -1059,8 +1059,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="client-zone">Zona</Label>
-              <Select 
-                value={newClient.zone} 
+              <Select
+                value={newClient.zone}
                 onValueChange={(value) => setNewClient({ ...newClient, zone: value })}
               >
                 <SelectTrigger>
@@ -1126,8 +1126,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
                     type="button"
                     className={cn(
                       "w-8 h-8 rounded-full border-2 transition-all",
-                      zoneColor === color.value 
-                        ? "border-foreground scale-110" 
+                      zoneColor === color.value
+                        ? "border-foreground scale-110"
                         : "border-transparent hover:scale-105"
                     )}
                     style={{ backgroundColor: color.value }}
@@ -1236,8 +1236,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
                     type="button"
                     className={cn(
                       "w-8 h-8 rounded-full border-2 transition-all",
-                      editZoneColor === color.value 
-                        ? "border-foreground scale-110" 
+                      editZoneColor === color.value
+                        ? "border-foreground scale-110"
                         : "border-transparent hover:scale-105"
                     )}
                     style={{ backgroundColor: color.value }}
