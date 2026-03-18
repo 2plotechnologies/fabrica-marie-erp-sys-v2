@@ -109,18 +109,22 @@ class DashboardService
 
         $ventasHoy = DB::table('ventas')
             ->whereDate('fecha', $today)
+            ->where('estado', 'CONFIRMADA')
             ->sum('total_neto');
 
         $ventasSemana = DB::table('ventas')
             ->where('fecha', '>=', $startOfWeek)
+            ->where('estado', 'CONFIRMADA')
             ->sum('total_neto');
 
         $ventasMes = DB::table('ventas')
             ->where('fecha', '>=', $startOfMonth)
+            ->where('estado', 'CONFIRMADA')
             ->sum('total_neto');
 
         $transaccionesHoy = DB::table('ventas')
             ->whereDate('fecha', $today)
+            ->where('estado', 'CONFIRMADA')
             ->count();
 
         return [
@@ -254,6 +258,7 @@ class DashboardService
     public function getUltimasVentas()
     {
         $ventas = DB::table('ventas')
+            ->where('estado', 'CONFIRMADA')
             ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
             ->select('ventas.*', 'clientes.razon_social as cliente')
             ->orderBy('ventas.fecha', 'desc')
@@ -318,6 +323,7 @@ class DashboardService
         if($vendedor){
             $ventas = DB::table('ventas')
             ->where('vendedor_id', $vendedor->id)
+            ->where('estado', 'CONFIRMADA')
             ->whereDate('fecha', Carbon::today())
             ->sum('total_neto');
         }else{
@@ -478,6 +484,7 @@ class DashboardService
      {
          return DB::table('ventas')
              ->where('tipo_pago', 'CONTADO')
+             ->where('estado', 'CONFIRMADA')
              ->whereDate('fecha', Carbon::today())
              ->sum('total_neto');
      }
@@ -524,6 +531,7 @@ class DashboardService
             ->sum('monto');
         $egresos = DB::table('movimiento_caja')
             ->where('tipo', 'EGRESO')
+            ->where('estado', 'APROBADO')
             ->whereDate('created_at', Carbon::today())
             ->sum('monto');
         $caja = DB::table('cajas')

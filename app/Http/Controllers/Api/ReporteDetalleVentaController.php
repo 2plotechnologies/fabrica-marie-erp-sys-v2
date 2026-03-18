@@ -19,7 +19,7 @@ class ReporteDetalleVentaController
             'vendedor.usuario',
             'items.producto',
             'items.salida.vehiculo'
-        ]);
+        ])->where('estado', 'CONFIRMADA');
 
         if ($fechaInicio && $fechaFin) {
             $ventasQuery->whereBetween('fecha', [$fechaInicio, $fechaFin]);
