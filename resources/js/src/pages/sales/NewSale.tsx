@@ -214,7 +214,7 @@ const NewSale = () => {
         descuento: discount,
         total_neto: total,
         items: cart.map(item => ({
-          producto_id: Number(item.productId),
+          producto_id: Number(String(item.productId).split('-')[0]),
           salida_id: Number(item.salida_id),
           cantidad: Number(item.quantity),
           precio_unitario: Number(item.price),
