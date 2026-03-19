@@ -43,15 +43,15 @@ class ReporteDetalleVentaController
                 $cantidad = $item->cantidad ?? 0;
                 $totalItem = $precio * $cantidad;
 
-                if ($item->esBonificacion) {
+                if ($item->es_bonificacion) {
                     $totalBonificacion += $cantidad;
                 }
 
-                if ($item->esDegustacion) {
+                if ($item->es_degustacion) {
                     $totalDegustacion += $cantidad;
                 }
 
-                if (!$item->esBonificacion && !$item->esDegustacion) {
+                if (!$item->es_bonificacion && !$item->es_degustacion) {
                     $subtotal += $totalItem;
                 }
 

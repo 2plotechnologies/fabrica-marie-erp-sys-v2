@@ -9,11 +9,11 @@ class CuentaPorCobrarController
 {
     public function index()
     {
-        //Sumar todos los abonos y crear un nuevo campo monto_pagado.
-        $cuentas_por_cobrar = CuentaPorCobrar::with('cliente', 'venta', 'abonos')->get();
-        foreach ($cuentas_por_cobrar as $cuenta_por_cobrar) {
-            $cuenta_por_cobrar->monto_pagado = $cuenta_por_cobrar->abonos->sum('monto');
-        }
+        $cuentas_por_cobrar = CuentaPorCobrar::with(['cliente', 'venta', 'abonos'])
+            ->withSum('abonos as monto_pagado', 'monto')
+            ->orderByRaw('(monto_total - COALESCE(monto_pagado, 0)) DESC')
+            ->get();
+
         return response()->json($cuentas_por_cobrar);
     }
 

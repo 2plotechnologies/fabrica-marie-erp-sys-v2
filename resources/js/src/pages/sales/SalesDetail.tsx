@@ -130,8 +130,8 @@ const SalesDetailPage = () => {
   const ventasContado = filteredVentas.filter(v => v.condicionVenta === 'CONTADO').reduce((acc, v) => acc + Number(v.total || 0), 0);
   const ventasCredito = filteredVentas.filter(v => v.condicionVenta === 'CREDITO').reduce((acc, v) => acc + Number(v.total || 0), 0);
   const ventasDeposito = filteredVentas.filter(v => v.condicionVenta === 'DEPOSITO').reduce((acc, v) => acc + Number(v.total || 0), 0);
-  const totalBonificaciones = filteredVentas.reduce((acc, v) => acc + v.totalBonificacion, 0);
-  const totalDegustaciones = filteredVentas.reduce((acc, v) => acc + v.totalDegustacion, 0);
+  const totalBonificaciones = filteredVentas.reduce((acc, v) => acc + Number(v.totalBonificacion || 0), 0);
+  const totalDegustaciones = filteredVentas.reduce((acc, v) => acc + Number(v.totalDegustacion || 0), 0);
   const clientesAtendidos = new Set(filteredVentas.map(v => v.clienteId)).size;
 
   const getCondicionBadge = (condicion: string) => {
