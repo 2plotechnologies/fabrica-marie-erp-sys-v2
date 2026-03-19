@@ -20,8 +20,13 @@ import {
 } from 'lucide-react';
 import { resumenDiarioService } from '@/services/resumenDiarioService';
 import { toast } from 'sonner';
+import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DailySummaryPage = () => {
+  const { currentRole } = useRole();
+  const { user } = useAuth();
+  const isVendedor = currentRole === 'VENDEDOR';
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVendedor, setFilterVendedor] = useState<string>('all');
   const [filterEstado, setFilterEstado] = useState<string>('all');
@@ -32,35 +37,11 @@ const DailySummaryPage = () => {
   const [selectedResumen, setSelectedResumen] = useState<any | null>(null);
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
-  // Form state for new resumen
-  const [newResumen, setNewResumen] = useState({
-    fecha: new Date().toISOString().split('T')[0],
-    vendedor_id: '',
-    conductor: '',
-    zona: '',
-    ruta_id: '',
-    vehiculo_id: '',
-    salida_id: '',
-    contado: 0,
-    credito: 0,
-    cobranza: 0,
-    depositos: 0,
-    viaticos: 0,
-    monederoVirtual: 0,
-    adelantos: 0,
-    total_gastos: 0,
-    saldo_a_entregar: 0,
-    saldo_entregado: 0,
-    diferencia: 0,
-
-    firma: true,
-    estado: 'PENDIENTE',
-  });
-
   const [newGastos, setNewGastos] = useState<{ descripcion: string; categoria: string; monto: number }[]>([]);
   const [gastoTemp, setGastoTemp] = useState({ descripcion: '', categoria: 'gerencia', monto: 0 });
 
   const [vendedores, setVendedores] = useState<any[]>([]);
+  const vendedorActual = vendedores.find(v => v.usuario_id === user?.id);
   const [rutas, setRutas] = useState<any[]>([]);
   const [vehiculos, setVehiculos] = useState<any[]>([]);
   const [salidas, setSalidas] = useState<any[]>([]);
@@ -81,6 +62,31 @@ const DailySummaryPage = () => {
   );
   const [saldo_a_entregar, setSaldo_a_entregar] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Form state for new resumen
+  const [newResumen, setNewResumen] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    vendedor_id: isVendedor && vendedorActual ? String(vendedorActual.id) : '',
+    conductor: '',
+    zona: '',
+    ruta_id: '',
+    vehiculo_id: '',
+    salida_id: '',
+    contado: 0,
+    credito: 0,
+    cobranza: 0,
+    depositos: 0,
+    viaticos: 0,
+    monederoVirtual: 0,
+    adelantos: 0,
+    total_gastos: 0,
+    saldo_a_entregar: 0,
+    saldo_entregado: 0,
+    diferencia: 0,
+
+    firma: true,
+    estado: 'PENDIENTE',
+  });
 
 
   const handleVehiculoChange = (vehiculoId: string) => {
@@ -189,6 +195,16 @@ const DailySummaryPage = () => {
     }));
 
   }, [resumenVendedor, totalGastosBackend]);
+
+  useEffect(() => {
+    if (isVendedor && vendedorActual) {
+      setNewResumen(prev => ({
+        ...prev,
+        vendedor_id: String(vendedorActual.id),
+      }));
+      getByVendedorId(String(vendedorActual.id));
+    }
+  }, [isVendedor, vendedorActual]);
 
   // Expense verification handler
   const handleVerificarGasto = async (gastoId: string, estado: 'CONFIRMADO' | 'RECHAZADO', observacion?: string) => {
@@ -344,6 +360,7 @@ const DailySummaryPage = () => {
                     <Label>Vendedor</Label>
                     <Select
                       value={newResumen.vendedor_id}
+                      disabled={isVendedor}
                       onValueChange={(v) => {
                         setNewResumen({ ...newResumen, vendedor_id: v });
                         getByVendedorId(v);

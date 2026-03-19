@@ -16,7 +16,9 @@ class ResumenDiarioController extends Controller
 {
     public function index()
     {
-        $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')->get();
+        $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
+        ->orderBy('fecha', 'desc')
+        ->get();
         return response()->json($resumenDiario);
     }
 

@@ -372,7 +372,7 @@ const CurrentCash = () => {
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center"><TrendingUp className="h-6 w-6 text-primary" /></div>
-              <div><p className="text-sm text-muted-foreground">Movimientos</p><p className="text-xl font-bold text-foreground">{movimientos.length}</p></div>
+              <div><p className="text-sm text-muted-foreground">Movimientos</p><p className="text-xl font-bold text-foreground">{movimientos.filter(m => m.estado === 'APROBADO').length}</p></div>
             </div>
           </CardContent>
         </Card>
@@ -395,6 +395,7 @@ const CurrentCash = () => {
                 <TableHead>Categoría</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
+                <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -419,6 +420,11 @@ const CurrentCash = () => {
                     <TableCell className="max-w-[200px] truncate">{mov.descripcion}</TableCell>
                     <TableCell className={`text-right font-bold ${mov.tipo === 'INGRESO' ? 'text-emerald-600' : 'text-red-600'}`}>
                       {mov.tipo === 'INGRESO' ? '+' : '-'} S/ {Number(mov.monto).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={mov.estado === 'APROBADO' ? 'default' : mov.estado === 'RECHAZADO' ? 'destructive' : 'secondary'}>
+                        {mov.estado === 'APROBADO' ? 'Aprobado' : mov.estado === 'RECHAZADO' ? 'Rechazado' : 'Pendiente'}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))

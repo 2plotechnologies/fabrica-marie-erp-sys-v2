@@ -16,7 +16,9 @@ class SalidaCajaController
             'caja',
             'usuario',
             'usuario_liquido'
-        ])->get();
+        ])
+        ->orderBy('fecha', 'desc')
+        ->get();
 
         return response()->json($salidas);
 

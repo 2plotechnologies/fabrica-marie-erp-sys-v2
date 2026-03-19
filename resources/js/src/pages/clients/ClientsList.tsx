@@ -419,8 +419,6 @@ const ClientsList = () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleViewDetail(client.id)}>Ver detalle</DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleOpenEdit(client.id)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem>Registrar abono</DropdownMenuItem>
-                        <DropdownMenuItem>Ver historial</DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={client.status === 'INACTIVO'}
                           onClick={() => handleDeactivate(client.id)}

@@ -199,6 +199,7 @@ const CashMovements = () => {
                 <TableHead>Descripción</TableHead>
                 <TableHead>Usuario</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
+                <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,6 +227,11 @@ const CashMovements = () => {
                   <TableCell className={`text-right font-bold ${movement.tipo === 'INGRESO' ? 'text-emerald-600' : 'text-red-600'
                     }`}>
                     {movement.tipo === 'INGRESO' ? '+' : '-'} S/ {Number(movement.monto).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={movement.estado === 'APROBADO' ? 'default' : movement.estado === 'PENDIENTE' ? 'secondary' : 'destructive'}>
+                      {movement.estado === 'APROBADO' ? 'Aprobado' : movement.estado === 'PENDIENTE' ? 'Pendiente' : 'Rechazado'}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

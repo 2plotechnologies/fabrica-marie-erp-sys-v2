@@ -13,7 +13,9 @@ class ViaticoController
         $viaticos = Viatico::with([
             'vendedor.usuario',
             'ruta'
-        ])->get();
+        ])
+        ->orderBy('fecha', 'desc')
+        ->get();
         return response()->json($viaticos);
     }
 

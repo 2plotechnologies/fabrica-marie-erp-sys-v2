@@ -90,7 +90,7 @@ const StockVendedoresPage = () => {
                 <TableCell className="text-right font-semibold">{Number(sv.cantidad_entregada)}</TableCell>
                 <TableCell className="text-right text-emerald-600 font-semibold">{Number(sv.vendido)}</TableCell>
                 <TableCell className="text-right text-amber-600">{Number(sv.devuelto)}</TableCell>
-                <TableCell className="text-right"><Badge variant={Number(sv.cantidad_entregada) > 0 ? 'default' : 'secondary'}>{Number(sv.cantidad_entregada)}</Badge></TableCell>
+                <TableCell className="text-right"><Badge variant={Number(sv.cantidad) > 0 ? 'default' : 'secondary'}>{Number(sv.cantidad)}</Badge></TableCell>
               </TableRow>
             ))}
             {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay stock asignado a vendedores. Crea una Salida de Fábrica y despacha.</TableCell></TableRow>}

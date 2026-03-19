@@ -20,7 +20,10 @@ class CajaController extends Controller
 
     public function getCaja()
     {
-        return Caja::with(['usuario', 'movimientos'])
+        //Ordenar movimientos por fecha
+        return Caja::with(['usuario', 'movimientos' => function ($query) {
+            $query->orderBy('created_at', 'desc');
+        }])
             ->whereDate('fecha', now())
             ->where('estado', 'ABIERTA')
             ->latest('id')
