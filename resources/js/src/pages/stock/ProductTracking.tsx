@@ -55,7 +55,7 @@ const StockVendedoresPage = () => {
 
   const totalAsignado = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada), 0);
   const totalVendido = stockVendedores.reduce((s, sv) => s + Number(sv.vendido), 0);
-  const totalDisponible = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada) - Number(sv.vendido), 0);
+  const totalDisponible = stockVendedores.reduce((s, sv) => s + Number(sv.cantidad_entregada) - Number(sv.vendido) - Number(sv.devuelto), 0);
 
   if (isLoading) return <div className="flex items-center justify-center h-96"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
 

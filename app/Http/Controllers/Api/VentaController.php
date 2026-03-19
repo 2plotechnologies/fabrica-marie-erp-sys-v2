@@ -446,7 +446,7 @@ class VentaController extends Controller
 
     public function destroy($id, VentaService $ventaService)
     {
-        return DB::transaction(function () use ($id) {
+        return DB::transaction(function () use ($id, $ventaService) {
 
             $venta = Venta::with('items')->lockForUpdate()->findOrFail($id);
 

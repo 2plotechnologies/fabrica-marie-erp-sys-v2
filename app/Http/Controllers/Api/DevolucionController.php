@@ -8,6 +8,8 @@ use App\Models\MovimientoStock;
 use App\Models\StockVendedor;
 use App\Services\DevolucionService;
 use App\Services\StockService;
+use App\Models\Salida;
+use App\Models\SalidaItem;
 use Illuminate\Support\Facades\DB;
 
 class DevolucionController
@@ -81,19 +83,45 @@ class DevolucionController
 
                     $rumaId = MovimientoStock::obtenerUltimaRumaSalida($item->producto_id);
 
-                    $stockVendedor = StockVendedor::where('producto_id', $item->producto_id)
-                    ->where('vendedor_id', $devolucion->vendedor_id)
-                    ->first();
-
                     if (!$rumaId) {
                         throw new \Exception("No se encontró ruma previa para el producto {$item->producto_id}");
                     }
 
+                    $stocksVendedor = StockVendedor::where('producto_id', $item->producto_id)
+                        ->where('vendedor_id', $devolucion->vendedor_id)
+                        ->where('cantidad', '>', 0)
+                        ->whereHas('salida', function ($query) {
+                            $query->where('estado', 'EN_RUTA');
+                        })
+                        ->orderBy('id', 'desc')
+                        ->get();
+
+                    $faltante = $item->cantidad;
+                    $totalDisponible = $stocksVendedor->sum('cantidad');
+
+                    if ($totalDisponible < $faltante) {
+                        throw new \Exception("No se encontró stock suficiente asignado para el producto {$item->producto_id} en salidas EN_RUTA");
+                    }
+
+                    foreach ($stocksVendedor as $stock) {
+                        if ($faltante <= 0) break;
+
+                        $descontar = min($stock->cantidad, $faltante);
+
+                        $stock->devuelto += $descontar;
+                        $stock->cantidad -= $descontar;
+                        $stock->save();
+
+                        $faltante -= $descontar;
+
+                        //Actualizar cantidad en salida_item
+                        $salida = Salida::where('vendedor_id', $devolucion->vendedor_id)->where('estado', 'EN_RUTA')->first();
+                        $salidaItem = SalidaItem::where('salida_id', $salida->id)->where('producto_id', $item->producto_id)->first();
+                        $salidaItem->cantidad -= $descontar;
+                        $salidaItem->save();
+                    }
+
                     if ($devolucion->tipo === 'BUENA') {
-
-                        $stockVendedor->devuelto += $item->cantidad;
-                        $stockVendedor->save();
-
                         app(StockService::class)->registrarMovimiento([
                             'tipo' => 'DEVOLUCION_BUENA',
                             'producto_id' => $item->producto_id,
@@ -103,20 +131,15 @@ class DevolucionController
                             'referencia_id' => $devolucion->id,
                             'motivo' => 'Devolución buena aceptada'
                         ]);
-
                     } else {
-
-                        $stockVendedor->devuelto += $item->cantidad;
-                        $stockVendedor->save();
-
                         app(StockService::class)->registrarMovimiento([
-                            'tipo'=> 'DEVOLUCION_MALA',
-                            'producto_id'=> $item->producto_id,
+                            'tipo' => 'DEVOLUCION_MALA',
+                            'producto_id' => $item->producto_id,
                             'ruma_id' => $rumaId,
-                            'cantidad'=> $item->cantidad,
-                            'referenciaTipo'=> 'DEV_DANADA',
-                            'referenciaId'=> $devolucion->id,
-                            'motivo'=> 'Devolución dañada aceptada'
+                            'cantidad' => $item->cantidad,
+                            'referencia_tipo' => 'DEV_DANADA',
+                            'referencia_id' => $devolucion->id,
+                            'motivo' => 'Devolución dañada aceptada'
                         ]);
                     }
                 }

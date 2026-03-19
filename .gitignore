@@ -18,3 +18,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+test_save.php
+test_schema.php
+test_update.php
+schema.json
