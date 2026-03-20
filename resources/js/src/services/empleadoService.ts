@@ -20,23 +20,23 @@ export interface Role {
 export const empleadoService = {
 
   async getRoles(): Promise<Role[]> {
-        const response = await api.get('/admin/roles');
-        return response.data;
-    },
+    const response = await api.get('/admin/roles');
+    return response.data;
+  },
 
-    create: async (data: EmpleadoPayload) => {
-        const response = await api.post('/admin/usuarios', {
-            username: data.username,
-            email: data.email,
-            password: data.password,
-            nombre: data.nombre,
-            roles: [data.rol], // 👈 aquí está la magia
-            sueldo_base: data.sueldo_base,
-            horas_extra: data.horas_extra,
-            afp: data.afp,
-        });
+  create: async (data: EmpleadoPayload) => {
+    const response = await api.post('/admin/usuarios', {
+      username: data.username,
+      email: data.email,
+      password: data.password,
+      nombre: data.nombre,
+      roles: [data.rol], // 👈 aquí está la magia
+      sueldo_base: data.sueldo_base,
+      horas_extra: data.horas_extra,
+      afp: data.afp,
+    });
 
-        return response.data;
+    return response.data;
   },
 
   async getAll() {
@@ -45,8 +45,28 @@ export const empleadoService = {
   },
 
   async getById(id: number) {
-    const response = await api.get(`/admin/usuario/${id}`);
+    const response = await api.get(`/admin/usuarios/${id}`);
     return response.data;
-  }
+  },
+
+  async update(id: number, data: EmpleadoPayload) {
+    const response = await api.put(`/admin/usuarios/${id}`, {
+      username: data.username,
+      email: data.email,
+      password: data.password,
+      nombre: data.nombre,
+      roles: [data.rol],
+      sueldo_base: data.sueldo_base,
+      horas_extra: data.horas_extra,
+      afp: data.afp,
+    });
+
+    return response.data;
+  },
+
+  async delete(id: number) {
+    const response = await api.delete(`/admin/usuarios/${id}`);
+    return response.data;
+  },
 
 };

@@ -47,4 +47,9 @@ export const resumenDiarioService = {
         return response.data;
     },
 
+    async getResumenGeneral() {
+        const response = await api.get('/resumen-diario/resumen-general');
+        return response.data;
+    },
+
 }

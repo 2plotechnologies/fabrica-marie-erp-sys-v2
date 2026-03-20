@@ -228,5 +228,32 @@ class ResumenDiarioController extends Controller
         $gasto->save();
         return response()->json($gasto);
     }
+
+    public function getResumenGeneral(){
+        $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
+        ->where('estado', '!=', 'PENDIENTE')
+        ->where('estado', '!=', 'RECHAZADO')
+        ->get();
+
+        //Calcular totales
+        $totalGastos = $resumenDiario->sum('total_gastos');
+        $totalCobranzas = $resumenDiario->sum('cobranza');
+        $totalVentasContado = $resumenDiario->sum('contado');
+        $totalCredito = $resumenDiario->sum('credito');
+        $totalAdelantos = $resumenDiario->sum('adelanto');
+        $totalDepositos = $resumenDiario->sum('depositos');
+        $totalViaticos = $resumenDiario->sum('viaticos');
+
+        return response()->json([
+            'resumenDiario' => $resumenDiario,
+            'totalGastos' => $totalGastos,
+            'totalCobranzas' => $totalCobranzas,
+            'totalVentasContado' => $totalVentasContado,
+            'totalCredito' => $totalCredito,
+            'totalAdelantos' => $totalAdelantos,
+            'totalDepositos' => $totalDepositos,
+            'totalViaticos' => $totalViaticos,
+        ]);
+    }
     
 }

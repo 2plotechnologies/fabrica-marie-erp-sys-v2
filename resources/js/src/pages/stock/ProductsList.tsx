@@ -413,7 +413,25 @@ const ProductsList = () => {
             <div className="space-y-2"><Label>Descripción</Label><Textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Descripción del producto..." /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => {
+              setIsEditDialogOpen(false);
+              setForm({
+                sku: '',
+                categoria: '',
+                nombre: '',
+                descripcion: '',
+                presentacion: '',
+                marca: '',
+                unidad_medida: '',
+                peso: '',
+                precio_base: '',
+                costo: '',
+                stock_minimo: '',
+                activo: true,
+              });
+            }}>
+              Cancelar
+            </Button>
             <Button onClick={handleUpdate}>Guardar Cambios</Button>
           </DialogFooter>
         </DialogContent>

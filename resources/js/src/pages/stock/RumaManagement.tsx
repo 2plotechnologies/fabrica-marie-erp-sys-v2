@@ -711,7 +711,18 @@ const RumaManagement = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setIsEditDialogOpen(false);
+              setForm({
+                nombre: '',
+                codigo: '',
+                descripcion: '',
+                capacidad_unidades: '',
+                ubicacion_fisica: '',
+                estado: '',
+                condiciones: '',
+              })
+            }}>
               Cancelar
             </Button>
             <Button onClick={handleUpdateRuma}>

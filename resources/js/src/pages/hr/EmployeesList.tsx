@@ -123,6 +123,10 @@ const EmployeesList = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
 
   const [form, setForm] = useState({
     username: '',
@@ -208,7 +212,100 @@ const EmployeesList = () => {
       console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
       toast({
         title: "Error",
-        description: err?.message || "No se pudo registrar el usuario.",
+        description: err?.message || "No se pudo obtener el usuario.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openEditDialog = async (id: number) => {
+    setEditId(id);
+    try {
+      const data = await empleadoService.getById(id);
+      console.log("DATOS DEL EMPLEADO:", data);
+      setForm({
+        username: data.username || '',
+        email: data.email || '',
+        password: '', // Should be empty for edit unless changing it
+        nombre: data.nombre || '',
+        rol: data.roles?.[0]?.id?.toString() || '',
+        sueldo_base: data.informacion_salarial?.sueldo_base || '',
+        horas_extra: data.informacion_salarial?.horas_extra || '',
+        afp: data.informacion_salarial?.afp || '',
+      });
+      setIsEditDialogOpen(true);
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo obtener el usuario.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent, id: number) => {
+    e.preventDefault();
+    if (!id) return;
+    try {
+      await empleadoService.update(id, {
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        nombre: form.nombre,
+        rol: Number(form.rol),
+        sueldo_base: Number(form.sueldo_base),
+        horas_extra: Number(form.horas_extra),
+        afp: Number(form.afp),
+      });
+
+      await fetchEmployees();
+
+      setForm({
+        username: '',
+        email: '',
+        password: '',
+        nombre: '',
+        rol: '',
+        sueldo_base: '',
+        horas_extra: '',
+        afp: '',
+      });
+      setEditId(null);
+
+      setIsEditDialogOpen(false);
+
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo actualizar el usuario.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleView = (id: number) => {
+    setIsViewDialogOpen(true);
+    setSelectedEmployee(employees.find((employee) => employee.id === id));
+  };
+
+  const handleDelete = (id: number) => {
+    try {
+      empleadoService.delete(id);
+      fetchEmployees();
+      setIsViewDialogOpen(false);
+      toast({
+        title: "Empleado eliminado",
+        description: "El empleado ha sido eliminado exitosamente.",
+      });
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo eliminar el empleado.",
         variant: "destructive",
       });
     }
@@ -531,10 +628,10 @@ const EmployeesList = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" onClick={() => handleView(employee.id)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(employee.id)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </div>
@@ -566,6 +663,209 @@ const EmployeesList = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setForm({ username: '', email: '', password: '', nombre: '', rol: '', sueldo_base: '', horas_extra: '', afp: '' });
+          setEditId(null);
+        }
+        setIsEditDialogOpen(open);
+      }}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Editar Empleado</DialogTitle>
+            <DialogDescription>
+              Modifica la información del empleado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={(e) => handleEditSubmit(e, editId!)} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Correo Electrónico</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Dejar en blanco para mantener la actual"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre Completo</Label>
+                <Input
+                  id="nombre"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rol">Rol</Label>
+                <Select
+                  value={form.rol}
+                  onValueChange={(value) => setForm({ ...form, rol: value })}
+                  disabled
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sueldo_base">Sueldo Base</Label>
+                <Input
+                  id="sueldo_base"
+                  type="number"
+                  value={form.sueldo_base}
+                  onChange={(e) => setForm({ ...form, sueldo_base: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="horas_extra">Horas Extra</Label>
+                <Input
+                  id="horas_extra"
+                  type="number"
+                  value={form.horas_extra}
+                  onChange={(e) => setForm({ ...form, horas_extra: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="afp">AFP</Label>
+                <Input
+                  id="afp"
+                  type="number"
+                  value={form.afp}
+                  onChange={(e) => setForm({ ...form, afp: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditId(null); setForm({ username: '', email: '', password: '', nombre: '', rol: '', sueldo_base: '', horas_extra: '', afp: '' }); }}>
+                Cancelar
+              </Button>
+              <Button type="submit">Guardar Cambios</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ver Empleado</DialogTitle>
+            <DialogDescription>
+              Información detallada del empleado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Nombre de Usuario</Label>
+              <Input
+                id="username"
+                type="text"
+                value={selectedEmployee?.username}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo Electrónico</Label>
+              <Input
+                id="email"
+                type="email"
+                value={selectedEmployee?.email}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nombre">Nombre Completo</Label>
+              <Input
+                id="nombre"
+                type="text"
+                value={selectedEmployee?.nombre}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rol">Rol</Label>
+              <Input
+                id="rol"
+                type="text"
+                value={selectedEmployee?.roles[0]?.nombre}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sueldo_base">Sueldo Base</Label>
+              <Input
+                id="sueldo_base"
+                type="number"
+                value={selectedEmployee?.informacion_salarial?.sueldo_base || 0}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="horas_extra">Horas Extra</Label>
+              <Input
+                id="horas_extra"
+                type="number"
+                value={selectedEmployee?.informacion_salarial?.horas_extra || 0}
+                disabled
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="afp">AFP</Label>
+              <Input
+                id="afp"
+                type="number"
+                value={selectedEmployee?.informacion_salarial?.afp || 0}
+                disabled
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsViewDialogOpen(false)}>Cerrar</Button>
+            <Button type="button" variant="destructive" onClick={() => handleDelete(selectedEmployee.id)}>Eliminar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -129,6 +129,9 @@ Route::middleware('auth:sanctum')->group(function () {
         // Usuarios
         Route::get('/usuarios', [UsuarioController::class, 'index']);
         Route::post('/usuarios', [UsuarioController::class, 'store']);
+        Route::put('/usuarios/{id}', [UsuarioController::class, 'update']);
+        Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy']);
+        Route::get('/usuarios/{id}', [UsuarioController::class, 'show']);
 
         // Roles
         Route::get('/roles', [RolController::class, 'index'])
@@ -347,6 +350,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/salidas', [ResumenDiarioController::class, 'getSalidas']);
             Route::get('/gastos/all', [ResumenDiarioController::class, 'getGastos']);
             Route::post('/gastos', [ResumenDiarioController::class, 'storeGasto']);
+            Route::get('/resumen-general', [ResumenDiarioController::class, 'getResumenGeneral']);
             Route::get('/{vendedor_id}', [ResumenDiarioController::class, 'autoResumenDiario']);
             Route::post('/', [ResumenDiarioController::class, 'store']);
             Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado']);

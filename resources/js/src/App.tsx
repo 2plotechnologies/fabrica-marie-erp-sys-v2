@@ -29,6 +29,7 @@ import ExpenseValidation from "@/pages/sales/ExpenseValidation";
 import FactoryOutput from "@/pages/stock/FactoryOutput";
 import WarehouseReturns from "@/pages/stock/WarehouseReturns";
 import ViaticosPage from "@/pages/sales/ViaticosPage";
+import SalesByVendor from "@/pages/sales/SalesByVendor";
 import CurrentCash from "@/pages/cash/CurrentCash";
 import CashMovements from "@/pages/cash/CashMovements";
 import CashClosures from "@/pages/cash/CashClosures";
@@ -178,6 +179,11 @@ const AppRoutes = () => {
           </ErrorBoundary>
         } />
         <Route path="/ventas/validacion-egresos" element={<ExpenseValidation />} />
+        <Route path="/ventas/resumen-vendedor" element={
+          <ErrorBoundary key={location.pathname}>
+            <SalesByVendor />
+          </ErrorBoundary>
+        } />
         <Route path="/ventas/reportes" element={<ComingSoon />} />
         <Route path="/ventas/caja-chica" element={<ViaticosPage />} />
 
