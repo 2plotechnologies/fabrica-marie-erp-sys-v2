@@ -141,7 +141,7 @@ class ReporteDetalleVentaController
 
             $vehiculo = optional($item->salida?->vehiculo);
 
-            $precio = $item->precio_unitario ?? 0;
+            $precio = $item->producto->precio_base ?? 0;
             $cantidad = $item->cantidad ?? 0;
 
             $productoNombre = null;
