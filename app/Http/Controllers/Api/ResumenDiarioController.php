@@ -186,6 +186,22 @@ class ResumenDiarioController extends Controller
     {
         $resumenDiario = ResumenDiario::findOrFail($id);
         $resumenDiario->estado = $request->estado;
+        //Aprobar gastos automaticamente si es estado es CONFIRMADO (Usar resumen_diario_id)
+        if($request->estado == 'CONFIRMADO'){
+            $gastos = Gasto::where('resumen_diario_id', $id)->get();
+            foreach ($gastos as $gasto) {
+                $gasto->estado = 'CONFIRMADO';
+                $gasto->save();
+            }
+        }
+        //Rechazar gastos automaticamente si es estado es RECHAZADO (Usar resumen_diario_id)
+        if($request->estado == 'RECHAZADO'){
+            $gastos = Gasto::where('resumen_diario_id', $id)->get();
+            foreach ($gastos as $gasto) {
+                $gasto->estado = 'RECHAZADO';
+                $gasto->save();
+            }
+        }
         $resumenDiario->save();
         return response()->json($resumenDiario);
     }
