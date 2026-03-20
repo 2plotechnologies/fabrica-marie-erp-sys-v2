@@ -151,7 +151,7 @@ const navigation: NavItemConfig[] = [
       { to: '/clientes/lista', label: 'Lista de Clientes' },
       { to: '/clientes/crm', label: 'CRM Seguimiento' },
       { to: '/clientes/deudas', label: 'Cuentas por Cobrar' },
-      { to: '/clientes/morosos', label: 'Morosos' },
+      //{ to: '/clientes/morosos', label: 'Morosos' },
     ]
   },
   {

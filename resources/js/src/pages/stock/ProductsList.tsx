@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Cookie, Package } from 'lucide-react';
+import { Search, Plus, Cookie, Package, Trash, Pencil } from 'lucide-react';
 import { productoService } from '@/services/productoService';
 import { toast, useToast } from '@/hooks/use-toast';
 
@@ -25,6 +25,9 @@ const ProductsList = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     sku: '',
@@ -110,6 +113,86 @@ const ProductsList = () => {
       toast({
         title: "Error",
         description: err?.message || "No se pudo registrar el producto.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (id: number, product: any) => {
+    // Aquí luego abres el modal de edición con los datos del producto
+    setSelectedProductId(id);
+    setIsEditDialogOpen(true);
+    setForm(product);
+    console.log('Editar producto:', product);
+  };
+
+  const handleUpdate = async () => {
+    if (!form.sku || !form.nombre) return;
+
+    try {
+      await productoService.update(selectedProductId, {
+        sku: form.sku,
+        categoria: form.categoria,
+        nombre: form.nombre,
+        descripcion: form.descripcion || undefined,
+        presentacion: form.presentacion || undefined,
+        marca: form.marca || undefined,
+        unidad_medida: form.unidad_medida,
+        peso: Number(form.peso),
+        precio_base: Number(form.precio_base),
+        costo: Number(form.costo),
+        stock_minimo: Number(form.stock_minimo),
+        activo: form.activo,
+      });
+
+      await fetchProductos();
+
+      setForm({
+        sku: '',
+        categoria: '',
+        nombre: '',
+        descripcion: '',
+        presentacion: '',
+        marca: '',
+        unidad_medida: '',
+        peso: '',
+        precio_base: '',
+        costo: '',
+        stock_minimo: '',
+        activo: true,
+      });
+
+      setIsEditDialogOpen(false);
+
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo actualizar el producto.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    // Aquí luego abres el modal de eliminación.
+    setSelectedProductId(id);
+    setIsDeleteDialogOpen(true);
+    console.log('Eliminar producto:', id);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await productoService.delete(selectedProductId);
+      await fetchProductos();
+      setIsDeleteDialogOpen(false);
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo eliminar el producto.",
         variant: "destructive",
       });
     }
@@ -242,6 +325,7 @@ const ProductsList = () => {
                 <TableHead>Precio Base</TableHead>
                 <TableHead>Costo</TableHead>
                 <TableHead>Stock Mínimo</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -255,6 +339,15 @@ const ProductsList = () => {
                   <TableCell>S/ {Number(p.precio_base).toFixed(2)}</TableCell>
                   <TableCell>S/ {Number(p.costo).toFixed(2)}</TableCell>
                   <TableCell>{p.stock_minimo}</TableCell>
+                  {/*Boton lapiz y boton tacho. */}
+                  <TableCell>
+                    <Button variant="outline" size="icon" onClick={() => handleEdit(p.id, p)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => handleDelete(p.id)}>
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
 
@@ -290,6 +383,55 @@ const ProductsList = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* MODAL EDITAR PRODUCTO */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Cookie className="h-5 w-5 text-primary" />Editar Producto</DialogTitle>
+            <DialogDescription>Edita el producto</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>SKU *</Label><Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="GAL-XXX" /></div>
+              <div className="space-y-2"><Label>Categoría</Label><Input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })} placeholder="general" /></div>
+            </div>
+            <div className="space-y-2"><Label>Nombre *</Label><Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Galletas de..." /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Marca</Label><Input value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Rey del Centro" /></div>
+              <div className="space-y-2"><Label>Presentación</Label><Input value={form.presentacion} onChange={(e) => setForm({ ...form, presentacion: e.target.value })} placeholder="5x800, 5x900..." /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Unidad de Medida *</Label><Input value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} placeholder="Kg, Lb, etc." /></div>
+              <div className="space-y-2"><Label>Peso (kg)</Label><Input value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} placeholder="0.5" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Precio Base</Label><Input value={form.precio_base} onChange={(e) => setForm({ ...form, precio_base: e.target.value })} placeholder="10.00" /></div>
+              <div className="space-y-2"><Label>Costo</Label><Input value={form.costo} onChange={(e) => setForm({ ...form, costo: e.target.value })} placeholder="5.00" /></div>
+            </div>
+            <div className="space-y-2"><Label>Stock Mínimo</Label><Input value={form.stock_minimo} onChange={(e) => setForm({ ...form, stock_minimo: e.target.value })} placeholder="10" /></div>
+            <div className="space-y-2"><Label>Descripción</Label><Textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Descripción del producto..." /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleUpdate}>Guardar Cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL ELIMINAR PRODUCTO */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Trash className="h-5 w-5 text-destructive" />Eliminar Producto</DialogTitle>
+            <DialogDescription>¿Estás seguro de que quieres eliminar este producto?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>Eliminar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
