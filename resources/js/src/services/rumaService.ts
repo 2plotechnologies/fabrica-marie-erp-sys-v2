@@ -34,13 +34,13 @@ export const rumaService = {
   },
 
   /* Actualizar ruma */
-  async update(data: RumaPayload, id:number) {
-    const response = await api.put(`/inventario/ruma/${id}`, data);
+  async update(id: number, data: RumaPayload) {
+    const response = await api.put(`/inventario/rumas/${id}`, data);
     return response.data;
   },
 
   /* Eliminar ruma */
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/inventario/ruma/${id}`);
+    await api.delete(`/inventario/rumas/${id}`);
   },
 };

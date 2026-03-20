@@ -107,8 +107,15 @@ class RumaController extends Controller
             'condiciones' => 'nullable|string|max:100',
             'capacidad_unidades' => 'required|integer|min:1',
             'ubicacion_fisica' => 'required|string|max:150',
-            'estado' => 'required|in:ACTIVA,INACTIVA'
+            'estado' => 'required|in:ACTIVA,INACTIVA,MANTENIMIENTO,LLENA'
         ]);
+
+        //No permitir que se pueda desactivar o poner en mantenimiento una ruma que tenga stock
+        if($ruma->stock->sum('cantidad') > 0 && ($data['estado'] === 'INACTIVA' || $data['estado'] === 'MANTENIMIENTO')){
+            return response()->json([
+                'message' => 'No se puede desactivar o poner en mantenimiento una ruma que tenga stock registrado'
+            ], 422);
+        }
 
         // 🔥 Validar que la capacidad no sea menor al stock actual
         $stockActual = $ruma->stock->sum('cantidad');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\MovimientoStock;
 use App\Services\StockService;
 use Illuminate\Http\Request;
+use App\Models\Ruma;
 
 class MovimientoStockController extends Controller
 {
@@ -26,6 +27,14 @@ class MovimientoStockController extends Controller
             'cantidad' => 'required|integer|min:1',
             'motivo' => 'nullable|string'
         ]);
+
+        //No permitir que se pueda registrar en una ruma en mantenimiento, inactiva o llena.
+        $ruma = Ruma::find($request->ruma_id);
+        if ($ruma->estado === 'INACTIVA' || $ruma->estado === 'MANTENIMIENTO' || $ruma->estado === 'LLENA') {
+            return response()->json([
+                'message' => 'No se puede registrar en una ruma en mantenimiento, inactiva o llena.'
+            ], 422);
+        }
 
         try {
             $movimiento = StockService::registrarMovimiento([

@@ -78,6 +78,8 @@ const RumaManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedRuma, setSelectedRuma] = useState<Ruma | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [rumaId, setRumaId] = useState<number | null>(null);
 
   const fetchRumas = async () => {
     try {
@@ -91,9 +93,11 @@ const RumaManagement = () => {
       setIsLoading(false);
     }
   };
+
   useEffect(() => {
     fetchRumas();
   }, []);
+
   const [form, setForm] = useState({
     codigo: '',
     nombre: '',
@@ -190,6 +194,65 @@ const RumaManagement = () => {
       toast({
         title: "Error",
         description: err?.message || "No se pudo registrar la ruma.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = (id: number, ruma: any) => {
+    setRumaId(id);
+    setForm({
+      codigo: ruma.codigo,
+      nombre: ruma.nombre,
+      descripcion: ruma.descripcion,
+      condiciones: ruma.condiciones,
+      capacidad_unidades: ruma.capacidad,
+      ubicacion_fisica: ruma.ubicacion_fisica,
+      estado: ruma.estado,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateRuma = async () => {
+    if (!form.codigo || !form.nombre) return;
+
+    try {
+      await rumaService.update(rumaId, {
+        codigo: form.codigo,
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        condiciones: form.condiciones,
+        capacidad_unidades: Number(form.capacidad_unidades),
+        ubicacion_fisica: form.ubicacion_fisica,
+        estado: form.estado,
+      });
+
+      await fetchRumas();
+
+      setForm({
+        codigo: '',
+        nombre: '',
+        descripcion: '',
+        condiciones: '',
+        capacidad_unidades: '',
+        ubicacion_fisica: '',
+        estado: 'ACTIVA',
+      });
+
+      setIsEditDialogOpen(false);
+
+      toast({
+        title: "Ruma actualizada",
+        description: "La ruma ha sido actualizada exitosamente.",
+      });
+
+    } catch (err: any) {
+      setIsEditDialogOpen(false);
+      console.log("ERROR COMPLETO:", err);
+      console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo actualizar la ruma.",
         variant: "destructive",
       });
     }
@@ -447,7 +510,7 @@ const RumaManagement = () => {
                         <Button variant="ghost" size="icon" onClick={() => handleViewDetails(ruma)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(ruma.id, ruma)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </div>
@@ -557,6 +620,104 @@ const RumaManagement = () => {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-primary" />
+              Editar Ruma
+            </DialogTitle>
+            <DialogDescription>
+              Editar información de la ruma
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="codigo">Código</Label>
+                <Input
+                  id="codigo"
+                  value={form.codigo}
+                  onChange={(e) => setForm({ ...form, codigo: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="nombre">Nombre</Label>
+                <Input
+                  id="nombre"
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="descripcion">Descripción</Label>
+                <Input
+                  id="descripcion"
+                  value={form.descripcion}
+                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="condiciones">Condiciones</Label>
+                <Input
+                  id="condiciones"
+                  value={form.condiciones}
+                  onChange={(e) => setForm({ ...form, condiciones: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="capacidad_unidades">Capacidad</Label>
+                <Input
+                  id="capacidad_unidades"
+                  value={form.capacidad_unidades}
+                  onChange={(e) => setForm({ ...form, capacidad_unidades: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ubicacion_fisica">Ubicación</Label>
+                <Input
+                  id="ubicacion_fisica"
+                  value={form.ubicacion_fisica}
+                  onChange={(e) => setForm({ ...form, ubicacion_fisica: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="estado">Estado</Label>
+                <Select
+                  value={form.estado}
+                  onValueChange={(value) => setForm({ ...form, estado: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVA">Activa</SelectItem>
+                    <SelectItem value="LLENA">Llena</SelectItem>
+                    <SelectItem value="MANTENIMIENTO">Mantenimiento</SelectItem>
+                    <SelectItem value="INACTIVA">Inactiva</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateRuma}>
+              Actualizar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
