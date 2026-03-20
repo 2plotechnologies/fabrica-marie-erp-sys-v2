@@ -23,6 +23,7 @@ import {
 import { MapPin, Plus, Route } from 'lucide-react';
 import { toast } from 'sonner';
 import { mockUsers } from '@/data/mockData';
+import { getErrorMessage } from '@/lib/axios-error';
 
 interface NewRouteDialogProps {
   open: boolean;
@@ -94,7 +95,7 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewR
         onOpenChange(false);
     } catch (error: any) {
         console.log(error);
-        toast.error(error?.response?.data?.error || 'Error al crear la ruta');
+        toast.error(getErrorMessage(error, 'Error al crear la ruta'));
     }
  };
 

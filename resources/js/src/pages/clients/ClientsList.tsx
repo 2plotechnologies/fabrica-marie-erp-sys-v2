@@ -39,6 +39,7 @@ import {
 import { cn } from '@/lib/utils';
 import { clienteService } from '@/services/clienteService';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/axios-error';
 import { Label } from '@/components/ui/label';
 
 interface ClientUI {
@@ -109,7 +110,7 @@ const ClientsList = () => {
       } catch (error: any) {
         toast({
           title: "Error",
-          description: error?.message || "No se pudieron cargar los clientes.",
+          description: getErrorMessage(error, "No se pudieron cargar los clientes."),
           variant: "destructive",
         });
       } finally {
@@ -170,7 +171,7 @@ const ClientsList = () => {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo obtener la información del cliente.',
+        description: getErrorMessage(error, 'No se pudo obtener la información del cliente.'),
         variant: 'destructive',
       });
       return null;
@@ -232,7 +233,7 @@ const ClientsList = () => {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo actualizar el cliente.',
+          description: getErrorMessage(error, 'No se pudo actualizar el cliente.'),
         variant: 'destructive',
       });
     } finally {
@@ -272,7 +273,7 @@ const ClientsList = () => {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudo desactivar el cliente.',
+          description: getErrorMessage(error, 'No se pudo desactivar el cliente.'),
         variant: 'destructive',
       });
     }

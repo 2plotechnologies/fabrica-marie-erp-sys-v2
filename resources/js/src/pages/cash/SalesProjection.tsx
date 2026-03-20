@@ -11,6 +11,7 @@ import { Plus, TrendingUp, Target, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { proyeccionVentaService } from '@/services/proyecccionVentaService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const SalesProjection = () => {
   const [proyecciones, setProyecciones] = useState<any[]>([]);
@@ -46,7 +47,7 @@ const SalesProjection = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear proyección: " + error.response?.data.message || "Error desconocido");
+      toast.error(formatErrorMessage('Error al crear proyección', error, 'No se pudo crear la proyección.'));
     }
   };
 

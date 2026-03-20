@@ -33,6 +33,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cajaService } from '@/services/cajaService';
+import { formatErrorMessage } from '@/lib/axios-error';
 import { toast } from 'sonner';
 
 const CashClosures = () => {
@@ -46,7 +47,7 @@ const CashClosures = () => {
         const response = await cajaService.getCajasCerradas();
         setCajasCerradas(response);
       } catch (error) {
-        toast.error('Error al obtener las cajas cerradas: ' + error);
+        toast.error(formatErrorMessage('Error al obtener las cajas cerradas', error, 'No se pudieron obtener las cajas cerradas.'));
       }
     };
     fetchCajasCerradas();

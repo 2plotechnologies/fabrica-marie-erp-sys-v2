@@ -14,6 +14,7 @@ import { Plus, FileDown, Truck, Package, Search, Eye, AlertTriangle } from 'luci
 import { salidaService } from '@/services/salidaService';
 import { SalidaItemPayload } from '@/services/salidaService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const FactoryOutput = () => {
   const [salidas, setSalidas] = useState<any[]>([]);
@@ -189,7 +190,7 @@ const FactoryOutput = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear salida: " + error.response?.data.error);
+      toast.error(formatErrorMessage('Error al crear salida', error, 'No se pudo crear la salida.'));
     }
   };
 
@@ -203,7 +204,7 @@ const FactoryOutput = () => {
       await fetchSalidas();
 
     } catch (error) {
-      toast.error("Error al actualizar estado");
+      toast.error(formatErrorMessage('Error al actualizar estado', error, 'No se pudo actualizar el estado.'));
     }
   };
 

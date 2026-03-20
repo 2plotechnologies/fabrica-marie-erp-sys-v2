@@ -48,6 +48,7 @@ import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { regularizacionService } from '@/services/regularizacionService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const CashRegularization = () => {
   const [regularizaciones, setRegularizaciones] = useState<any[]>([]);
@@ -138,7 +139,7 @@ const CashRegularization = () => {
       setSelectedDate(undefined);
       setCierreCajaId(null);
     } catch (error) {
-      toast.error("Error al crear la regularización: " + error.response.data.message || error.response || 'Error desconocido');
+      toast.error(formatErrorMessage('Error al crear la regularización', error, 'No se pudo crear la regularización.'));
     }
   };
 
@@ -150,7 +151,7 @@ const CashRegularization = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al actualizar la regularización: " + error.response.data.message || error.response || 'Error desconocido');
+      toast.error(formatErrorMessage('Error al actualizar la regularización', error, 'No se pudo actualizar la regularización.'));
     }
   };
 

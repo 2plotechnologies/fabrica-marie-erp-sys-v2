@@ -33,6 +33,7 @@ import RouteMap from '@/components/routes/RouteMap';
 import NewRouteDialog from '@/components/routes/NewRouteDialog';
 import { rutaService } from '@/services/rutaService';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/axios-error';
 
 const RoutesList = () => {
   const { toast } = useToast();
@@ -69,7 +70,7 @@ const RoutesList = () => {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudieron cargar las rutas.',
+        description: getErrorMessage(error, 'No se pudieron cargar las rutas.'),
         variant: 'destructive',
       });
     } finally {
@@ -84,7 +85,7 @@ const RoutesList = () => {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error?.message || 'No se pudieron cargar los vendedores.',
+        description: getErrorMessage(error, 'No se pudieron cargar los vendedores.'),
         variant: 'destructive',
       });
     }
@@ -117,7 +118,7 @@ const RoutesList = () => {
       setDetailRoute(data);
       setIsDetailOpen(true);
     } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudo obtener el detalle de la ruta.', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'No se pudo obtener el detalle de la ruta.'), variant: 'destructive' });
     }
   };
 
@@ -127,7 +128,7 @@ const RoutesList = () => {
       setEditRoute(data);
       setIsEditOpen(true);
     } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudo cargar la ruta para edición.', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'No se pudo cargar la ruta para edición.'), variant: 'destructive' });
     }
   };
 
@@ -149,7 +150,7 @@ const RoutesList = () => {
       setIsEditOpen(false);
       toast({ title: 'Ruta actualizada', description: 'Los cambios fueron guardados.' });
     } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudo actualizar la ruta.', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'No se pudo actualizar la ruta.'), variant: 'destructive' });
     }
   };
 
@@ -171,7 +172,7 @@ const RoutesList = () => {
       setIsReassignOpen(false);
       toast({ title: 'Vendedor reasignado', description: 'La ruta fue actualizada correctamente.' });
     } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudo reasignar el vendedor.', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'No se pudo reasignar el vendedor.'), variant: 'destructive' });
     }
   };
 
@@ -182,7 +183,7 @@ const RoutesList = () => {
       setRouteClients(clients);
       setIsClientsOpen(true);
     } catch (error: any) {
-      toast({ title: 'Error', description: error?.message || 'No se pudieron cargar los clientes de la ruta.', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'No se pudieron cargar los clientes de la ruta.'), variant: 'destructive' });
     }
   };
 

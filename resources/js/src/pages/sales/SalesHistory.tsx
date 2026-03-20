@@ -32,6 +32,7 @@ import { es } from 'date-fns/locale';
 import { Sale } from '@/types';
 import { ventaService } from '@/services/ventaService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const SalesHistory = () => {
   const [ventas, setVentas] = useState<any[]>([]);
@@ -54,7 +55,7 @@ const SalesHistory = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al confirmar venta: " + error.response?.data.message);
+      toast.error(formatErrorMessage('Error al confirmar venta', error, 'No se pudo confirmar la venta.'));
     }
   };
 
@@ -71,7 +72,7 @@ const SalesHistory = () => {
     } catch (error) {
       console.error("ERROR COMPLETO:", error);
       console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al anular venta: " + error.response?.data.message);
+      toast.error(formatErrorMessage('Error al anular venta', error, 'No se pudo anular la venta.'));
     }
   };
 
@@ -86,7 +87,7 @@ const SalesHistory = () => {
     } catch (error) {
       console.error("ERROR COMPLETO:", error);
       console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al eliminar venta: " + error.response?.data.message);
+      toast.error(formatErrorMessage('Error al eliminar venta', error, 'No se pudo eliminar la venta.'));
     }
   };
 

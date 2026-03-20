@@ -24,6 +24,7 @@ import { es } from 'date-fns/locale';
 import { cajaService } from '@/services/cajaService';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const CurrentCash = () => {
   const [isOpenCashDialog, setIsOpenCashDialog] = useState(false);
@@ -81,7 +82,7 @@ const CurrentCash = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al abrir caja: " + error.response?.data);
+      toast.error(formatErrorMessage('Error al abrir caja', error, 'No se pudo abrir la caja.'));
     }
 
     setIsOpenCashDialog(false);
@@ -98,7 +99,7 @@ const CurrentCash = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al cerrar caja: " + error.response?.data);
+      toast.error(formatErrorMessage('Error al cerrar caja', error, 'No se pudo cerrar la caja.'));
     }
     setIsCloseCashDialog(false);
     setClosingCount('');
@@ -124,7 +125,7 @@ const CurrentCash = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear movimiento: " + error.response?.data);
+      toast.error(formatErrorMessage('Error al crear movimiento', error, 'No se pudo crear el movimiento.'));
     }
   };
 

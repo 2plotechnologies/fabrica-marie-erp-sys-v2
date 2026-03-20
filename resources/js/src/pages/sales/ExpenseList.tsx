@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { gastoService } from '@/services/gastoService';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const ExpenseList = () => {
   const { currentRole } = useRole();
@@ -61,7 +62,7 @@ const ExpenseList = () => {
         setGastos(gastosData);
         setVendedores(vendedoresData);
       } catch (error: any) {
-        toast.error("Error al cargar datos: " + (error?.response?.data?.message || 'Error desconocido'));
+        toast.error(formatErrorMessage('Error al cargar datos', error, 'No se pudieron cargar los datos.'));
       } finally {
         setIsLoading(false);
       }
@@ -106,7 +107,7 @@ const ExpenseList = () => {
       setDialogOpen(false);
       toast.success('Gasto registrado con éxito');
     } catch (error: any) {
-      toast.error("Error al crear gasto: " + (error?.response?.data?.message || 'Error desconocido'));
+      toast.error(formatErrorMessage('Error al crear gasto', error, 'No se pudo crear el gasto.'));
     }
   };
 

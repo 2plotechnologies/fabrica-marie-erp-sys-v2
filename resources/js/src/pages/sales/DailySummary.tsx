@@ -22,6 +22,7 @@ import { resumenDiarioService } from '@/services/resumenDiarioService';
 import { toast } from 'sonner';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const DailySummaryPage = () => {
   const { currentRole } = useRole();
@@ -297,7 +298,7 @@ const DailySummaryPage = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear resumen: " + error.response?.data.message || error?.message || "Error al crear resumen desconocido.");
+      toast.error(formatErrorMessage('Error al crear resumen', error, 'No se pudo crear el resumen.'));
     }
   };
 
