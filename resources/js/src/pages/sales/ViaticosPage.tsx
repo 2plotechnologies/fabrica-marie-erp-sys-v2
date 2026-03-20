@@ -34,6 +34,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { formatErrorMessage } from '@/lib/axios-error';
 import {
   Table,
   TableBody,
@@ -172,7 +173,7 @@ const ViaticosPage = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear viático: " + error.response?.data.error);
+      toast.error(formatErrorMessage('Error al crear viático', error, 'No se pudo crear el viático.'));
     }
   };
 
@@ -184,7 +185,7 @@ const ViaticosPage = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al actualizar estado de viático: " + error.response?.data.message);
+      toast.error(formatErrorMessage('Error al actualizar estado de viático', error, 'No se pudo actualizar el estado del viático.'));
       if (error.response?.status === 403) {
         toast.error("Usted no tiene autorización para realizar esta acción");
       }
@@ -215,7 +216,7 @@ const ViaticosPage = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al liquidar: " + error.response?.data.message);
+      toast.error(formatErrorMessage('Error al liquidar', error, 'No se pudo liquidar el viático.'));
       if (error.response?.status === 403) {
         toast.error("Usted no tiene autorización para realizar esta acción");
       }

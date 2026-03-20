@@ -13,6 +13,7 @@ import { es } from 'date-fns/locale';
 import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins } from 'lucide-react';
 import { toast } from 'sonner';
 import { cobranzasService } from '@/services/cobranzasService';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const CollectionsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,7 +98,7 @@ const CollectionsPage = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear abono: " + error.response?.data.message || error?.message || "Error desconocido");
+      toast.error(formatErrorMessage('Error al crear abono', error, 'No se pudo crear el abono.'));
     }
   };
 
@@ -112,7 +113,7 @@ const CollectionsPage = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al extender fecha de vencimiento: " + error.response?.data.message);
+      toast.error(formatErrorMessage('Error al extender fecha de vencimiento', error, 'No se pudo extender la fecha.'));
     }
   };
 

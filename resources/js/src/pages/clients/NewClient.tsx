@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, Phone, CreditCard, Save, ArrowLeft } from 'lucide-react';
+import { getErrorMessage } from '@/lib/axios-error';
 
 interface Ruta {
   id: number;
@@ -59,7 +60,7 @@ const NewClient = () => {
       } catch (error: any) {
         toast({
           title: "Error",
-          description: error?.message || "No se pudieron cargar las rutas.",
+          description: getErrorMessage(error, "No se pudieron cargar las rutas."),
           variant: "destructive",
         });
       } finally {
@@ -115,7 +116,7 @@ const NewClient = () => {
       } else {
         toast({
           title: "Error",
-          description: error?.message || "No se pudo registrar el cliente.",
+          description: getErrorMessage(error, "No se pudo registrar el cliente."),
           variant: "destructive",
         });
       }

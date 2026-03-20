@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cajaService } from '@/services/cajaService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const ExpenseValidation = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +37,7 @@ const ExpenseValidation = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al obtener egresos: " + error.response?.data.message || error?.message || "Error desconocido.");
+      toast.error(formatErrorMessage('Error al obtener egresos', error, 'No se pudieron obtener los egresos.'));
       if (error.response?.status === 403) {
         toast.error("Usted no tiene autorización para ver los egresos.");
       }
@@ -81,7 +82,7 @@ const ExpenseValidation = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al actualizar egreso: " + error.response?.data.message || error?.message || "Error desconocido.");
+      toast.error(formatErrorMessage('Error al actualizar egreso', error, 'No se pudo actualizar el egreso.'));
       //Si el error es de tipo 403 forbideen mostrar toast que diga "Usted no tiene autorización para realizar esta acción"
       if (error.response?.status === 403) {
         toast.error("Usted no tiene autorización para realizar esta acción");

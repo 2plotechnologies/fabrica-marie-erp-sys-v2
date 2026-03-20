@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
 import { dashboardService } from '@/services/dashboardService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const Dashboard = () => {
   const { currentRole, roleLabels } = useRole();
@@ -71,7 +72,7 @@ const Dashboard = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al obtener el dashboard: " + error.response?.data.message || error?.message || "Error al obtener el dashboard desconocido.");
+      toast.error(formatErrorMessage('Error al obtener el dashboard', error, 'No se pudo cargar el dashboard.'));
     }
   };
 

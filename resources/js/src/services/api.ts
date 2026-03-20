@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { extractLaravelErrorMessage } from '@/lib/axios-error';
 
 const API_URL = process.env.NODE_ENV === 'production'
     ? '/api'
@@ -22,6 +23,19 @@ api.interceptors.request.use(
         return config;
     },
     error => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+    response => response,
+    error => {
+        const backendMessage = extractLaravelErrorMessage(error);
+
+        if (backendMessage) {
+            error.message = backendMessage;
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 // Servicio de autenticación

@@ -21,6 +21,7 @@ import { es } from 'date-fns/locale';
 import { cajaService } from '@/services/cajaService';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const CashDisbursements = () => {
     const [salidas, setSalidas] = useState<any[]>([]);
@@ -40,7 +41,7 @@ const CashDisbursements = () => {
         } catch (error) {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-            toast.error("Error al obtener salidas de caja: " + error.response?.data);
+            toast.error(formatErrorMessage('Error al obtener salidas de caja', error, 'No se pudieron obtener las salidas de caja.'));
         } finally {
             setIsLoading(false);
         }
@@ -66,7 +67,7 @@ const CashDisbursements = () => {
         onError: (error) => {
             console.error("ERROR COMPLETO:", error);
             console.error("RESPUESTA DEL SERVIDOR:", error.stack);
-            toast.error("Error al crear salida de caja: " + error.message);
+            toast.error(formatErrorMessage('Error al crear salida de caja', error, 'No se pudo crear la salida de caja.'));
         }
     });
 
@@ -86,7 +87,7 @@ const CashDisbursements = () => {
         onError: (error) => {
             console.error("ERROR COMPLETO:", error);
             console.error("RESPUESTA DEL SERVIDOR:", error.stack);
-            toast.error("Error al liquidar salida de caja: " + error.message);
+            toast.error(formatErrorMessage('Error al liquidar salida de caja', error, 'No se pudo liquidar la salida de caja.'));
         }
     });
 
@@ -103,7 +104,7 @@ const CashDisbursements = () => {
         } catch (error) {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-            toast.error("Error al crear salida: " + error.response?.data);
+            toast.error(formatErrorMessage('Error al crear salida', error, 'No se pudo crear la salida.'));
         }
     };
 
@@ -122,7 +123,7 @@ const CashDisbursements = () => {
         } catch (error) {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-            toast.error("Error al liquidar salida: " + error.response?.data);
+            toast.error(formatErrorMessage('Error al liquidar salida', error, 'No se pudo liquidar la salida.'));
             if (error.response?.status === 403) {
                 toast.error("Usted no tiene autorización para realizar esta acción");
             }
@@ -157,7 +158,7 @@ const CashDisbursements = () => {
         } catch (error) {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-            toast.error("Error al entregar salida: " + error.response?.data);
+            toast.error(formatErrorMessage('Error al entregar salida', error, 'No se pudo entregar la salida.'));
             if (error.response?.status === 403) {
                 toast.error("Usted no tiene autorización para realizar esta acción");
             }

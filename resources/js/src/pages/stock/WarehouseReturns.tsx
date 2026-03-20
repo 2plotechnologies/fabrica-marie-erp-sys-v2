@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { devolucionService } from '@/services/devolucionService';
 import { DevolucionItemPayload } from '@/services/devolucionService';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const WarehouseReturns = () => {
   const [devoluciones, setDevoluciones] = useState<any[]>([]);
@@ -131,7 +132,7 @@ const WarehouseReturns = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al crear Devolución");
+      toast.error(formatErrorMessage('Error al crear devolución', error, 'No se pudo crear la devolución.'));
     }
   };
 
@@ -156,7 +157,7 @@ const WarehouseReturns = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(error?.message || "Error al actualizar estado de la devolución");
+      toast.error(formatErrorMessage('Error al actualizar estado de la devolución', error, 'No se pudo actualizar el estado de la devolución.'));
     }
   };
 

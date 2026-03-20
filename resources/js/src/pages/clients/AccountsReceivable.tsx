@@ -33,6 +33,7 @@ import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cobranzasService } from '@/services/cobranzasService';
 import { toast } from 'sonner';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const AccountsReceivable = () => {
   const [cuentas, setCuentas] = useState<any[]>([]);
@@ -130,7 +131,7 @@ const AccountsReceivable = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear abono: " + error.response?.data.message || error?.message || "Error desconocido");
+      toast.error(formatErrorMessage('Error al crear abono', error, 'No se pudo crear el abono.'));
     }
     setPaymentAmount('');
   };

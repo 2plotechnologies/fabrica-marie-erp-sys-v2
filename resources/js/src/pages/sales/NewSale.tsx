@@ -12,6 +12,7 @@ import type { CartItem } from '@/types/sales';
 import { ventaService } from '@/services/ventaService';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatErrorMessage } from '@/lib/axios-error';
 
 const NewSale = () => {
   const { currentRole, roleLabels } = useRole();
@@ -227,7 +228,7 @@ const NewSale = () => {
     } catch (error) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error("Error al crear venta: " + error.response?.data.message || error?.message || "Error al crear venta desconocido.");
+      toast.error(formatErrorMessage('Error al crear venta', error, 'No se pudo crear la venta.'));
     }
 
     setCart([]);
