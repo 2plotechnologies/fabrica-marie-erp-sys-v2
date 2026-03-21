@@ -139,7 +139,7 @@ class DevolucionController
                             'cantidad' => $item->cantidad,
                             'referencia_tipo' => 'DEV_DANADA',
                             'referencia_id' => $devolucion->id,
-                            'motivo' => 'Devolución dañada aceptada'
+                            'motivo' => 'Devolución dañada aceptada, producto malo.'
                         ]);
                     }
                 }

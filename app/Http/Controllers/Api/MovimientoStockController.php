@@ -6,6 +6,7 @@ use App\Models\MovimientoStock;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use App\Models\Ruma;
+use App\Models\StockActual;
 
 class MovimientoStockController extends Controller
 {
@@ -28,12 +29,36 @@ class MovimientoStockController extends Controller
             'motivo' => 'nullable|string'
         ]);
 
-        //No permitir que se pueda registrar en una ruma en mantenimiento, inactiva o llena.
+        //No permitir que se pueda registrar en una ruma en mantenimiento o inactiva.
         $ruma = Ruma::find($request->ruma_id);
-        if ($ruma->estado === 'INACTIVA' || $ruma->estado === 'MANTENIMIENTO' || $ruma->estado === 'LLENA') {
+        if ($ruma->estado === 'INACTIVA' || $ruma->estado === 'MANTENIMIENTO') {
             return response()->json([
-                'message' => 'No se puede registrar en una ruma en mantenimiento, inactiva o llena.'
+                'message' => 'No se puede registrar en una ruma en mantenimiento o inactiva.'
             ], 422);
+        }
+
+        //Si el tipo es INGRESO O DEVOLUCION_BUENA, verificar que la ruma no esté llena
+        if($request->tipo == 'INGRESO' || $request->tipo == 'DEVOLUCION_BUENA'){
+            $ruma = Ruma::find($request->ruma_id);
+            if($ruma->estado == 'LLENA'){
+                return response()->json([
+                    'message' => 'No se puede registrar en una ruma llena.'
+                ], 422);
+            }
+        }
+
+        //No permitir que se ingrese mas cantidad de la que queda en la ruma si el tipo es INGRESO O DEVOLUCION_BUENA
+        if($request->tipo == 'INGRESO' || $request->tipo == 'DEVOLUCION_BUENA'){
+            $ruma = Ruma::find($request->ruma_id);
+            //La ruma no tiene el campo cantidad, se debe buscar en StockActual con el id de la ruma.
+            $stockActual = StockActual::where('ruma_id', $request->ruma_id);
+            //Sumar todas las cantidades de stock actual con el mismo ruma_id.
+            $stockActual = $stockActual->sum('cantidad');
+            if($stockActual + $request->cantidad > $ruma->capacidad_unidades){
+                return response()->json([
+                    'message' => 'No hay espacio en la ruma para esta operacion.'
+                ], 422);
+            }
         }
 
         try {

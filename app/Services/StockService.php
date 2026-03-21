@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\StockActual;
 use App\Models\StockVendedor;
 use App\Models\MovimientoStock;
+use App\Models\Ruma;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -30,16 +31,27 @@ class StockService
             $cantidadMov = $data['cantidad'];
 
             // 2. Calcular nuevo stock según tipo
+            //Caso devolucion mala: Stock almacén sube pero con etiqueta de producto malo.
             switch ($data['tipo']) {
 
                 case 'INGRESO':
                 case 'DEVOLUCION_BUENA':
+                case 'DEVOLUCION_MALA':
+                    //Marcar ruma como llena automaticamente si el ingreso o devolucion llena la ruma.
+                    $ruma = Ruma::find($data['ruma_id']);
+                    //Sumar todas las cantidades de stock actual con el mismo ruma_id.
+                    $stockActual = StockActual::where('ruma_id', $data['ruma_id']);
+                    $stockActual = $stockActual->sum('cantidad');
+                    if($stockActual + $data['cantidad'] == $ruma->capacidad_unidades){
+                        $ruma->estado = 'LLENA';
+                        $ruma->save();
+                    }
+
                     $nuevoStock = $cantidadActual + $cantidadMov;
                     break;
 
                 case 'SALIDA':
                 case 'DESECHO':
-                case 'DEVOLUCION_MALA':
                     $permitirNegativo = auth()->user()?->can('stock.negativo') ?? false;
 
                     $disponible = $stock->cantidad - ($stock->stock_reservado ?? 0);
@@ -53,6 +65,11 @@ class StockService
                     }
 
                     $nuevoStock = $cantidadActual - $cantidadMov;
+
+                    //Si la ruma estaba llena, marcar como disponible.
+                    $ruma = Ruma::find($data['ruma_id']);
+                    $ruma->estado = 'ACTIVA';
+                    $ruma->save();
                     break;
 
                 case 'AJUSTE':

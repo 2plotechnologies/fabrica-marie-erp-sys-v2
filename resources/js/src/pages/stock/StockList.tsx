@@ -49,7 +49,7 @@ const StockList = () => {
 
   // Discard dialog state
   const [discardDialog, setDiscardDialog] = useState<{ productoId: string; nombre: string } | null>(null);
-  const [discardType, setDiscardType] = useState<string>('DEVOLUCION_MALA');
+  const [discardType, setDiscardType] = useState<string>('DESECHO');
   const [discardQty, setDiscardQty] = useState('');
   const [discardRuma, setDiscardRuma] = useState<string | undefined>(undefined);
   const [discardMotivo, setDiscardMotivo] = useState('');
@@ -160,7 +160,7 @@ const StockList = () => {
     setDiscardQty('');
     setDiscardRuma('');
     setDiscardMotivo('');
-    setDiscardType('DEVOLUCION_MALA');
+    setDiscardType('DESECHO');
   };
 
   if (isLoading) return <div className="flex items-center justify-center h-96"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
@@ -278,7 +278,7 @@ const StockList = () => {
               <Select value={discardType} onValueChange={setDiscardType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DEVOLUCION_MALA">Devolución mala (dañada)</SelectItem>
+                  <SelectItem value="DESECHO">Devolución mala (dañada)</SelectItem>
                   <SelectItem value="DESECHO">Producto vencido</SelectItem>
                 </SelectContent>
               </Select>
