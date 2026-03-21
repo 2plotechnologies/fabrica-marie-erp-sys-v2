@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react';
-import { Search, Package, AlertTriangle, Trash2, Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, Package, AlertTriangle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -15,13 +15,37 @@ import { stockService } from '@/services/stockService';
 import { movimientoService } from '@/services/movimientoStockService';
 import { toast } from '@/hooks/use-toast';
 
+type StockRuma = {
+  id: number;
+  codigo?: string;
+  nombre?: string;
+  capacidad_unidades: number;
+  cantidad: number;
+};
+
+type StockItem = {
+  id: number | string;
+  producto_id: string;
+  cantidad: number;
+  capacidad_total: number;
+  stock_minimo: number;
+  producto?: {
+    nombre?: string;
+    sku?: string;
+    categoria?: string;
+    marca?: string;
+    precio_base?: number;
+    stock_minimo?: number;
+  };
+  rumas: StockRuma[];
+};
+
 const StockList = () => {
-  const [stock, setStock] = useState<any[]>([]);
+  const [stock, setStock] = useState<StockItem[]>([]);
   const [rumas, setRumas] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showLowStock, setShowLowStock] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Discard dialog state
   const [discardDialog, setDiscardDialog] = useState<{ productoId: string; nombre: string } | null>(null);
@@ -36,8 +60,9 @@ const StockList = () => {
       const data = await stockService.getAll();
       console.log('Stock:', data);
       setStock(data);
+      setPage(1);
     } catch (err: any) {
-      setError(err?.message || 'Error al obtener productos');
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -57,15 +82,6 @@ const StockList = () => {
     fetchRumas();
   }, []);
 
-  const [form, setForm] = useState({
-    tipo: '',
-    cantidad: 0,
-    ruma_id: '',
-    producto_id: '',
-    motivo: '',
-  });
-
-
   const createMovimiento = async () => {
     try {
       await movimientoService.create({
@@ -80,14 +96,6 @@ const StockList = () => {
 
       setDiscardDialog(null)
 
-      setForm({
-        tipo: '',
-        cantidad: 0,
-        ruma_id: '',
-        producto_id: '',
-        motivo: '',
-      });
-
     } catch (err: any) {
       console.log("ERROR COMPLETO:", err);
       console.log("RESPUESTA DEL SERVIDOR:", err.response?.data);
@@ -100,13 +108,15 @@ const StockList = () => {
   }
 
 
-  const filteredStock = stock.filter(item => {
+  const filteredStock = useMemo(() => stock.filter((item) => {
     const matchesSearch =
       item.producto?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.producto?.sku?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLowStock = !showLowStock || item.cantidad < item.producto.stock_minimo;
+      item.producto?.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      false;
+    const min = Number(item.stock_minimo ?? item.producto?.stock_minimo ?? 0);
+    const matchesLowStock = !showLowStock || (min > 0 && Number(item.cantidad) < min);
     return matchesSearch && matchesLowStock;
-  });
+  }), [stock, searchTerm, showLowStock]);
 
   const itemsPerPage = 6;
   const [page, setPage] = useState(1);
@@ -120,12 +130,26 @@ const StockList = () => {
   const totalValue = stock.reduce((sum, item) =>
     sum + (Number(item.cantidad) * Number(item.producto?.precio_base || 0)), 0
   );
-  const lowStockCount = stock.filter(s => s.cantidad < s.producto.stock_minimo && s.producto.stock_minimo > 0).length;
+  const lowStockCount = stock.filter((item) => {
+    const min = Number(item.stock_minimo ?? item.producto?.stock_minimo ?? 0);
+    return min > 0 && Number(item.cantidad) < min;
+  }).length;
   const totalUnidades = stock.reduce((sum, s) => sum + Number(s.cantidad), 0);
 
   const getStockStatus = (qty: number, min: number, max: number) => {
-    if (min > 0 && qty < min) return { label: 'Bajo', color: 'text-destructive' };
-    if (min > 0 && qty < min * 1.5) return { label: 'Regular', color: 'text-warning' };
+    const normalizedQty = Number.isFinite(qty) ? qty : 0;
+    const normalizedMin = Number.isFinite(min) ? min : 0;
+    const normalizedMax = Number.isFinite(max) ? max : 0;
+    const occupancy = normalizedMax > 0 ? normalizedQty / normalizedMax : 0;
+
+    if (normalizedMin > 0 && normalizedQty <= normalizedMin) {
+      return { label: 'Bajo', color: 'text-destructive' };
+    }
+
+    if ((normalizedMin > 0 && normalizedQty <= normalizedMin * 1.5) || (normalizedMax > 0 && occupancy <= 0.5)) {
+      return { label: 'Regular', color: 'text-warning' };
+    }
+
     return { label: 'Óptimo', color: 'text-success' };
   };
 
@@ -178,19 +202,21 @@ const StockList = () => {
           </TableHeader>
           <TableBody>
             {paginatedStock.map((item) => {
-              const status = getStockStatus(Number(item.cantidad), Number(item.stock_minimo), Number(item.ruma.capacidad_unidades));
-              const percentage = item.ruma.capacidad_unidades > 0 ? (Number(item.cantidad) / Number(item.ruma.capacidad_unidades)) * 100 : 50;
+              const minStock = Number(item.stock_minimo ?? item.producto?.stock_minimo ?? 0);
+              const maxStock = Number(item.capacidad_total ?? 0);
+              const status = getStockStatus(Number(item.cantidad), minStock, maxStock);
+              const percentage = maxStock > 0 ? (Number(item.cantidad) / maxStock) * 100 : 0;
               return (
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><Package className="h-5 w-5 text-muted-foreground" /></div>
-                      <div><p className="font-medium">{item.producto?.nombre}</p><p className="text-xs text-muted-foreground">{item.producto?.categoria} • {item.producto?.marca}</p></div>
+                      <div><p className="font-medium">{item.producto?.nombre}</p><p className="text-xs text-muted-foreground">{item.producto?.categoria} • {item.producto?.marca}</p><p className="text-xs text-muted-foreground">{item.rumas.length} ruma(s){item.rumas.length > 0 ? `: ${item.rumas.map((r) => r.codigo).filter(Boolean).join(', ')}` : ''}</p></div>
                     </div>
                   </TableCell>
                   <TableCell><code className="text-xs bg-muted px-2 py-1 rounded">{item.producto?.sku}</code></TableCell>
-                  <TableCell><span className={cn("font-semibold", status.color)}>{Number(item.cantidad)}</span>{item.ruma.capacidad_unidades > 0 && <span className="text-xs text-muted-foreground ml-1">/ {Number(item.ruma.capacidad_unidades)}</span>}</TableCell>
-                  <TableCell className="min-w-[120px]"><Progress value={Math.min(percentage, 100)} className="h-2" />{item.stock_minimo > 0 && <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Mín: {Number(item.producto.stock_minimo)}</span></div>}</TableCell>
+                  <TableCell><span className={cn("font-semibold", status.color)}>{Number(item.cantidad)}</span>{maxStock > 0 && <span className="text-xs text-muted-foreground ml-1">/ {maxStock}</span>}</TableCell>
+                  <TableCell className="min-w-[120px]"><Progress value={Math.min(percentage, 100)} className="h-2" />{minStock > 0 && <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Mín: {minStock}</span><span>Máx: {maxStock}</span></div>}</TableCell>
                   <TableCell><Badge variant="outline" className={cn(
                     status.label === 'Bajo' && 'border-destructive/30 text-destructive bg-destructive/10',
                     status.label === 'Regular' && 'border-warning/30 text-warning bg-warning/10',
