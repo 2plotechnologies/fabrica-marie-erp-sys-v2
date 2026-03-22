@@ -31,11 +31,13 @@ class ResumenDiarioController extends Controller
         return response()->json($salidas);
     }
 
-    public function autoResumenDiario($vendedor_id)
+    public function autoResumenDiario(Request $request, $vendedor_id)
     {
         $vendedor = Vendedor::findOrFail($vendedor_id);
 
-        $fecha = Carbon::today();
+        $fecha = $request->filled('fecha')
+            ? Carbon::parse($request->fecha)->startOfDay()
+            : Carbon::today();
 
         $ventas = Venta::where('vendedor_id', $vendedor_id)
             ->where('estado', 'CONFIRMADA')
@@ -249,6 +251,7 @@ class ResumenDiarioController extends Controller
         $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
         ->where('estado', '!=', 'PENDIENTE')
         ->where('estado', '!=', 'RECHAZADO')
+        ->orderBy('fecha', 'desc')
         ->get();
 
         //Calcular totales

@@ -27,8 +27,10 @@ export const resumenDiarioService = {
         return response.data;
     },
 
-    async getAutoResumenDiario(vendedor_id: string) {
-        const response = await api.get(`/resumen-diario/${vendedor_id}`);
+    async getAutoResumenDiario(vendedor_id: string, fecha?: string) {
+        const response = await api.get(`/resumen-diario/${vendedor_id}`, {
+            params: fecha ? { fecha } : undefined,
+        });
         return response.data;
     },
 
