@@ -31,12 +31,10 @@ class StockService
             $cantidadMov = $data['cantidad'];
 
             // 2. Calcular nuevo stock según tipo
-            //Caso devolucion mala: Stock almacén sube pero con etiqueta de producto malo.
             switch ($data['tipo']) {
 
                 case 'INGRESO':
                 case 'DEVOLUCION_BUENA':
-                case 'DEVOLUCION_MALA':
                     //Marcar ruma como llena automaticamente si el ingreso o devolucion llena la ruma.
                     $ruma = Ruma::find($data['ruma_id']);
                     //Sumar todas las cantidades de stock actual con el mismo ruma_id.
@@ -48,6 +46,9 @@ class StockService
                     }
 
                     $nuevoStock = $cantidadActual + $cantidadMov;
+                    break;
+                case 'DEVOLUCION_MALA':
+                    $nuevoStock = $cantidadActual;
                     break;
 
                 case 'SALIDA':
