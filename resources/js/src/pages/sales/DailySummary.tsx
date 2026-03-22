@@ -213,8 +213,12 @@ const DailySummaryPage = () => {
       await resumenDiarioService.updateGasto(gastoId, estado, observacion);
       toast.success('Gasto actualizado correctamente');
       getResumenesDiarios();
+      setSelectedResumen(null);
     } catch (error) {
-      toast.error('Error al actualizar el gasto');
+      toast.error('Error al actualizar el gasto: ' + error.response.data.message);
+      if (error.response.status === 403) {
+        toast.error('Usted no tiene autorización para realizar esta acción.');
+      }
     }
   };
 
@@ -303,15 +307,29 @@ const DailySummaryPage = () => {
   };
 
   const handleAprobar = async (id: string) => {
-    await resumenDiarioService.update(id, 'CONFIRMADO', 'Resumen aprobado');
-    setSelectedResumen(null);
-    getResumenesDiarios();
+    try {
+      await resumenDiarioService.update(id, 'CONFIRMADO', 'Resumen aprobado');
+      setSelectedResumen(null);
+      getResumenesDiarios();
+    } catch (error) {
+      toast.error('Error al aprobar el resumen: ' + error.response.data.message);
+      if (error.response.status === 403) {
+        toast.error('Usted no tiene autorización para realizar esta acción.');
+      }
+    }
   };
 
   const handleRechazar = async (id: string) => {
-    await resumenDiarioService.update(id, 'RECHAZADO', 'Resumen rechazado');
-    setSelectedResumen(null);
-    getResumenesDiarios();
+    try {
+      await resumenDiarioService.update(id, 'RECHAZADO', 'Resumen rechazado');
+      setSelectedResumen(null);
+      getResumenesDiarios();
+    } catch (error) {
+      toast.error('Error al rechazar el resumen: ' + error.response.data.message);
+      if (error.response.status === 403) {
+        toast.error('Usted no tiene autorización para realizar esta acción.');
+      }
+    }
   };
 
   if (isLoading) {

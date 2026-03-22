@@ -353,8 +353,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/resumen-general', [ResumenDiarioController::class, 'getResumenGeneral']);
             Route::get('/{vendedor_id}', [ResumenDiarioController::class, 'autoResumenDiario']);
             Route::post('/', [ResumenDiarioController::class, 'store']);
-            Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado']);
-            Route::put('/gasto/{id}/estado', [ResumenDiarioController::class, 'aprobarGasto']);
+            Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado'])
+                ->middleware('permiso:ven_aprobar_resumen');
+            Route::put('/gasto/{id}/estado', [ResumenDiarioController::class, 'aprobarGasto'])
+                ->middleware('permiso:ven_aprobar_gasto');
         });
 
     // Proyeccion de Ventas

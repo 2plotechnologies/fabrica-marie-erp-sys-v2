@@ -194,7 +194,7 @@ const SalesByVendor = () => {
             <SelectContent>
               <SelectItem value="all">Todos los vendedores</SelectItem>
               {vendedores.map(v => (
-                <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>
+                <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>
               ))}
             </SelectContent>
           </Select>

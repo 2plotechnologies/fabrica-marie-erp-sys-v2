@@ -16,8 +16,6 @@ import {
   Lock, Unlock, TrendingUp, Calculator, AlertTriangle, Loader2, FileDown, CalendarIcon,
 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -36,7 +34,7 @@ const CurrentCash = () => {
   const [movCategoria, setMovCategoria] = useState('');
   const [movMonto, setMovMonto] = useState('');
   const [movDescripcion, setMovDescripcion] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const selectedDate = new Date();
   const [isLoading, setIsLoading] = useState(true);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -147,24 +145,6 @@ const CurrentCash = () => {
           <p className="text-muted-foreground">Control y gestión de caja del día</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Date Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <CalendarIcon className="h-4 w-4 mr-2" />
-                {format(selectedDate, "dd MMM yyyy", { locale: es })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(d) => d && setSelectedDate(d)}
-                locale={es}
-              />
-            </PopoverContent>
-          </Popover>
-
           <Button variant="outline" size="sm"><FileDown className="h-4 w-4 mr-2" />Exportar</Button>
 
           {isToday && isOpen ? (

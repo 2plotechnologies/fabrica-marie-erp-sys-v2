@@ -24,9 +24,11 @@ class ResumenDiarioController extends Controller
 
     public function getSalidas()
     {
+        //Solo salidas de la ultima semana.
         $salidas = Salida::with('vendedor.usuario', 'vehiculo', 'ruta')
-        ->whereDate('fecha', Carbon::today())
+        ->whereDate('fecha', '>=', Carbon::today()->subWeek(1))
         ->where('estado', '!=', 'PENDIENTE')
+        ->orderBy('fecha', 'desc')
         ->get();
         return response()->json($salidas);
     }

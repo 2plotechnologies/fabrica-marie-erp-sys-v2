@@ -18,12 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Search,
   ArrowDownCircle,
   ArrowUpCircle,
   Filter,
-  Calendar,
+  Calendar as CalendarIcon,
   Wallet,
   FileText,
 } from 'lucide-react';
@@ -36,6 +38,7 @@ const CashMovements = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const fetchMovimientos = async () => {
@@ -51,7 +54,15 @@ const CashMovements = () => {
       .includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || movement.tipo === typeFilter;
     const matchesCategory = categoryFilter === 'all' || movement.categoria === categoryFilter;
-    return matchesSearch && matchesType && matchesCategory;
+    
+    let matchesDate = true;
+    if (dateFilter) {
+      const movementDate = format(new Date(movement.created_at), 'yyyy-MM-dd');
+      const filterDate = format(dateFilter, 'yyyy-MM-dd');
+      matchesDate = movementDate === filterDate;
+    }
+
+    return matchesSearch && matchesType && matchesCategory && matchesDate;
   });
 
   const itemsPerPage = 6;
@@ -155,6 +166,30 @@ const CashMovements = () => {
                 className="pl-10"
               />
             </div>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={`w-full sm:w-auto justify-start text-left font-normal ${!dateFilter && "text-muted-foreground"}`}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateFilter ? format(dateFilter, "dd MMM yyyy", { locale: es }) : "Filtrar por fecha"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFilter}
+                  onSelect={setDateFilter}
+                  locale={es}
+                  initialFocus
+                />
+                <div className="p-3 border-t">
+                  <Button variant="ghost" className="w-full text-sm" onClick={() => setDateFilter(undefined)}>
+                    Limpiar filtro
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-full sm:w-40">
                 <Filter className="h-4 w-4 mr-2" />
@@ -185,7 +220,7 @@ const CashMovements = () => {
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
+            <CalendarIcon className="h-5 w-5 text-primary" />
             Historial de Movimientos
           </CardTitle>
         </CardHeader>
