@@ -196,6 +196,14 @@ class VentaController extends Controller
             'items.*.es_degustacion' => ['boolean'],
         ]);
 
+        //Si la venta es al credito, NO permitir vende a cliente con documento 000000 (Cliente Varios)
+        if($validated['tipo_pago'] === 'CREDITO'){
+            $cliente = Cliente::findOrFail($validated['cliente_id']);
+            if($cliente->codigo_cliente === '000000'){
+                throw new Exception('No se puede vender al credito a cliente varios. Por favor, seleccione un cliente registrado.');
+            }
+        }
+
         return DB::transaction(function () use ($validated) {
 
             $venta = Venta::create([

@@ -154,7 +154,7 @@ const NewClient = () => {
                 <Label>Código Cliente *</Label>
                 <Input
                   value={formData.codigo_cliente}
-                  placeholder="Ej: CLI-001"
+                  placeholder="Ej: 123456789"
                   onChange={(e) =>
                     handleInputChange('codigo_cliente', e.target.value)
                   }
@@ -306,6 +306,7 @@ const NewClient = () => {
                     <Label>Límite Crédito</Label>
                     <Input
                       type="number"
+                      placeholder="0.00"
                       value={formData.limite_credito}
                       onChange={(e) =>
                         handleInputChange('limite_credito', e.target.value)
@@ -317,6 +318,7 @@ const NewClient = () => {
                     <Label>Días Crédito</Label>
                     <Input
                       type="number"
+                      placeholder="0"
                       value={formData.dias_credito}
                       onChange={(e) =>
                         handleInputChange('dias_credito', e.target.value)
