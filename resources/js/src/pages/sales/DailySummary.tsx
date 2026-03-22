@@ -919,7 +919,7 @@ const DailySummaryPage = () => {
                     </TableCell>
                     <TableCell>{getEstadoBadge(resumen.estado)}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedResumen(resumen)}>
+                      <Button variant="ghost" size="sm" onClick={() => { setSelectedResumen(resumen); console.log(resumen); }}>
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -1052,7 +1052,7 @@ const DailySummaryPage = () => {
                             <div key={cat} className="space-y-2">
                               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{catLabels[cat] || cat}</p>
                               {gastosCategoria.map((gasto) => {
-                                const estadoVerif = (gasto as any).estado_verificacion || 'PENDIENTE';
+                                const estadoVerif = (gasto as any).estado || 'PENDIENTE';
                                 return (
                                   <div key={gasto.id} className="flex justify-between items-center pl-2 gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">

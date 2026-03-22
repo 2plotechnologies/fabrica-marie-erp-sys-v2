@@ -185,11 +185,20 @@ const ExpenseList = () => {
 
               <div>
                 <Label>Tipo *</Label>
-                <Input
-                  placeholder="Ej. Combustible, Alimentos, etc."
+                <Select
                   value={formTipo}
-                  onChange={(e) => setFormTipo(e.target.value)}
-                />
+                  onValueChange={(v) => setFormTipo(v)}
+                >
+                  <SelectTrigger className="col-span-4">
+                    <SelectValue placeholder="Categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gerencia">Gerencia</SelectItem>
+                    <SelectItem value="productora">Productora</SelectItem>
+                    <SelectItem value="distribuidora">Distribuidora</SelectItem>
+                    <SelectItem value="descripcion_general">Descripción General</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
