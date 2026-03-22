@@ -110,9 +110,9 @@ const DailySummaryPage = () => {
     }
   }
 
-  const getByVendedorId = async (vendedor_id: string) => {
+  const getByVendedorId = async (vendedor_id: string, fecha?: string) => {
     try {
-      const response = await resumenDiarioService.getAutoResumenDiario(vendedor_id);
+      const response = await resumenDiarioService.getAutoResumenDiario(vendedor_id, fecha);
       setResumenVendedor(response);
     } catch (error) {
       toast.error('Error al obtener el resumen diario');
@@ -203,7 +203,7 @@ const DailySummaryPage = () => {
         ...prev,
         vendedor_id: String(vendedorActual.id),
       }));
-      getByVendedorId(String(vendedorActual.id));
+      getByVendedorId(String(vendedorActual.id), newResumen.fecha);
     }
   }, [isVendedor, vendedorActual]);
 
@@ -354,7 +354,14 @@ const DailySummaryPage = () => {
                     <Input
                       type="date"
                       value={newResumen.fecha}
-                      onChange={(e) => setNewResumen({ ...newResumen, fecha: e.target.value })}
+                      onChange={(e) => {
+                        const fecha = e.target.value;
+                        setNewResumen(prev => ({ ...prev, fecha }));
+
+                        if (newResumen.vendedor_id) {
+                          getByVendedorId(newResumen.vendedor_id, fecha);
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
@@ -363,8 +370,8 @@ const DailySummaryPage = () => {
                       value={newResumen.vendedor_id}
                       disabled={isVendedor}
                       onValueChange={(v) => {
-                        setNewResumen({ ...newResumen, vendedor_id: v });
-                        getByVendedorId(v);
+                        setNewResumen(prev => ({ ...prev, vendedor_id: v }));
+                        getByVendedorId(v, newResumen.fecha);
                       }}
                     >
                       <SelectTrigger>
