@@ -58,8 +58,10 @@ class ClienteController extends Controller
 
     public function listaCRM()
     {
+        //Excluir cliente varios (000000).
         $clientes = Cliente::with('ruta','interacciones.usuario','tareas.usuario')
             ->where('activo', true)
+            ->where('codigo_cliente', '!=', '000000')
             ->get();
 
         $fechaActual = date('Y-m-d');
