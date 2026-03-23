@@ -13,7 +13,9 @@ class RolController extends Controller
     public function index()
     {
         return response()->json(
-            Rol::with('permisos')->get()
+            Rol::with('permisos')
+            ->where('activo', true)
+            ->get()
         );
     }
 

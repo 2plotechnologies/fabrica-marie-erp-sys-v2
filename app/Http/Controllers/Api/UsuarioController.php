@@ -9,6 +9,7 @@ use App\Models\Vendedor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class UsuarioController extends Controller
 {
@@ -136,6 +137,7 @@ class UsuarioController extends Controller
     {
         $usuario = Usuario::findOrFail($id);
         $usuario->deleted = true;
+        $usuario->deleted_at = Carbon::now();
         $usuario->save();
 
         return response()->json([
