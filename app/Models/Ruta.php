@@ -35,4 +35,9 @@ class Ruta extends Model
         )->withPivot('orden')
          ->orderBy('ruta_cliente.orden');
     }
+
+    public function mapa()
+    {
+        return $this->hasOne(RutaMapa::class, 'ruta_id');
+    }
 }

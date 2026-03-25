@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Route as RouteType } from '@/types';
+import { mapaInteractivoService } from '@/services/mapaInteractivoService';
 
 interface MapPoint {
   id: string;
@@ -81,10 +82,9 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const modeRef = useRef<MapMode>('view');
 
-  const [mapboxToken, setMapboxToken] = useState<string>(() => {
-    return localStorage.getItem('mapbox_token') || '';
-  });
-  const [isTokenSet, setIsTokenSet] = useState(!!localStorage.getItem('mapbox_token'));
+  const [mapboxToken, setMapboxToken] = useState<string>('');
+  const [isTokenSet, setIsTokenSet] = useState(false);
+  const [loadingToken, setLoadingToken] = useState(true);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [mode, setMode] = useState<MapMode>('view');
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -177,12 +177,10 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const [showRouteDialog, setShowRouteDialog] = useState(false);
   const [showZoneDialog, setShowZoneDialog] = useState(false);
   const [pendingClientLocation, setPendingClientLocation] = useState<{ lng: number; lat: number } | null>(null);
-  const [newClient, setNewClient] = useState<NewClient>({
-    name: '',
-    address: '',
-    phone: '',
-    zone: 'Norte'
-  });
+  const [clientesList, setClientesList] = useState<any[]>([]);
+  const [selectedClienteId, setSelectedClienteId] = useState<string>('');
+  const [rutasList, setRutasList] = useState<any[]>([]);
+  const [selectedRutaId, setSelectedRutaId] = useState('');
   const [routeName, setRouteName] = useState('');
   const [routeZone, setRouteZone] = useState('Norte');
   const [zoneName, setZoneName] = useState('');
@@ -197,14 +195,55 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     { name: 'Rosa', value: '#db2777' },
   ];
 
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const res = await mapaInteractivoService.getMapboxToken();
+
+        if (res?.token) {
+          setMapboxToken(res.token);
+          setIsTokenSet(true);
+        }
+      } catch (error) {
+        console.log('No hay token guardado');
+      } finally {
+        setLoadingToken(false);
+      }
+    };
+
+    fetchToken();
+  }, []);
+
+  useEffect(() => {
+    const fetchClientes = async () => {
+      try {
+        const res = await mapaInteractivoService.getClientes();
+        setClientesList(res.data || res);
+      } catch (error) {
+        toast.error('Error cargando clientes');
+      }
+    };
+
+    fetchClientes();
+  }, []);
+
+  useEffect(() => {
+    const fetchRutas = async () => {
+      const res = await mapaInteractivoService.getRutas();
+      setRutasList(res.data || res);
+    };
+
+    fetchRutas();
+  }, []);
+
   // Keep modeRef in sync with mode state
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
 
-  const saveToken = () => {
+  const saveToken = async () => {
     if (mapboxToken.trim()) {
-      localStorage.setItem('mapbox_token', mapboxToken.trim());
+      await mapaInteractivoService.saveMapboxToken(mapboxToken);
       setIsTokenSet(true);
       toast.success('Token de Mapbox guardado correctamente');
     }
@@ -229,7 +268,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
         const error = e.error as { status?: number } | undefined;
         if (error?.status === 401) {
           toast.error('Token de Mapbox inválido o expirado. Por favor genera uno nuevo.');
-          localStorage.removeItem('mapbox_token');
+          //localStorage.removeItem('mapbox_token');
           setIsTokenSet(false);
           setMapboxToken('');
         }
@@ -255,14 +294,6 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           'top-right'
         );
 
-        // Add mock existing clients near Huancayo
-        const mockClients: MapPoint[] = [
-          { id: 'c1', lng: -75.2100, lat: -12.0600, type: 'client', name: 'Tienda Dulce Sabor' },
-          { id: 'c2', lng: -75.2000, lat: -12.0700, type: 'client', name: 'Minimarket El Sol' },
-          { id: 'c3', lng: -75.1950, lat: -12.0550, type: 'client', name: 'Bodega La Esquina' },
-        ];
-        setClients(mockClients);
-
         // Mark map as fully loaded for style operations
         setIsMapLoaded(true);
       });
@@ -278,6 +309,15 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
       map.current?.remove();
     };
   }, [isTokenSet, mapboxToken]);
+
+  // Load map data initially when map is loaded
+  useEffect(() => {
+    if (isMapLoaded) {
+      loadClientesMapa();
+      loadRutasMapa();
+      loadZonas();
+    }
+  }, [isMapLoaded]);
 
   // Update markers when points change
   useEffect(() => {
@@ -303,6 +343,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
         </div>
       `;
 
+      if (isNaN(client.lat) || isNaN(client.lng)) return;
+
       const marker = new mapboxgl.Marker(el)
         .setLngLat([client.lng, client.lat])
         .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
@@ -325,6 +367,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           ${index + 1}
         </div>
       `;
+
+      if (!point.lat || !point.lng) return;
 
       const marker = new mapboxgl.Marker(el)
         .setLngLat([point.lng, point.lat])
@@ -508,29 +552,114 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     }
   };
 
-  const handleSaveClient = () => {
-    if (!pendingClientLocation || !newClient.name) {
-      toast.error('Por favor completa los campos requeridos');
+  const handleSaveClient = async () => {
+    if (!pendingClientLocation || !selectedClienteId) {
+      toast.error('Selecciona un cliente');
       return;
     }
 
-    const newClientPoint: MapPoint = {
-      id: `client-${Date.now()}`,
-      lng: pendingClientLocation.lng,
-      lat: pendingClientLocation.lat,
-      type: 'client',
-      name: newClient.name
-    };
+    try {
+      await mapaInteractivoService.saveClienteUbicacion({
+        cliente_id: selectedClienteId,
+        latitud: pendingClientLocation.lat,
+        longitud: pendingClientLocation.lng
+      });
 
-    setClients(prev => [...prev, newClientPoint]);
-    setShowClientDialog(false);
-    setPendingClientLocation(null);
-    setNewClient({ name: '', address: '', phone: '', zone: 'Norte' });
-    setMode('view');
-    toast.success(`Cliente "${newClient.name}" creado exitosamente`);
+      toast.success('Ubicación guardada');
+
+      // Refrescar clientes en mapa
+      loadClientesMapa();
+
+      setShowClientDialog(false);
+      setPendingClientLocation(null);
+      setSelectedClienteId('');
+      setMode('view');
+
+    } catch (error) {
+      console.log("ERROR COMPLETO: ", error);
+      console.log("ERROR RESPONSE: ", error.response);
+      console.log("ERROR MESSAGE: ", error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+      toast.error('Error al guardar ubicación: ' + errorMessage);
+    }
   };
 
-  const handleSaveRoute = () => {
+  const loadClientesMapa = async () => {
+    try {
+      const res = await mapaInteractivoService.getClientesMapa();
+
+      const data = res.data || res;
+      const mapped = data.map((c: any) => {
+        const lat = parseFloat(c.latitud);
+        const lng = parseFloat(c.longitud);
+
+        // 🔥 VALIDACIÓN CLAVE
+        if (isNaN(lat) || isNaN(lng)) return null;
+
+        return {
+          id: c.id,
+          lng,
+          lat,
+          type: 'client',
+          name: c.razon_social
+        };
+      }).filter(Boolean);
+
+      setClients(mapped);
+    } catch (error) {
+      toast.error('Error cargando clientes en mapa');
+    }
+  };
+
+  const loadRutasMapa = async () => {
+    try {
+      const res = await mapaInteractivoService.getRutasMapa();
+
+      const data = res.data || res;
+      const mapped = data.map((r: any) => {
+        return {
+          id: r.id,
+          nombre: r.nombre,
+          zona: r.zona,
+          points: (r.puntos || []).map((p: any) => ({
+            id: p.id,
+            lng: parseFloat(p.longitud),
+            lat: parseFloat(p.latitud),
+            type: 'route-point'
+          })).filter((p: any) => !isNaN(p.lat) && !isNaN(p.lng))
+        };
+      }).filter(Boolean);
+
+      setSavedRoutes(mapped);
+    } catch (error) {
+      toast.error('Error cargando rutas');
+    }
+  };
+
+  const loadZonas = async () => {
+    try {
+      const res = await mapaInteractivoService.getZonas();
+
+      const data = res.data || res;
+      const mapped = data.map((z: any) => {
+        return {
+          id: z.id,
+          name: z.nombre,
+          color: z.color || '#d97706',
+          points: (z.puntos || []).map((p: any) => ({
+            lng: parseFloat(p.longitud),
+            lat: parseFloat(p.latitud)
+          })).filter((p: any) => !isNaN(p.lat) && !isNaN(p.lng))
+        };
+      }).filter(Boolean);
+
+      setZones(mapped);
+    } catch (error) {
+      toast.error('Error cargando zonas');
+    }
+  };
+
+  const handleSaveRoute = async () => {
     if (routePoints.length < 2) {
       toast.error('La ruta debe tener al menos 2 puntos');
       return;
@@ -540,12 +669,33 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
       return;
     }
 
-    // Here you would save the route to the database
-    toast.success(`Ruta "${routeName}" guardada con ${routePoints.length} puntos`);
-    setShowRouteDialog(false);
-    setRoutePoints([]);
-    setRouteName('');
-    setMode('view');
+    try {
+      await mapaInteractivoService.saveRuta({
+        ruta_id: selectedRutaId,
+        nombre: routeName || 'N/A',
+        zona: routeZone || 'N/A',
+        puntos: routePoints.map((p, index) => ({
+          orden: index + 1,
+          latitud: p.lat,
+          longitud: p.lng
+        }))
+      });
+
+      toast.success('Ruta guardada');
+
+      setRoutePoints([]);
+      setSelectedRutaId('');
+      setMode('view');
+
+      loadRutasMapa();
+
+    } catch (error) {
+      console.log("ERROR COMPLETO: ", error);
+      console.log("ERROR RESPONSE: ", error.response);
+      console.log("ERROR MESSAGE: ", error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+      toast.error('Error al guardar ruta: ' + errorMessage);
+    }
 
     // Clear the route line from map
     if (map.current?.getLayer('route-line-layer')) {
@@ -563,31 +713,38 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     toast.info('Ruta limpiada');
   };
 
-  const handleSaveZone = () => {
-    if (zonePoints.length < 3) {
-      toast.error('La zona debe tener al menos 3 vértices');
-      return;
-    }
-    if (!zoneName) {
-      toast.error('Por favor ingresa un nombre para la zona');
+  const handleSaveZone = async () => {
+    if (zonePoints.length < 3 || !zoneName) {
+      toast.error('Zona inválida');
       return;
     }
 
-    const newZone: ZonePolygon = {
-      id: `zone-${Date.now()}`,
-      name: zoneName,
-      color: zoneColor,
-      points: [...zonePoints]
-    };
+    try {
+      await mapaInteractivoService.saveZona({
+        nombre: zoneName,
+        color: zoneColor,
+        puntos: zonePoints.map((p, index) => ({
+          latitud: p.lat,
+          longitud: p.lng,
+          orden: index + 1
+        }))
+      });
 
-    setZones(prev => [...prev, newZone]);
-    toast.success(`Zona "${zoneName}" guardada con ${zonePoints.length} vértices`);
+      toast.success('Zona guardada');
 
-    // Clear temp zone from map
-    clearZone();
-    setShowZoneDialog(false);
-    setZoneName('');
-    setMode('view');
+      clearZone();
+      setZoneName('');
+      setMode('view');
+
+      loadZonas();
+
+    } catch (error) {
+      console.log("ERROR COMPLETO: ", error);
+      console.log("ERROR RESPONSE: ", error.response);
+      console.log("ERROR MESSAGE: ", error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+      toast.error('Error al guardar zona: ' + errorMessage);
+    }
   };
 
   const clearZone = () => {
@@ -624,30 +781,48 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     }
   };
 
-  const handleUpdateRoute = () => {
+  const handleUpdateRoute = async () => {
     if (!selectedRouteId || !editRouteName) {
       toast.error('Por favor ingresa un nombre para la ruta');
       return;
     }
 
-    // Update savedRoutes local state
-    setSavedRoutes(prev => prev.map(r =>
-      r.id === selectedRouteId
-        ? { ...r, name: editRouteName, zone: editRouteZone }
-        : r
-    ));
+    try {
+      const route = savedRoutes.find(r => r.id === selectedRouteId);
+      
+      await mapaInteractivoService.saveRuta({
+        ruta_id: selectedRouteId,
+        nombre: editRouteName,
+        zona: editRouteZone,
+        puntos: route?.points?.map((p, index) => ({
+          orden: index + 1,
+          latitud: p.lat,
+          longitud: p.lng
+        })) || []
+      });
 
-    // Update parent routes
-    const updatedRoutes = routes.map(r =>
-      r.id === selectedRouteId
-        ? { ...r, name: editRouteName, zone: editRouteZone }
-        : r
-    );
-    onRoutesChange(updatedRoutes);
+      // Update savedRoutes local state
+      setSavedRoutes(prev => prev.map(r =>
+        r.id === selectedRouteId
+          ? { ...r, nombre: editRouteName, zona: editRouteZone }
+          : r
+      ));
 
-    toast.success(`Ruta "${editRouteName}" actualizada`);
-    setShowEditRouteDialog(false);
-    setSelectedRouteId(null);
+      // Update parent routes
+      const updatedRoutes = routes.map(r =>
+        r.id === selectedRouteId
+          ? { ...r, nombre: editRouteName, zona: editRouteZone }
+          : r
+      );
+      onRoutesChange(updatedRoutes);
+
+      toast.success(`Ruta "${editRouteName}" actualizada`);
+      setShowEditRouteDialog(false);
+      setSelectedRouteId(null);
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Error desconocido';
+      toast.error('Error al actualizar ruta: ' + errorMessage);
+    }
   };
 
   const handleDeleteRoute = () => {
@@ -718,6 +893,14 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
     setShowEditZoneDialog(false);
     setSelectedZoneId(null);
   };
+
+  if (loadingToken) {
+    return (
+      <div className="flex items-center justify-center h-[600px]">
+        <p className="text-muted-foreground">Cargando configuración del mapa...</p>
+      </div>
+    );
+  }
 
   if (!isTokenSet) {
     return (
@@ -979,10 +1162,28 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="route-name">Nombre de la Ruta</Label>
+              <Label>Seleccionar Ruta *</Label>
+              <Select
+                value={selectedRutaId}
+                onValueChange={setSelectedRutaId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una ruta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rutasList.map(r => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="route-name">Nombre de la Ruta en Mapa</Label>
               <Input
                 id="route-name"
-                placeholder="Ej: Ruta Norte - Mañana"
+                placeholder="Ej: Ruta 1"
                 value={routeName}
                 onChange={(e) => setRouteName(e.target.value)}
               />
@@ -1031,47 +1232,20 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="client-name">Nombre del Cliente *</Label>
-              <Input
-                id="client-name"
-                placeholder="Ej: Bodega El Sol"
-                value={newClient.name}
-                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="client-address">Dirección</Label>
-              <Input
-                id="client-address"
-                placeholder="Ej: Av. Principal 123"
-                value={newClient.address}
-                onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="client-phone">Teléfono</Label>
-              <Input
-                id="client-phone"
-                placeholder="Ej: 999 888 777"
-                value={newClient.phone}
-                onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="client-zone">Zona</Label>
+              <Label>Seleccionar Cliente *</Label>
               <Select
-                value={newClient.zone}
-                onValueChange={(value) => setNewClient({ ...newClient, zone: value })}
+                value={selectedClienteId}
+                onValueChange={(value) => setSelectedClienteId(value)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecciona un cliente" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Norte">Norte</SelectItem>
-                  <SelectItem value="Sur">Sur</SelectItem>
-                  <SelectItem value="Centro">Centro</SelectItem>
-                  <SelectItem value="Este">Este</SelectItem>
-                  <SelectItem value="Oeste">Oeste</SelectItem>
+                  {clientesList.map(cliente => (
+                    <SelectItem key={cliente.id} value={cliente.id}>
+                      {cliente.razon_social}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

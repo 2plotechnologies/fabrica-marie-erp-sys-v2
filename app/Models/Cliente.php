@@ -49,4 +49,9 @@ class Cliente extends Model
     {
         return $this->hasMany(Tarea::class);
     }
+
+    public function ubicacion()
+    {
+        return $this->hasOne(ClienteUbicacion::class);
+    }
 }

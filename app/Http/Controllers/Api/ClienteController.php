@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use App\Models\Interaccion;
 use App\Models\Tarea;
+use App\Models\ClienteUbicacion;
 
 class ClienteController extends Controller
 {
@@ -160,5 +161,51 @@ class ClienteController extends Controller
         $cliente->save();
 
         return response()->json(['message' => 'Cliente desactivado']);
+    }
+
+    public function indexMapa()
+    {
+        $clientes = Cliente::join('cliente_ubicaciones', 'clientes.id', '=', 'cliente_ubicaciones.cliente_id')
+        ->where('codigo_cliente', '!=', '000000')
+        ->where('activo', true)
+        ->whereNotNull('latitud')
+        ->whereNotNull('longitud')
+        ->select('clientes.id', 'clientes.razon_social', 'cliente_ubicaciones.latitud', 'cliente_ubicaciones.longitud')
+        ->get();
+
+        return response()->json(
+            $clientes->map(function ($c) {
+                return [
+                    'id' => $c->id,
+                    'razon_social' => $c->razon_social,
+                    'latitud' => $c->latitud,
+                    'longitud' => $c->longitud,
+                ];
+            })
+        );
+    }
+
+    public function guardarUbicacion(Request $request)
+    {
+        $request->validate([
+            'cliente_id' => 'required|exists:clientes,id',
+            'latitud' => 'required|numeric',
+            'longitud' => 'required|numeric',
+        ]);
+
+        // Si ya tiene ubicación → actualizar
+        // Si no → crear
+        $ubicacion = ClienteUbicacion::updateOrCreate(
+            ['cliente_id' => $request->cliente_id],
+            [
+                'latitud' => $request->latitud,
+                'longitud' => $request->longitud,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'ubicacion' => $ubicacion
+        ]);
     }
 }

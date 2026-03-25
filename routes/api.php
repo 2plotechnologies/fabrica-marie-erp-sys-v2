@@ -26,6 +26,10 @@ use App\Http\Controllers\Api\DashBoardController;
 use App\Http\Controllers\Api\ResumenDiarioController;
 use App\Http\Controllers\Api\ReporteDetalleVentaController;
 use App\Http\Controllers\Api\ProyeccionVentaController;
+use App\Http\Controllers\Api\ApiTokenController;
+use App\Http\Controllers\Api\RutaMapaController;
+use App\Http\Controllers\Api\ZonaController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -367,4 +371,20 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/', [ProyeccionVentaController::class, 'store']);
             Route::get('/resumen-mes-actual', [ProyeccionVentaController::class, 'resumenMesActual']);
         });
+
+    // Token Mapbox
+    Route::get('/mapbox-token', [ApiTokenController::class, 'getMapboxToken']);
+    Route::post('/mapbox-token', [ApiTokenController::class, 'saveMapboxToken']);
+
+    // Clientes
+    Route::get('/clientes-mapa', [ClienteController::class, 'indexMapa']);
+    Route::post('/clientes-mapa/ubicacion', [ClienteController::class, 'guardarUbicacion']);
+
+    // Rutas
+    Route::get('/rutas-mapa', [RutaMapaController::class, 'index']);
+    Route::post('/rutas-mapa', [RutaMapaController::class, 'store']);
+
+    // Zonas
+    Route::get('/zonas', [ZonaController::class, 'index']);
+    Route::post('/zonas', [ZonaController::class, 'store']);
 });
