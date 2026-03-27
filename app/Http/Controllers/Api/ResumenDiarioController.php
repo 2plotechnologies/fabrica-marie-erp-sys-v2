@@ -49,7 +49,7 @@ class ResumenDiarioController extends Controller
         $ventasContado = Venta::where('vendedor_id', $vendedor_id)
             ->where('estado', 'CONFIRMADA')
             ->whereDate('fecha', $fecha)
-            ->where('tipo_pago', 'contado')
+            ->where('tipo_pago', 'CONTADO')
             ->get();
 
         $gastos = Gasto::where('vendedor_id', $vendedor_id)
@@ -63,13 +63,13 @@ class ResumenDiarioController extends Controller
 
         $credito = Venta::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
-            ->where('tipo_pago', 'credito')
+            ->where('tipo_pago', 'CREDITO')
             ->where('estado', 'CONFIRMADA')
             ->get();
 
         $adelantos = Venta::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
-            ->where('tipo_pago', 'credito')
+            ->where('tipo_pago', 'CREDITO')
             ->where('estado', 'CONFIRMADA')
             ->get();
 
@@ -87,17 +87,16 @@ class ResumenDiarioController extends Controller
 
         $viaticos = Viatico::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
-            ->where('estado', 'APROBADO')
+            ->whereIn('estado', ['APROBADO', 'LIQUIDADO'])
             ->get();
-
         $totalVentas = $ventas->sum('total_neto');
         $totalGastos = $gastos->sum('monto');
         $totalCobranzas = $cobranzas->sum('monto');
         $totalVentasContado = $ventasContado->sum('total_neto');
         $totalCredito = $credito->sum('total_neto');
         $totalAdelantos = $adelantos->sum('adelanto');
-        $totalDepositos = $depositos->sum('total_neto');
-        $totalMonederoVirtual = $monederoVirtual->sum('total_neto');
+        $totalDepositos = $depositos->sum('total_neto') + $depositos->sum('adelanto');
+        $totalMonederoVirtual = $monederoVirtual->sum('total_neto') + $monederoVirtual->sum('adelanto');
         $totalViaticos = $viaticos->sum('monto');
 
         $saldoEntregar = $totalVentasContado + $totalCobranzas + $totalAdelantos + $totalViaticos - $totalGastos - $totalDepositos - $totalMonederoVirtual;
