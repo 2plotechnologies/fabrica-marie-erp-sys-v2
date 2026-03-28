@@ -22,7 +22,7 @@ class AbonoController extends Controller
 
             $request->validate([
                 'monto' => 'required|numeric|min:0',
-                'metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,OTRO',
+                'metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,YAPE,PLIN,DEPOSITO',
             ]);
 
             $cuenta = CuentaPorCobrar::findOrFail($cuenta_id);

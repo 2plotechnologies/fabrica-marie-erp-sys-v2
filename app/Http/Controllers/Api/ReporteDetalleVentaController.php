@@ -95,6 +95,8 @@ class ReporteDetalleVentaController
                 "cliente" => $venta->cliente->razon_social ?? null,
                 "clienteId" => (string)($venta->cliente->id ?? null),
 
+                "metodoPago" => $venta->metodo_pago_detalle,
+
                 "items" => $itemsVenta,
 
                 "subtotal" => $subtotal,

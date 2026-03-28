@@ -381,9 +381,9 @@ const CollectionsPage = () => {
                 <SelectContent>
                   <SelectItem value="EFECTIVO">Efectivo</SelectItem>
                   <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                  <SelectItem value="OTRO">Yape</SelectItem>
-                  <SelectItem value="OTRO">Plin</SelectItem>
-                  <SelectItem value="OTRO">Depósito Bancario</SelectItem>
+                  <SelectItem value="YAPE">Yape</SelectItem>
+                  <SelectItem value="PLIN">Plin</SelectItem>
+                  <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
                 </SelectContent>
               </Select>
             </div>

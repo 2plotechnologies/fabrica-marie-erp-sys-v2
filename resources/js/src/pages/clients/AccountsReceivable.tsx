@@ -45,6 +45,7 @@ const AccountsReceivable = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [payMethod, setPayMethod] = useState('EFECTIVO');
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
 
   const fetchCuentas = async () => {
     setIsLoading(true);
@@ -318,7 +319,7 @@ const AccountsReceivable = () => {
                     <TableCell>{getStatusBadge(account.estado)}</TableCell>
                     <TableCell className="text-right">
                       {/* Deshabilitar si el estado es PAGADO */}
-                      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); setSelectedAccount(account); }}>
                         <DialogTrigger asChild>
                           <Button size="sm" className="bg-gradient-warm hover:opacity-90" disabled={account.estado === 'PAGADO'}>
                             <DollarSign className="h-4 w-4 mr-1" />
@@ -329,9 +330,9 @@ const AccountsReceivable = () => {
                           <DialogHeader>
                             <DialogTitle>Registrar Pago</DialogTitle>
                             <DialogDescription>
-                              Cliente: {account.cliente?.razon_social}
+                              Cliente: {selectedAccount?.cliente?.razon_social}
                               <br />
-                              Saldo pendiente: S/ {Number(account.saldo).toLocaleString()}
+                              Saldo pendiente: S/ {Number(selectedAccount?.saldo).toLocaleString()}
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
@@ -343,7 +344,7 @@ const AccountsReceivable = () => {
                                 placeholder="0.00"
                                 value={paymentAmount}
                                 onChange={(e) => setPaymentAmount(e.target.value)}
-                                max={Number(account.saldo)}
+                                max={Number(selectedAccount?.saldo)}
                               />
                             </div>
                             <div className="space-y-2">
@@ -355,8 +356,9 @@ const AccountsReceivable = () => {
                                 <SelectContent>
                                   <SelectItem value="EFECTIVO">Efectivo</SelectItem>
                                   <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                                  <SelectItem value="OTRO">Yape</SelectItem>
-                                  <SelectItem value="OTRO">Plin</SelectItem>
+                                  <SelectItem value="YAPE">Yape</SelectItem>
+                                  <SelectItem value="PLIN">Plin</SelectItem>
+                                  <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -365,7 +367,7 @@ const AccountsReceivable = () => {
                             <Button variant="outline">Cancelar</Button>
                             <Button
                               className="bg-gradient-warm hover:opacity-90"
-                              onClick={() => handlePayment(account.id)}>
+                              onClick={() => handlePayment(selectedAccount.id)}>
                               Confirmar Pago
                             </Button>
                           </DialogFooter>

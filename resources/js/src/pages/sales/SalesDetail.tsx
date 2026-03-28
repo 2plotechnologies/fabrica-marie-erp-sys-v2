@@ -44,6 +44,7 @@ interface SaleDetail {
   totalDegustacion: number;
   total: string;
   condicionVenta: 'CONTADO' | 'CREDITO' | 'DEPOSITO';
+  metodoPago: 'efectivo' | 'transferencia' | 'yape' | 'plin' | 'deposito';
   notaPedido: string;
   tipoCliente: string;
   createdAt: string;
@@ -129,7 +130,7 @@ const SalesDetailPage = () => {
   const totalVentas = filteredVentas.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const ventasContado = filteredVentas.filter(v => v.condicionVenta === 'CONTADO').reduce((acc, v) => acc + Number(v.total || 0), 0);
   const ventasCredito = filteredVentas.filter(v => v.condicionVenta === 'CREDITO').reduce((acc, v) => acc + Number(v.total || 0), 0);
-  const ventasDeposito = filteredVentas.filter(v => v.condicionVenta === 'DEPOSITO').reduce((acc, v) => acc + Number(v.total || 0), 0);
+  const ventasDeposito = filteredVentas.filter(v => v.metodoPago === 'deposito' || v.metodoPago === 'yape' || v.metodoPago === 'plin' || v.metodoPago === 'transferencia').reduce((acc, v) => acc + Number(v.total || 0), 0);
   const totalBonificaciones = filteredVentas.reduce((acc, v) => acc + Number(v.totalBonificacion || 0), 0);
   const totalDegustaciones = filteredVentas.reduce((acc, v) => acc + Number(v.totalDegustacion || 0), 0);
   const clientesAtendidos = new Set(filteredVentas.map(v => v.clienteId)).size;

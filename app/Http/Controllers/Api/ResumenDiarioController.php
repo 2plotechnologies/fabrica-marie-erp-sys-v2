@@ -61,6 +61,16 @@ class ResumenDiarioController extends Controller
             ->whereDate('fecha', $fecha)
             ->get();
 
+        $cobranzas_deposito = Abono::where('usuario_id', $vendedor->usuario_id)
+            ->whereDate('fecha', $fecha)
+            ->whereIn('metodo_pago', ['DEPOSITO', 'TRANSFERENCIA'])
+            ->get();
+
+        $cobranzas_monedero_virtual = Abono::where('usuario_id', $vendedor->usuario_id)
+            ->whereDate('fecha', $fecha)
+            ->whereIn('metodo_pago', ['YAPE', 'PLIN'])
+            ->get();
+
         $credito = Venta::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
             ->where('tipo_pago', 'CREDITO')
@@ -95,8 +105,8 @@ class ResumenDiarioController extends Controller
         $totalVentasContado = $ventasContado->sum('total_neto');
         $totalCredito = $credito->sum('total_neto');
         $totalAdelantos = $adelantos->sum('adelanto');
-        $totalDepositos = $depositos->sum('total_neto') + $depositos->sum('adelanto');
-        $totalMonederoVirtual = $monederoVirtual->sum('total_neto') + $monederoVirtual->sum('adelanto');
+        $totalDepositos = $depositos->sum('total_neto') + $depositos->sum('adelanto') + $cobranzas_deposito->sum('monto');
+        $totalMonederoVirtual = $monederoVirtual->sum('total_neto') + $monederoVirtual->sum('adelanto') + $cobranzas_monedero_virtual->sum('monto');
         $totalViaticos = $viaticos->sum('monto');
 
         $saldoEntregar = $totalVentasContado + $totalCobranzas + $totalAdelantos + $totalViaticos - $totalGastos - $totalDepositos - $totalMonederoVirtual;
