@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { User } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { User, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -17,9 +18,21 @@ interface ClientSelectorProps {
 }
 
 export const ClientSelector = ({ selectedClient, onClientChange, lista_clientes }: ClientSelectorProps) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const clientes = lista_clientes;
-  console.log(clientes);
-  const selectedClientData = clientes.find(c => c.id === selectedClient);
+  
+  const filteredClientes = useMemo(() => {
+    if (!searchTerm) return clientes.slice(0, 50); // Muestra los primeros 50 para evitar lag inicialmente
+    
+    const lowerTerm = searchTerm.toLowerCase();
+    return clientes.filter(c => 
+      c.razon_social?.toLowerCase().includes(lowerTerm) ||
+      c.codigo?.toLowerCase().includes(lowerTerm) ||
+      c.documento?.toLowerCase().includes(lowerTerm)
+    ).slice(0, 50); // Limitamos a 50 resultados inclusive en búsquedas
+  }, [clientes, searchTerm]);
+
+  const selectedClientData = clientes.find(c => String(c.id) === String(selectedClient));
 
   return (
     <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up" style={{ animationDelay: '100ms' }}>
@@ -28,21 +41,51 @@ export const ClientSelector = ({ selectedClient, onClientChange, lista_clientes 
         <h3 className="font-semibold">Cliente</h3>
       </div>
 
-      <Select value={selectedClient} onValueChange={onClientChange}>
+        <Select value={selectedClient} onValueChange={onClientChange}>
           <SelectTrigger>
             <SelectValue placeholder="Seleccionar cliente..." />
           </SelectTrigger>
           <SelectContent>
-            {clientes.map(client => (
-              <SelectItem key={client.id} value={client.id}>
-                <div className="flex items-center justify-between w-full">
-                  <span>{client.razon_social}</span>
-                  {client.estado === 'moroso' && (
-                    <Badge variant="destructive" className="ml-2 text-xs">Moroso</Badge>
-                  )}
-                </div>
-              </SelectItem>
-            ))}
+            <div 
+              className="p-2 sticky top-0 bg-popover z-10 mb-1"
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-background focus-within:ring-1 focus-within:ring-primary">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, código..."
+                  className="w-full bg-transparent border-none focus:outline-none text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            {filteredClientes.length === 0 ? (
+              <div className="py-4 text-center text-sm text-muted-foreground">
+                No se encontraron resultados.
+              </div>
+            ) : (
+              filteredClientes.map(client => (
+                <SelectItem key={client.id} value={String(client.id)}>
+                  <div className="flex items-center justify-between w-full">
+                    <span>{client.razon_social}</span>
+                    <div className="flex items-center ml-2 space-x-2">
+                       <span className="text-xs text-muted-foreground">{client.codigo}</span>
+                       {client.estado === 'moroso' && (
+                         <Badge variant="destructive" className="text-[10px] h-4 px-1 leading-none">Moroso</Badge>
+                       )}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))
+            )}
+            {clientes.length > 50 && !searchTerm && (
+              <div className="py-2 text-center text-xs text-muted-foreground border-t mt-1">
+                 Mostrando 50 de {clientes.length}. Use el buscador para encontrar más.
+              </div>
+            )}
           </SelectContent>
         </Select>
 
