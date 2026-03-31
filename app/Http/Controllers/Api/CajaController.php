@@ -96,11 +96,36 @@ class CajaController extends Controller
     public function updateEstadoEgreso(Request $request, $id)
     {
         $movimiento = MovimientoCaja::findOrFail($id);
+
+        if ($request->estado === 'APROBADO' && $movimiento->estado !== 'APROBADO') {
+            $caja = $movimiento->caja;
+            $ingresos = MovimientoCaja::where('caja_id', $caja->id)
+                ->where('tipo', 'INGRESO')
+                ->sum('monto');
+                
+            $egresos = MovimientoCaja::where('caja_id', $caja->id)
+                ->where('tipo', 'EGRESO')
+                ->where('estado', 'APROBADO')
+                ->sum('monto');
+                
+            $saldoActual = $caja->saldo_inicial + $ingresos - $egresos;
+
+            if ($saldoActual <= 0) {
+                return response()->json(['error' => 'No se puede aprobar el egreso porque el saldo actual de la caja es 0.'], 400);
+            }
+
+            if ($movimiento->monto > $saldoActual) {
+                return response()->json(['error' => 'No se puede aprobar el egreso porque el monto supera el saldo actual. Saldo disponible: ' . number_format($saldoActual, 2)], 400);
+            }
+        }
+
         $movimiento->estado = $request->estado;
         if($request->estado === "RECHAZADO"){
             $movimiento->descripcion = 'EGRESO RECHAZADO: ' . $request->motivo;
         }
         $movimiento->save();
+        
+        return response()->json(['message' => 'Estado actualizado correctamente.']);
     }
 
     public function obtenerCajasCerradas()

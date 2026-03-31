@@ -75,6 +75,32 @@ class CajaService
     {
         $caja = self::obtenerCajaAbierta();
 
+        //No permitir registrar movimientos si no existe una caja abierta
+        if (!$caja) {
+            throw new Exception('No se puede registrar el movimiento porque no existe una caja abierta.');
+        }
+
+        if (strtoupper($data['tipo']) === 'EGRESO') {
+            $ingresos = MovimientoCaja::where('caja_id', $caja->id)
+                ->where('tipo', 'INGRESO')
+                ->sum('monto');
+                
+            $egresos = MovimientoCaja::where('caja_id', $caja->id)
+                ->where('tipo', 'EGRESO')
+                ->where('estado', 'APROBADO')
+                ->sum('monto');
+                
+            $saldoActual = $caja->saldo_inicial + $ingresos - $egresos;
+
+            if ($saldoActual <= 0) {
+                throw new Exception('No se puede registrar el egreso porque el saldo actual de la caja es 0.');
+            }
+
+            if ($data['monto'] > $saldoActual) {
+                throw new Exception('No se puede registrar el egreso porque el monto supera el saldo actual. Saldo disponible: ' . number_format($saldoActual, 2));
+            }
+        }
+
         $movimiento = MovimientoCaja::create([
             'caja_id' => $caja->id,
             'tipo' => strtoupper($data['tipo']),
