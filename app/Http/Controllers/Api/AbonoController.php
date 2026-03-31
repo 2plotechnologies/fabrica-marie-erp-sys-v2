@@ -14,7 +14,23 @@ class AbonoController extends Controller
 {
     public function index($cuenta_id)
     {
-        return Abono::where('cuenta_id', $cuenta_id)->get();
+        $cuenta = CuentaPorCobrar::with('venta')->findOrFail($cuenta_id);
+        $abonos = Abono::where('cuenta_id', $cuenta_id)->get()->toArray();
+
+        // Agregar el adelanto como un pago simulado
+        if ($cuenta->venta && $cuenta->venta->adelanto > 0) {
+            $adelanto = [
+                'id' => 'adelanto-' . $cuenta->venta->id,
+                'cuenta_id' => $cuenta_id,
+                'monto' => $cuenta->venta->adelanto,
+                'metodo_pago' => 'ADELANTO',
+                'fecha' => $cuenta->venta->fecha,
+                'referencia' => 'Venta ' . $cuenta->venta->codigo,
+            ];
+            array_unshift($abonos, $adelanto);
+        }
+
+        return response()->json($abonos);
     }
     public function store(Request $request, $cuenta_id)
     {

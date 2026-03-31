@@ -326,7 +326,14 @@ const CollectionsPage = () => {
             <CardContent>
               {selectedCuentaId ? (
                 <div className="space-y-4">
-                  <h4 className="font-medium">Pagos registrados</h4>
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-medium">Pagos registrados</h4>
+                    {selectedCuentaId && cuentas.find(c => c.id === selectedCuentaId)?.venta && (
+                      <Badge variant="outline" className="bg-primary/5">
+                        Fecha de Venta: {format(new Date(cuentas.find(c => c.id === selectedCuentaId)?.venta.fecha), "dd/MM/yyyy")}
+                      </Badge>
+                    )}
+                  </div>
                   {pagos.length === 0 ? (
                     <p className="text-muted-foreground text-sm">No hay pagos registrados para esta cuenta</p>
                   ) : (

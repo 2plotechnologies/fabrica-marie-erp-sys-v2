@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle } from 'lucide-react';
+import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle, Loader2, Eye } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cobranzasService } from '@/services/cobranzasService';
@@ -46,6 +46,23 @@ const AccountsReceivable = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [payMethod, setPayMethod] = useState('EFECTIVO');
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
+
+  const [pagosDialog, setPagosDialog] = useState<any>(null);
+  const [cuentaPagos, setCuentaPagos] = useState<any[]>([]);
+  const [loadingPagos, setLoadingPagos] = useState(false);
+
+  const handleVerPagos = async (cuenta: any) => {
+    setPagosDialog(cuenta);
+    setLoadingPagos(true);
+    try {
+      const data = await cobranzasService.getPagosCuenta(cuenta.id);
+      setCuentaPagos(data);
+    } catch (error) {
+      console.error('Error fetching pagos:', error);
+    } finally {
+      setLoadingPagos(false);
+    }
+  };
 
   const fetchCuentas = async () => {
     setIsLoading(true);
@@ -274,6 +291,7 @@ const AccountsReceivable = () => {
               <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-right">Monto Original</TableHead>
+                <TableHead className="text-right">Pagado</TableHead>
                 <TableHead className="text-right">Saldo Actual</TableHead>
                 <TableHead>Vencimiento</TableHead>
                 <TableHead>Estado</TableHead>
@@ -295,6 +313,9 @@ const AccountsReceivable = () => {
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       S/ {Number(account.monto_total).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right text-emerald-600 font-medium">
+                      S/ {Number(account.monto_pagado).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-bold">
                       S/ {Number(account.saldo).toLocaleString()}
@@ -318,9 +339,14 @@ const AccountsReceivable = () => {
                     </TableCell>
                     <TableCell>{getStatusBadge(account.estado)}</TableCell>
                     <TableCell className="text-right">
-                      {/* Deshabilitar si el estado es PAGADO */}
-                      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); setSelectedAccount(account); }}>
-                        <DialogTrigger asChild>
+                      <div className="flex justify-end gap-2 items-center">
+                        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => handleVerPagos(account)}>
+                          <Eye className="h-4 w-4 mr-1" />
+                          Pagos
+                        </Button>
+                        {/* Deshabilitar si el estado es PAGADO */}
+                        <Dialog open={selectedAccount?.id === account.id && isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); setSelectedAccount(open ? account : null); }}>
+                          <DialogTrigger asChild>
                           <Button size="sm" className="bg-gradient-warm hover:opacity-90" disabled={account.estado === 'PAGADO'}>
                             <DollarSign className="h-4 w-4 mr-1" />
                             Cobrar
@@ -373,6 +399,7 @@ const AccountsReceivable = () => {
                           </DialogFooter>
                         </DialogContent>
                       </Dialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -402,6 +429,58 @@ const AccountsReceivable = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Ver Pagos Dialog */}
+      <Dialog open={!!pagosDialog} onOpenChange={() => setPagosDialog(null)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <DialogTitle>Detalle de Pagos</DialogTitle>
+                <DialogDescription>
+                  Cliente: {pagosDialog?.cliente?.razon_social}
+                </DialogDescription>
+              </div>
+              {pagosDialog?.venta && (
+                <Badge variant="outline" className="bg-primary/5 mt-1 text-xs">
+                  Fecha Venta: {format(new Date(pagosDialog.venta.fecha), "dd/MM/yyyy")}
+                </Badge>
+              )}
+            </div>
+          </DialogHeader>
+          <div className="py-4">
+            {loadingPagos ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : cuentaPagos.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No hay pagos registrados</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead>Referencia</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cuentaPagos.map((pago: any) => (
+                    <TableRow key={pago.id}>
+                      <TableCell>{format(new Date(pago.fecha), "dd/MM/yyyy")}</TableCell>
+                      <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
+                      <TableCell className="text-right text-emerald-600 font-bold">S/ {Number(pago.monto).toLocaleString()}</TableCell>
+                      <TableCell>{pago.referencia || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPagosDialog(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

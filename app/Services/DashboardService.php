@@ -144,18 +144,18 @@ class DashboardService
     {
         $today = Carbon::today();
 
-        $cobrosHoy = DB::table('cuentas_por_cobrar')
-            ->whereDate('fecha_vencimiento', $today)
-            ->where('estado', 'PENDIENTE')
-            ->sum('saldo');
+        $cobrosHoy = DB::table('abonos')
+            ->whereDate('fecha', $today)
+            ->where('estado', 'ACTIVO')
+            ->sum('monto');
 
         $pendientes = DB::table('cuentas_por_cobrar')
-            ->where('estado', 'PENDIENTE')
+            ->whereIn('estado', ['PENDIENTE', 'PARCIAL'])
             ->sum('saldo');
 
         $vencido = DB::table('cuentas_por_cobrar')
             ->where('fecha_vencimiento', '<', $today)
-            ->where('estado', 'PENDIENTE')
+            ->whereIn('estado', ['PENDIENTE', 'PARCIAL'])
             ->sum('saldo');
 
         return [

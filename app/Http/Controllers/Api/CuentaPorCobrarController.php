@@ -10,9 +10,15 @@ class CuentaPorCobrarController
     public function index()
     {
         $cuentas_por_cobrar = CuentaPorCobrar::with(['cliente', 'venta', 'abonos'])
-            ->withSum('abonos as monto_pagado', 'monto')
-            ->orderByRaw('(monto_total - COALESCE(monto_pagado, 0)) DESC')
+            ->withSum('abonos as monto_pagado_abonos', 'monto')
+            ->orderBy('saldo', 'desc')
             ->get();
+
+        $cuentas_por_cobrar->each(function($cuenta) {
+            $adelanto = $cuenta->venta ? (float)$cuenta->venta->adelanto : 0;
+            $monto_pagado_abonos = $cuenta->monto_pagado_abonos ? (float)$cuenta->monto_pagado_abonos : 0;
+            $cuenta->monto_pagado = $monto_pagado_abonos + $adelanto;
+        });
 
         return response()->json($cuentas_por_cobrar);
     }
