@@ -110,6 +110,9 @@ class ResumenDiarioController extends Controller
         $totalViaticos = $viaticos->sum('monto');
 
         $saldoEntregar = $totalVentasContado + $totalCobranzas + $totalAdelantos + $totalViaticos - $totalGastos - $totalDepositos - $totalMonederoVirtual;
+        if ($saldoEntregar < 0) {
+            $saldoEntregar = 0;
+        }
 
         return response()->json([
             'ventas' => $ventas,
@@ -150,10 +153,10 @@ class ResumenDiarioController extends Controller
             'monederoVirtual' => 'nullable',
             'viaticos' => 'required',
             'adelantos' => 'required',
-            'total_gastos' => 'required',
-            'saldo_a_entregar' => 'required',
-            'saldo_entregado' => 'required',
-            'diferencia' => 'required',
+            'total_gastos' => 'required|numeric|min:0',
+            'saldo_a_entregar' => 'required|numeric|min:0',
+            'saldo_entregado' => 'required|numeric|min:0',
+            'diferencia' => 'required|numeric',
             'estado' => 'required',
             'firma' => 'required',
         ]);

@@ -66,7 +66,7 @@ const DailySummaryPage = () => {
 
   // Form state for new resumen
   const [newResumen, setNewResumen] = useState({
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: format(new Date(), 'yyyy-MM-dd'),
     vendedor_id: isVendedor && vendedorActual ? String(vendedorActual.id) : '',
     conductor: '',
     zona: '',
@@ -169,7 +169,7 @@ const DailySummaryPage = () => {
 
     const totalGastosForm = totalGastosBackend || 0;
 
-    const saldo =
+    let saldo =
       (resumenVendedor.totalVentasContado || 0) +
       (resumenVendedor.totalCobranzas || 0) +
       (resumenVendedor.totalAdelantos || 0) +
@@ -177,6 +177,8 @@ const DailySummaryPage = () => {
       totalGastosForm -
       (resumenVendedor.totalDepositos || 0) -
       (resumenVendedor.totalMonederoVirtual || 0);
+
+    if (saldo < 0) saldo = 0;
 
     setSaldo_a_entregar(saldo);
 
@@ -277,7 +279,7 @@ const DailySummaryPage = () => {
       await getResumenesDiarios();
       setIsNewDialogOpen(false);
       setNewResumen({
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: format(new Date(), 'yyyy-MM-dd'),
         vendedor_id: '',
         conductor: '',
         zona: '',
@@ -596,7 +598,7 @@ const DailySummaryPage = () => {
                           className="flex justify-between items-center p-2 bg-muted rounded"
                         >
                           <span>
-                            {g.comprobante} ({g.tipo})
+                            {g.comprobante || g.descripcion} ({g.tipo || g.categoria})
                           </span>
 
                           <span className="font-medium">
@@ -653,7 +655,7 @@ const DailySummaryPage = () => {
                     </p>
                     {(() => {
                       const totalGastosForm = totalGastosBackend;
-                      const saldoEntregado =
+                      let saldoEntregadoCalculado =
                         (newResumen.contado || 0) +
                         (newResumen.cobranza || 0) +
                         (newResumen.adelantos || 0) +
@@ -661,9 +663,12 @@ const DailySummaryPage = () => {
                         totalGastosForm -
                         (newResumen.depositos || 0) -
                         (newResumen.monederoVirtual || 0);
+                      
+                      if (saldoEntregadoCalculado < 0) saldoEntregadoCalculado = 0;
+
                       return (
-                        <p className={`text-2xl font-bold ${saldoEntregado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          S/ {saldoEntregado.toFixed(2)}
+                        <p className={`text-2xl font-bold ${saldoEntregadoCalculado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          S/ {saldoEntregadoCalculado.toFixed(2)}
                         </p>
                       );
                     })()}
@@ -675,8 +680,12 @@ const DailySummaryPage = () => {
                   <Input
                     type="number"
                     placeholder="0.00"
-                    value={newResumen.saldo_entregado || ''}
-                    onChange={(e) => setNewResumen({ ...newResumen, saldo_entregado: parseFloat(e.target.value) || 0 })}
+                    min="0"
+                    value={newResumen.saldo_entregado === 0 ? '0' : newResumen.saldo_entregado || ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setNewResumen({ ...newResumen, saldo_entregado: val < 0 ? 0 : val });
+                    }}
                   />
                 </div>
 
@@ -904,7 +913,7 @@ const DailySummaryPage = () => {
               ) : (
                 paginatedResumenes.map((resumen) => (
                   <TableRow key={resumen.id}>
-                    <TableCell>{format(new Date(resumen.fecha), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{format(new Date(resumen.fecha.substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="font-medium">{resumen.vendedor?.usuario?.nombre || '-'}</TableCell>
                     <TableCell>{resumen.conductor || '-'}</TableCell>
                     <TableCell>{resumen.zona || '-'}</TableCell>
@@ -965,7 +974,7 @@ const DailySummaryPage = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div>
                   <p className="text-sm text-muted-foreground">Fecha</p>
-                  <p className="font-medium">{format(new Date(selectedResumen.fecha), 'PPP', { locale: es })}</p>
+                  <p className="font-medium">{format(new Date(selectedResumen.fecha.substring(0, 10) + 'T00:00:00'), 'PPP', { locale: es })}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Vendedor</p>
@@ -1042,7 +1051,7 @@ const DailySummaryPage = () => {
                     {selectedResumen.gastos && selectedResumen.gastos.length > 0 ? (
                       <>
                         {['gerencia', 'productora', 'distribuidora', 'descripcion_general'].map(cat => {
-                          const gastosCategoria = (Array.isArray(selectedResumen.gastos) ? selectedResumen.gastos : []).filter(g => g.tipo === cat);
+                          const gastosCategoria = (Array.isArray(selectedResumen.gastos) ? selectedResumen.gastos : []).filter(g => g.tipo === cat || g.categoria === cat);
                           if (gastosCategoria.length === 0) return null;
                           const catLabels: Record<string, string> = {
                             gerencia: 'Gerencia', productora: 'Productora',
@@ -1052,11 +1061,11 @@ const DailySummaryPage = () => {
                             <div key={cat} className="space-y-2">
                               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{catLabels[cat] || cat}</p>
                               {gastosCategoria.map((gasto) => {
-                                const estadoVerif = (gasto as any).estado || 'PENDIENTE';
+                                const estadoVerif = (gasto as any).estado || (gasto as any).estado_verificacion || 'PENDIENTE';
                                 return (
                                   <div key={gasto.id} className="flex justify-between items-center pl-2 gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <span className="text-muted-foreground truncate">{gasto.comprobante}</span>
+                                      <span className="text-muted-foreground truncate">{gasto.comprobante || gasto.descripcion}</span>
                                       {estadoVerif === 'CONFIRMADO' && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs shrink-0"><ShieldCheck className="h-3 w-3 mr-1" />Verificado</Badge>}
                                       {estadoVerif === 'PENDIENTE' && <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs shrink-0"><ShieldAlert className="h-3 w-3 mr-1" />No Verificado</Badge>}
                                       {estadoVerif === 'RECHAZADO' && <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 text-xs shrink-0"><ShieldX className="h-3 w-3 mr-1" />No Aceptado</Badge>}
@@ -1082,14 +1091,14 @@ const DailySummaryPage = () => {
                         })}
                         {/* Show legacy categories */}
                         {(Array.isArray(selectedResumen.gastos) ? selectedResumen.gastos : [])
-                          .filter(g => !['gerencia', 'productora', 'distribuidora', 'descripcion_general'].includes(g.categoria))
+                          .filter(g => !['gerencia', 'productora', 'distribuidora', 'descripcion_general'].includes(g.categoria || g.tipo))
                           .map((gasto) => {
-                            const estadoVerif = (gasto as any).estado_verificacion || 'PENDIENTE';
+                            const estadoVerif = (gasto as any).estado_verificacion || (gasto as any).estado || 'PENDIENTE';
                             return (
                               <div key={gasto.id} className="flex justify-between items-center gap-2">
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <span className="text-muted-foreground truncate">{gasto.descripcion}</span>
-                                  <Badge variant="outline" className="text-xs">{gasto.categoria}</Badge>
+                                  <span className="text-muted-foreground truncate">{gasto.descripcion || gasto.comprobante}</span>
+                                  <Badge variant="outline" className="text-xs">{gasto.categoria || gasto.tipo}</Badge>
                                   {estadoVerif === 'CONFIRMADO' && <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs"><ShieldCheck className="h-3 w-3 mr-1" />Verificado</Badge>}
                                   {estadoVerif === 'PENDIENTE' && <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs"><ShieldAlert className="h-3 w-3 mr-1" />No Verificado</Badge>}
                                   {estadoVerif === 'RECHAZADO' && <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 text-xs"><ShieldX className="h-3 w-3 mr-1" />No Aceptado</Badge>}

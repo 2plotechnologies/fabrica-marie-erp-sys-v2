@@ -87,7 +87,7 @@ const CollectionsPage = () => {
     if (!payDialog || !payAmount) return;
     try {
       await cobranzasService.registrarAbono(payDialog.cuentaId, {
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: format(new Date(), 'yyyy-MM-dd'),
         monto: parseFloat(payAmount),
         metodo_pago: payMethod,
       });
@@ -281,7 +281,7 @@ const CollectionsPage = () => {
                               size="sm"
                               variant="outline"
                               disabled={cuenta.estado === 'PAGADO'}
-                              onClick={() => setExtendDialog({ cuentaId: cuenta.id, currentDate: cuenta.fecha_vencimiento || format(new Date(), "yyyy-MM-dd") })}
+                              onClick={() => setExtendDialog({ cuentaId: cuenta.id, currentDate: cuenta.fecha_vencimiento ? cuenta.fecha_vencimiento.substring(0, 10) : format(new Date(), "yyyy-MM-dd") })}
                             >
                               <CalendarPlus className="h-3 w-3 mr-1" />Extender
                             </Button>
@@ -349,7 +349,7 @@ const CollectionsPage = () => {
                       <TableBody>
                         {pagos.map(pago => (
                           <TableRow key={pago.id}>
-                            <TableCell>{format(new Date(pago.fecha), "dd/MM/yyyy")}</TableCell>
+                            <TableCell>{format(new Date(pago.fecha.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
                             <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
                             <TableCell className="text-right font-bold text-emerald-600">S/ {Number(pago.monto).toFixed(2)}</TableCell>
                             <TableCell>{pago.referencia || '-'}</TableCell>
@@ -411,7 +411,7 @@ const CollectionsPage = () => {
             <DialogTitle>Extender Fecha de Vencimiento</DialogTitle>
             <DialogDescription>
               {/* Si no existe un valor en extendDialog.currentDate, mostrar la fecha actual */}
-              Fecha actual: {extendDialog ? format(new Date(extendDialog.currentDate), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")}
+              Fecha actual: {extendDialog ? format(new Date(extendDialog.currentDate.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
