@@ -171,10 +171,22 @@ class SalidaController
                     'error' => 'No se puede despachar la salida, el vendedor o el vehiculo ya estan en ruta.'
                 ], 400);
             }
-        }
 
+            //Cambiar estado del vehiculo a EN_RUTA
+            $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
+            $vehiculo->estado = 'EN_RUTA';
+            $vehiculo->save();
+        }else if($request->estado == 'COMPLETADO'){
+            //Cambiar estado del vehiculo a DISPONIBLE
+            $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
+            $vehiculo->estado = 'DISPONIBLE';
+            $vehiculo->save();
+        }
+        
         $salida->estado = $request->estado;
         $salida->save();
+
+
 
         return response()->json(['message' => 'Estado Actualizado']);
     }
