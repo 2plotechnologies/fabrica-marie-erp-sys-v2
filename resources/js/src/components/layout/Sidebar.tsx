@@ -166,6 +166,8 @@ const navigation: NavItemConfig[] = [
       { to: '/caja/salidas', label: 'Salidas de Caja' },
       { to: '/caja/cierres', label: 'Cierres' },
       { to: '/caja/regularizacion', label: 'Regularización' },
+      { to: '/caja/entregas', label: 'Entregas de Dinero' },
+      { to: '/caja/reportes/entregas', label: 'Reportes Entregas de Dinero' },
       { to: '/caja/proyeccion', label: 'Proyectado de Ventas' },
     ]
   },

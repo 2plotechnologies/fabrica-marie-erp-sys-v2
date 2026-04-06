@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\MantenimientoController;
 use App\Http\Controllers\Api\DashBoardController;
 use App\Http\Controllers\Api\ResumenDiarioController;
 use App\Http\Controllers\Api\ReporteDetalleVentaController;
+use App\Http\Controllers\Api\EntregaDineroController;
 use App\Http\Controllers\Api\ProyeccionVentaController;
 use App\Http\Controllers\Api\ApiTokenController;
 use App\Http\Controllers\Api\RutaMapaController;
@@ -387,4 +388,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Zonas
     Route::get('/zonas', [ZonaController::class, 'index']);
     Route::post('/zonas', [ZonaController::class, 'store']);
+
+    // Entregas de Dinero
+    Route::prefix('entregas-dinero')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,CAJERO')
+        ->group(function () {
+            Route::get('/', [EntregaDineroController::class, 'index']);
+            Route::post('/', [EntregaDineroController::class, 'store']);
+            Route::get('/{id}', [EntregaDineroController::class, 'show']);
+            Route::put('/{id}/estado', [EntregaDineroController::class, 'updateEstado'])
+                ->middleware('permiso:caja_verificar_entrega');
+        });
 });
