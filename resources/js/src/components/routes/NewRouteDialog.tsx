@@ -43,11 +43,11 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewR
   });
 
   const zones = [
-    { id: 'Norte', label: 'Zona Norte', color: '#3b82f6' },
-    { id: 'Sur', label: 'Zona Sur', color: '#22c55e' },
-    { id: 'Centro', label: 'Zona Centro', color: '#f59e0b' },
-    { id: 'Este', label: 'Zona Este', color: '#8b5cf6' },
-    { id: 'Oeste', label: 'Zona Oeste', color: '#ec4899' },
+    { id: 'Huancayo', label: 'Huancayo', color: '#3b82f6' },
+    { id: 'El Tambo', label: 'El Tambo', color: '#22c55e' },
+    { id: 'Chilca', label: 'Chilca', color: '#f59e0b' },
+    { id: 'Pilcomayo', label: 'Pilcomayo', color: '#8b5cf6' },
+    { id: 'Huancan', label: 'Huancan', color: '#ec4899' },
   ];
 
   const frequencies = [
@@ -61,43 +61,42 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewR
 
   const handleSubmit = async () => {
     if (!formData.nombre || !formData.zona) {
-        toast.error('Por favor completa los campos requeridos');
-        return;
+      toast.error('Por favor completa los campos requeridos');
+      return;
     }
 
     try {
-        const response = await rutaService.create({
+      const response = await rutaService.create({
         nombre: formData.nombre,
         zona: formData.zona,
         descripcion: formData.descripcion,
         vendedor_id:
-            formData.vendedor_id === 'none'
+          formData.vendedor_id === 'none'
             ? null
             : Number(formData.vendedor_id),
         clientes_estimados: parseInt(formData.clientes_estimados) || 0,
         frecuencia: formData.frecuencia,
-        estado: 'ACTIVA',
-        });
+      });
 
-        onRouteCreated?.(response);
+      onRouteCreated?.(response);
 
-        toast.success(`Ruta "${formData.nombre}" creada exitosamente`);
+      toast.success(`Ruta "${formData.nombre}" creada exitosamente`);
 
-        setFormData({
+      setFormData({
         nombre: '',
         zona: '',
         descripcion: '',
         vendedor_id: '',
         clientes_estimados: '',
         frecuencia: 'diaria',
-        });
+      });
 
-        onOpenChange(false);
+      onOpenChange(false);
     } catch (error: any) {
-        console.log(error);
-        toast.error(getErrorMessage(error, 'Error al crear la ruta'));
+      console.log(error);
+      toast.error(getErrorMessage(error, 'Error al crear la ruta'));
     }
- };
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

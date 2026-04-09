@@ -236,13 +236,12 @@ const RoutesList = () => {
             </div>
             <div className="bg-card rounded-xl border p-4">
               <p className="text-sm text-muted-foreground">Cobertura Promedio</p>
-              <p className={`text-2xl font-bold ${
-                coveragePromedio >= 80
+              <p className={`text-2xl font-bold ${coveragePromedio >= 80
                   ? 'text-success'
                   : coveragePromedio >= 50
                     ? 'text-warning'
                     : 'text-destructive'
-              }`}>
+                }`}>
                 {coveragePromedio.toFixed(0)}%
               </p>
             </div>
@@ -264,15 +263,19 @@ const RoutesList = () => {
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           'h-12 w-12 rounded-xl flex items-center justify-center',
-                          route.zona === 'Norte' && 'bg-info/10',
-                          route.zona === 'Sur' && 'bg-success/10',
-                          route.zona === 'Centro' && 'bg-warning/10'
+                          route.zona === 'Huancayo' && 'bg-info/10',
+                          route.zona === 'El Tambo' && 'bg-success/10',
+                          route.zona === 'Chilca' && 'bg-warning/10',
+                          route.zona === 'Pilcomayo' && 'bg-primary/10',
+                          route.zona === 'Huancan' && 'bg-secondary/10',
                         )}>
                           <MapPin className={cn(
                             'h-6 w-6',
-                            route.zona === 'Norte' && 'text-info',
-                            route.zona === 'Sur' && 'text-success',
-                            route.zona === 'Centro' && 'text-warning'
+                            route.zona === 'Huancayo' && 'text-info',
+                            route.zona === 'El Tambo' && 'text-success',
+                            route.zona === 'Chilca' && 'text-warning',
+                            route.zona === 'Pilcomayo' && 'text-primary',
+                            route.zona === 'Huancan' && 'text-secondary',
                           )} />
                         </div>
                         <div>

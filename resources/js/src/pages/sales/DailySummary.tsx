@@ -430,11 +430,11 @@ const DailySummaryPage = () => {
                         <SelectValue placeholder="Seleccionar zona" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Norte">Norte</SelectItem>
-                        <SelectItem value="Sur">Sur</SelectItem>
-                        <SelectItem value="Este">Este</SelectItem>
-                        <SelectItem value="Oeste">Oeste</SelectItem>
-                        <SelectItem value="Centro">Centro</SelectItem>
+                        <SelectItem value="Huancayo">Huancayo</SelectItem>
+                        <SelectItem value="El Tambo">El Tambo</SelectItem>
+                        <SelectItem value="Chilca">Chilca</SelectItem>
+                        <SelectItem value="Pilcomayo">Pilcomayo</SelectItem>
+                        <SelectItem value="Huancan">Huancan</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -663,7 +663,7 @@ const DailySummaryPage = () => {
                         totalGastosForm -
                         (newResumen.depositos || 0) -
                         (newResumen.monederoVirtual || 0);
-                      
+
                       if (saldoEntregadoCalculado < 0) saldoEntregadoCalculado = 0;
 
                       return (
