@@ -23,5 +23,14 @@ export const entregaDineroService = {
     async updateEstado(id: number, estado: string, confirmar_cierre_irregular?: boolean) {
         const response = await api.put(`/entregas-dinero/${id}/estado`, { estado, confirmar_cierre_irregular });
         return response.data;
+    },
+
+    async getReporte(fecha_desde?: string, fecha_hasta?: string) {
+        const params: any = {};
+        if (fecha_desde) params.fecha_desde = fecha_desde;
+        if (fecha_hasta) params.fecha_hasta = fecha_hasta;
+        
+        const response = await api.get('/entregas-dinero/reporte', { params });
+        return response.data;
     }
 }

@@ -36,6 +36,7 @@ import CashClosures from "@/pages/cash/CashClosures";
 import CashRegularization from "@/pages/cash/CashRegularization";
 import CashDisbursements from "@/pages/cash/CashDisbursements";
 import MoneyDelivery from "@/pages/cash/MoneyDelivery";
+import DeliveryReport from "./pages/cash/DeliveryReport";
 import SalesProjection from "@/pages/cash/SalesProjection";
 import RoutesList from "@/pages/routes/RoutesList";
 import VehiclesList from "@/pages/vehicles/VehiclesList";
@@ -210,7 +211,9 @@ const AppRoutes = () => {
           </ErrorBoundary>
         } />
         <Route path="/caja/reportes/entregas" element={
-          <ComingSoon />
+          <ErrorBoundary key={location.pathname}>
+            <DeliveryReport />
+          </ErrorBoundary>
         } />
         <Route path="/caja/proyeccion" element={
           <ErrorBoundary key={location.pathname}>

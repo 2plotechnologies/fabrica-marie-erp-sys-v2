@@ -13,7 +13,9 @@ class EntregaDineroController
 {
     public function index()
     {
-        $entregas = EntregaDinero::with('usuario', 'items')->get();
+        $entregas = EntregaDinero::with('usuario', 'items')
+            ->orderBy('created_at', 'desc')
+            ->get();
         return response()->json($entregas);
     }
 
@@ -74,6 +76,23 @@ class EntregaDineroController
     {
         $entrega = EntregaDinero::with('usuario', 'items')->findOrFail($id);
         return response()->json($entrega);
+    }
+
+    public function reporte(Request $request)
+    {
+        $query = EntregaDinero::with('usuario.roles', 'items');
+
+        if ($request->filled('fecha_desde')) {
+            $query->whereDate('created_at', '>=', $request->fecha_desde);
+        }
+
+        if ($request->filled('fecha_hasta')) {
+            $query->whereDate('created_at', '<=', $request->fecha_hasta);
+        }
+
+        $entregas = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json($entregas);
     }
 
     public function updateEstado(Request $request, $id)

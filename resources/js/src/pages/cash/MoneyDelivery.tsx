@@ -41,7 +41,7 @@ const MoneyDelivery = () => {
 
     const [isNewDialog, setIsNewDialog] = useState(false);
     const [isViewDialog, setIsViewDialog] = useState(false);
-    const [confirmWarningDialog, setConfirmWarningDialog] = useState<{id: number, estado: string, message: string} | null>(null);
+    const [confirmWarningDialog, setConfirmWarningDialog] = useState<{ id: number, estado: string, message: string } | null>(null);
 
     // Form state
     const [observaciones, setObservaciones] = useState('');
@@ -81,6 +81,8 @@ const MoneyDelivery = () => {
             setIsNewDialog(false);
         },
         onError: (error: any) => {
+            console.log("ERROR COMPLETO:", error);
+            console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
             toast.error(formatErrorMessage('Error al crear la entrega de dinero', error, 'No se pudo crear. Verifique los datos o adjuntos.'));
         }
     });
@@ -252,12 +254,11 @@ const MoneyDelivery = () => {
                                                 <Select value={item.metodo_pago} onValueChange={(val) => handleItemChange(item.id, 'metodo_pago', val)}>
                                                     <SelectTrigger><SelectValue placeholder="Seleccione un método" /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Efectivo">Efectivo</SelectItem>
-                                                        <SelectItem value="Yape">Yape</SelectItem>
-                                                        <SelectItem value="Plin">Plin</SelectItem>
-                                                        <SelectItem value="Transferencia BCP">Transferencia BCP</SelectItem>
-                                                        <SelectItem value="Transferencia BBVA">Transferencia BBVA</SelectItem>
-                                                        <SelectItem value="Depósito en Agente">Depósito en Agente</SelectItem>
+                                                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                                                        <SelectItem value="yape">Yape</SelectItem>
+                                                        <SelectItem value="plin">Plin</SelectItem>
+                                                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                                                        <SelectItem value="deposito">Depósito en Agente</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -540,15 +541,15 @@ const MoneyDelivery = () => {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setConfirmWarningDialog(null)}>Cancelar</Button>
-                        <Button 
-                            className="bg-amber-600 hover:bg-amber-700 text-white" 
+                        <Button
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
                             disabled={updateEstado.isPending}
                             onClick={() => {
                                 if (confirmWarningDialog) {
-                                    updateEstado.mutate({ 
-                                        id: confirmWarningDialog.id, 
-                                        estado: confirmWarningDialog.estado, 
-                                        confirmar_cierre_irregular: true 
+                                    updateEstado.mutate({
+                                        id: confirmWarningDialog.id,
+                                        estado: confirmWarningDialog.estado,
+                                        confirmar_cierre_irregular: true
                                     });
                                 }
                             }}
