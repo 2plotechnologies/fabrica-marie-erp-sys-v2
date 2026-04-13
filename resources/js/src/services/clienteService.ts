@@ -53,6 +53,11 @@ export const clienteService = {
     return response.data;
   },
 
+  async getMorosos() {
+    const response = await api.get('/clientes/morosos');
+    return response.data;
+  },
+
   async createInteraction(data: any) {
     const response = await api.post('/clientes/interacciones', data);
     return response.data;

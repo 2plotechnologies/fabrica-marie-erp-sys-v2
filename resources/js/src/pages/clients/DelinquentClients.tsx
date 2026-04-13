@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,54 +19,149 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Search, AlertTriangle, Phone, Ban, UserCheck, History, DollarSign } from 'lucide-react';
-import { mockClients, mockAccountsReceivable } from '@/data/mockData';
-import { format, differenceInDays } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Search, AlertTriangle, Phone, Ban, History, DollarSign, MapPin, List } from 'lucide-react';
+import { clienteService } from '@/services/clienteService';
+import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/axios-error';
+
+interface Moroso {
+  id: number;
+  razon_social: string;
+  telefono: string;
+  direccion: string;
+  ruta_nombre: string;
+  overdueAmount: number;
+  overdueCount: number;
+  overdueDays: number;
+}
 
 const DelinquentClients = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [groupByRoute, setGroupByRoute] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState<Moroso[]>([]);
+  const { toast } = useToast();
 
-  // Get delinquent clients (status MOROSO or with overdue accounts)
-  const delinquentClients = mockClients
-    .filter(client => 
-      client.status === 'MOROSO' || 
-      mockAccountsReceivable.some(acc => 
-        acc.clientId === client.id && acc.status === 'VENCIDA'
-      )
-    )
-    .map(client => {
-      const overdueAccounts = mockAccountsReceivable.filter(
-        acc => acc.clientId === client.id && acc.status === 'VENCIDA'
-      );
-      const totalOverdue = overdueAccounts.reduce((acc, a) => acc + a.currentBalance, 0);
-      const oldestOverdue = overdueAccounts.length > 0 
-        ? Math.max(...overdueAccounts.map(a => differenceInDays(new Date(), a.dueDate)))
-        : 0;
-      
-      return {
-        ...client,
-        overdueAmount: totalOverdue,
-        overdueDays: oldestOverdue,
-        overdueCount: overdueAccounts.length,
-      };
-    })
-    .sort((a, b) => b.overdueAmount - a.overdueAmount);
+  useEffect(() => {
+    fetchMorosos();
+  }, []);
 
-  const filteredClients = delinquentClients.filter((client) =>
-    client.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.ownerName.toLowerCase().includes(searchTerm.toLowerCase())
+  const fetchMorosos = async () => {
+    try {
+      setLoading(true);
+      const data = await clienteService.getMorosos();
+      setClients(data);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: getErrorMessage(error),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredClients = clients.filter((client) =>
+    client.razon_social.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalOverdue = delinquentClients.reduce((acc, c) => acc + c.overdueAmount, 0);
-  const avgDaysOverdue = delinquentClients.length > 0
-    ? Math.round(delinquentClients.reduce((acc, c) => acc + c.overdueDays, 0) / delinquentClients.length)
+  const totalOverdue = clients.reduce((acc, c) => acc + c.overdueAmount, 0);
+  const avgDaysOverdue = clients.length > 0
+    ? Math.round(clients.reduce((acc, c) => acc + c.overdueDays, 0) / clients.length)
     : 0;
 
   const getRiskLevel = (days: number) => {
     if (days > 60) return { label: 'Alto', variant: 'destructive' as const };
     if (days > 30) return { label: 'Medio', variant: 'secondary' as const };
     return { label: 'Bajo', variant: 'outline' as const };
+  };
+
+  // Grouping logic
+  const groupedClients = filteredClients.reduce((groups, client) => {
+    const route = client.ruta_nombre || 'Sin Ruta';
+    if (!groups[route]) {
+      groups[route] = [];
+    }
+    groups[route].push(client);
+    return groups;
+  }, {} as Record<string, Moroso[]>);
+
+  const renderClientRow = (client: Moroso) => {
+    const risk = getRiskLevel(client.overdueDays);
+    return (
+      <TableRow key={client.id} className="hover:bg-muted/50">
+        <TableCell>
+          <div>
+            <p className="font-medium">{client.razon_social}</p>
+            <p className="text-xs text-muted-foreground">{client.ruta_nombre}</p>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Phone className="h-3 w-3" />
+            {client.telefono || 'Sin teléfono'}
+          </div>
+        </TableCell>
+        <TableCell className="text-center">
+          <Badge variant="outline">{client.overdueCount}</Badge>
+        </TableCell>
+        <TableCell className="text-center font-semibold text-red-600">
+          {client.overdueDays} días
+        </TableCell>
+        <TableCell>
+          <Badge variant={risk.variant}>{risk.label}</Badge>
+        </TableCell>
+        <TableCell className="text-right font-bold text-red-600">
+          S/ {Number(client.overdueAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-2">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Phone className="h-4 w-4 mr-1" />
+                  Contactar
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Información de Contacto</DialogTitle>
+                  <DialogDescription>
+                    {client.razon_social}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Teléfono</p>
+                      <p className="font-medium">{client.telefono || 'Sin teléfono'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Dirección</p>
+                      <p className="font-medium">{client.direccion || 'Sin dirección'}</p>
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-2">Resumen de Deuda</p>
+                    <div className="flex justify-between text-lg">
+                      <span>Total vencido:</span>
+                      <span className="font-bold text-red-600">
+                        S/ {Number(client.overdueAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
   };
 
   return (
@@ -92,10 +187,10 @@ const DelinquentClients = () => {
             </div>
             <div>
               <h3 className="font-semibold text-red-800 dark:text-red-400">
-                Atención: {delinquentClients.length} clientes con deudas vencidas
+                Atención: {clients.length} clientes con deudas vencidas
               </h3>
               <p className="text-sm text-red-700 dark:text-red-500 mt-1">
-                Total pendiente: <span className="font-bold">S/ {totalOverdue.toLocaleString()}</span>
+                Total pendiente: <span className="font-bold">S/ {totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 {' · '}
                 Promedio de días vencidos: <span className="font-bold">{avgDaysOverdue} días</span>
               </p>
@@ -114,7 +209,7 @@ const DelinquentClients = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Clientes Morosos</p>
-                <p className="text-2xl font-bold text-foreground">{delinquentClients.length}</p>
+                <p className="text-2xl font-bold text-foreground">{clients.length}</p>
               </div>
             </div>
           </CardContent>
@@ -129,7 +224,7 @@ const DelinquentClients = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Deuda Vencida</p>
                 <p className="text-2xl font-bold text-red-600">
-                  S/ {totalOverdue.toLocaleString()}
+                  S/ {totalOverdue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -151,22 +246,42 @@ const DelinquentClients = () => {
         </Card>
       </div>
 
-      {/* Search */}
+      {/* Search & Actions */}
       <Card className="shadow-card">
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cliente moroso..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-4 justify-between">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar cliente moroso..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={groupByRoute ? "default" : "outline"}
+                onClick={() => setGroupByRoute(true)}
+                className="flex items-center gap-2"
+              >
+                <MapPin className="h-4 w-4" />
+                Agrupar por Ruta
+              </Button>
+              <Button
+                variant={!groupByRoute ? "default" : "outline"}
+                onClick={() => setGroupByRoute(false)}
+                className="flex items-center gap-2"
+              >
+                <List className="h-4 w-4" />
+                Lista Simple
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Table Content */}
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -175,100 +290,44 @@ const DelinquentClients = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Contacto</TableHead>
-                <TableHead className="text-center">Cuentas Vencidas</TableHead>
-                <TableHead className="text-center">Días Vencido</TableHead>
-                <TableHead>Riesgo</TableHead>
-                <TableHead className="text-right">Deuda Vencida</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClients.map((client) => {
-                const risk = getRiskLevel(client.overdueDays);
-                return (
-                  <TableRow key={client.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{client.businessName}</p>
-                        <p className="text-xs text-muted-foreground">{client.ownerName}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        {client.phone}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline">{client.overdueCount}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center font-semibold text-red-600">
-                      {client.overdueDays} días
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={risk.variant}>{risk.label}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-red-600">
-                      S/ {client.overdueAmount.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <Phone className="h-4 w-4 mr-1" />
-                              Contactar
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Información de Contacto</DialogTitle>
-                              <DialogDescription>
-                                {client.businessName}
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="flex items-center gap-3">
-                                <Phone className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Teléfono</p>
-                                  <p className="font-medium">{client.phone}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-muted-foreground mt-0.5" />
-                                <div>
-                                  <p className="text-sm text-muted-foreground">Dirección</p>
-                                  <p className="font-medium">{client.address}</p>
-                                </div>
-                              </div>
-                              <div className="pt-4 border-t">
-                                <p className="text-sm text-muted-foreground mb-2">Resumen de Deuda</p>
-                                <div className="flex justify-between text-lg">
-                                  <span>Total vencido:</span>
-                                  <span className="font-bold text-red-600">
-                                    S/ {client.overdueAmount.toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                        <Button size="sm" variant="ghost">
-                          <UserCheck className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="text-center py-10 text-muted-foreground">Cargando morosos...</div>
+          ) : filteredClients.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">No se encontraron clientes morosos.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Contacto</TableHead>
+                  <TableHead className="text-center">Cuentas Vencidas</TableHead>
+                  <TableHead className="text-center">Días Vencido</TableHead>
+                  <TableHead>Riesgo</TableHead>
+                  <TableHead className="text-right">Deuda Vencida</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {!groupByRoute ? (
+                  filteredClients.map(renderClientRow)
+                ) : (
+                  Object.entries(groupedClients).map(([route, routeClients]) => (
+                    <React.Fragment key={route}>
+                      <TableRow className="bg-muted/30">
+                        <TableCell colSpan={7}>
+                          <div className="flex items-center gap-2 font-bold text-primary">
+                            <MapPin className="h-4 w-4" />
+                            {route} ({routeClients.length} clientes)
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {routeClients.map(renderClientRow)}
+                    </React.Fragment>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

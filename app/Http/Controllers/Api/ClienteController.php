@@ -208,4 +208,37 @@ class ClienteController extends Controller
             'ubicacion' => $ubicacion
         ]);
     }
+
+    public function morosos()
+    {
+        $cuentas = \App\Models\CuentaPorCobrar::with(['cliente.ruta'])
+            ->where('saldo', '>', 0)
+            ->whereDate('fecha_vencimiento', '<=', Carbon::now()->toDateString())
+            ->get();
+
+        $morosos = collect();
+
+        foreach ($cuentas->groupBy('cliente_id') as $cliente_id => $cuentasCliente) {
+            $cliente = $cuentasCliente->first()->cliente;
+            if (!$cliente) continue;
+
+            $overdueAmount = $cuentasCliente->sum('saldo');
+            $overdueCount = $cuentasCliente->count();
+            $oldest = $cuentasCliente->min('fecha_vencimiento');
+            $overdueDays = Carbon::parse($oldest)->diffInDays(Carbon::now());
+
+            $clienteData = $cliente->toArray();
+            $clienteData['overdueAmount'] = $overdueAmount;
+            $clienteData['overdueCount'] = $overdueCount;
+            $clienteData['overdueDays'] = round($overdueDays);
+            
+            // Allow frontend to group by route
+            $clienteData['ruta_nombre'] = $cliente->ruta ? $cliente->ruta->nombre : 'Sin Ruta';
+            
+            $morosos->push($clienteData);
+        }
+
+        // Devolvemos ordenados por deuda (mayor a menor)
+        return response()->json($morosos->sortByDesc('overdueAmount')->values());
+    }
 }

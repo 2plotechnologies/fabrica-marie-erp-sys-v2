@@ -164,6 +164,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO,FIDELIZACION')
         ->group(function () {
         Route::get('/', [ClienteController::class, 'index']);
+        Route::get('/morosos', [ClienteController::class, 'morosos']);
         Route::get('/crm', [ClienteController::class, 'listaCRM']);
         //Interacciones
         Route::post('/interacciones', [ClienteController::class, 'createInteraction']);

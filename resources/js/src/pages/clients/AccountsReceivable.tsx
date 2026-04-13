@@ -330,7 +330,7 @@ const AccountsReceivable = () => {
                         {!account.fecha_vencimiento && (
                           <p className="text-sm">Sin fecha de vencimiento establecida</p>
                         )}
-                        {account.fecha_vencimiento && (
+                        {account.fecha_vencimiento && account.estado !== 'PAGADO' && (
                           <p className={`text-xs ${daysInfo.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
                             {daysInfo.text}
                           </p>
@@ -347,58 +347,58 @@ const AccountsReceivable = () => {
                         {/* Deshabilitar si el estado es PAGADO */}
                         <Dialog open={selectedAccount?.id === account.id && isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); setSelectedAccount(open ? account : null); }}>
                           <DialogTrigger asChild>
-                          <Button size="sm" className="bg-gradient-warm hover:opacity-90" disabled={account.estado === 'PAGADO'}>
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            Cobrar
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Registrar Pago</DialogTitle>
-                            <DialogDescription>
-                              Cliente: {selectedAccount?.cliente?.razon_social}
-                              <br />
-                              Saldo pendiente: S/ {Number(selectedAccount?.saldo).toLocaleString()}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="amount">Monto a pagar (S/)</Label>
-                              <Input
-                                id="amount"
-                                type="number"
-                                placeholder="0.00"
-                                value={paymentAmount}
-                                onChange={(e) => setPaymentAmount(e.target.value)}
-                                max={Number(selectedAccount?.saldo)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Método de Pago</Label>
-                              <Select value={payMethod} onValueChange={setPayMethod}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                                  <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                                  <SelectItem value="YAPE">Yape</SelectItem>
-                                  <SelectItem value="PLIN">Plin</SelectItem>
-                                  <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline">Cancelar</Button>
-                            <Button
-                              className="bg-gradient-warm hover:opacity-90"
-                              onClick={() => handlePayment(selectedAccount.id)}>
-                              Confirmar Pago
+                            <Button size="sm" className="bg-gradient-warm hover:opacity-90" disabled={account.estado === 'PAGADO'}>
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              Cobrar
                             </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Registrar Pago</DialogTitle>
+                              <DialogDescription>
+                                Cliente: {selectedAccount?.cliente?.razon_social}
+                                <br />
+                                Saldo pendiente: S/ {Number(selectedAccount?.saldo).toLocaleString()}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="amount">Monto a pagar (S/)</Label>
+                                <Input
+                                  id="amount"
+                                  type="number"
+                                  placeholder="0.00"
+                                  value={paymentAmount}
+                                  onChange={(e) => setPaymentAmount(e.target.value)}
+                                  max={Number(selectedAccount?.saldo)}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>Método de Pago</Label>
+                                <Select value={payMethod} onValueChange={setPayMethod}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                                    <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                                    <SelectItem value="YAPE">Yape</SelectItem>
+                                    <SelectItem value="PLIN">Plin</SelectItem>
+                                    <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline">Cancelar</Button>
+                              <Button
+                                className="bg-gradient-warm hover:opacity-90"
+                                onClick={() => handlePayment(selectedAccount.id)}>
+                                Confirmar Pago
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </TableCell>
                   </TableRow>
