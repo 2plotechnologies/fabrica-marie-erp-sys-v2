@@ -181,6 +181,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO,FIDELIZACION,MANTENIMIENTO')
         ->group(function () {
         Route::get('/', [RutaController::class, 'index']);
+        Route::get('/paginado', [RutaController::class, 'listPaginado']); // paginación + búsqueda
         Route::post('/', [RutaController::class, 'store']);
         Route::get('/{id}', [RutaController::class, 'show']);
         Route::get('/{id}/detalle', [RutaController::class, 'detalle']);

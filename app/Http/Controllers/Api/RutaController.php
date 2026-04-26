@@ -17,6 +17,27 @@ class RutaController extends Controller
         return response()->json($rutas);
     }
 
+    /**
+     * Listado paginado con búsqueda por nombre. Usado por el módulo RoutesList.
+     * GET /rutas/paginado?search=&page=&per_page=
+     */
+    public function listPaginado(Request $request)
+    {
+        $perPage = (int) $request->input('per_page', 6);
+        $search  = $request->input('search', '');
+
+        $query = Ruta::where('activo', true)
+            ->withCount('clientes');
+
+        if ($search !== '') {
+            $query->where('nombre', 'like', '%' . $search . '%');
+        }
+
+        $rutas = $query->paginate($perPage);
+
+        return response()->json($rutas);
+    }
+
     public function store(Request $request)
     {
         $ruta = Ruta::create($request->all());

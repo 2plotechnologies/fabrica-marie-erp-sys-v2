@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapPin,
   Users,
@@ -7,7 +7,10 @@ import {
   Clock,
   MoreHorizontal,
   List,
-  Map
+  Map,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +46,14 @@ const RoutesList = () => {
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- Búsqueda y paginación ---
+  const [searchInput, setSearchInput] = useState('');
+  const [searchTerm, setSearchTerm]   = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage]       = useState(1);
+  const [totalRoutes, setTotalRoutes] = useState(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [detailRoute, setDetailRoute] = useState<any | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editRoute, setEditRoute] = useState<any | null>(null);
@@ -58,15 +69,19 @@ const RoutesList = () => {
     return vendedores.find(u => u.id === sellerId);
   };
 
-  const handleRouteCreated = (newRoute: any) => {
-    setRoutes(prev => [...prev, newRoute]);
+  const handleRouteCreated = (_newRoute: any) => {
+    // Refrescar desde el servidor para mantener la paginación consistente
+    fetchRutas(currentPage, searchTerm);
   };
 
-  const fetchRutas = async () => {
+  const fetchRutas = useCallback(async (page: number, search: string) => {
+    setIsLoading(true);
     try {
-      const data = await rutaService.getAll();
-      setRoutes(data);
-      setIsLoading(true);
+      const paginated = await rutaService.getAll({ page, search, per_page: 6 });
+      setRoutes(paginated.data);
+      setCurrentPage(paginated.current_page);
+      setLastPage(paginated.last_page);
+      setTotalRoutes(paginated.total);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -76,7 +91,7 @@ const RoutesList = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   const fetchVendedores = async () => {
     try {
@@ -91,10 +106,24 @@ const RoutesList = () => {
     }
   };
 
+  // Fetch inicial y re-fetch al cambiar página / término de búsqueda
   useEffect(() => {
-    fetchRutas();
+    fetchRutas(currentPage, searchTerm);
+  }, [currentPage, searchTerm, fetchRutas]);
+
+  useEffect(() => {
     fetchVendedores();
   }, []);
+
+  // Debounce del input de búsqueda (400 ms)
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setCurrentPage(1); // volver a la pág 1 al buscar
+      setSearchTerm(value);
+    }, 400);
+  };
 
   const coveragePromedio = useMemo(() => {
     const totalEstimados = routes.reduce(
@@ -200,6 +229,18 @@ const RoutesList = () => {
           <MapPin className="h-4 w-4" />
           Nueva Ruta
         </Button>
+      </div>
+
+      {/* Buscador */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          id="route-search"
+          placeholder="Buscar ruta por nombre…"
+          value={searchInput}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -376,6 +417,39 @@ const RoutesList = () => {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Paginación */}
+          {!isLoading && lastPage > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-sm text-muted-foreground">
+                Mostrando página <span className="font-medium">{currentPage}</span> de{' '}
+                <span className="font-medium">{lastPage}</span>{' '}
+                &mdash; <span className="font-medium">{totalRoutes}</span> rutas en total
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  disabled={currentPage >= lastPage}
+                  onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>

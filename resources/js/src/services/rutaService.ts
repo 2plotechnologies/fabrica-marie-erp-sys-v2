@@ -27,9 +27,9 @@ export const rutaService = {
     return response.data;
   },
 
-  async getAll() {
-    const response = await api.get('/rutas');
-    return response.data;
+  async getAll(params?: { search?: string; page?: number; per_page?: number }) {
+    const response = await api.get('/rutas/paginado', { params });
+    return response.data; // { data: Ruta[], current_page, last_page, total, ... }
   },
 
   async getById(id: number) {
