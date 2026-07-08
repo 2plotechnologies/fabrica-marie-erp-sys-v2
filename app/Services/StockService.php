@@ -76,6 +76,10 @@ class StockService
                 case 'AJUSTE':
                     $nuevoStock = $cantidadMov;
                     break;
+                    
+                case 'TRANSFERENCIA_VENDEDOR':
+                    $nuevoStock = $cantidadActual;
+                    break;
 
                 default:
                     throw new Exception('Tipo de movimiento inválido');

@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Stock
         Route::get('/stock', [StockController::class, 'index']);
         Route::get('/stock-vendedores', [StockController::class, 'stockVendedores']);
+        Route::post('/stock/transferir', [StockController::class, 'transferirStock']);
 
         // Movimientos
         Route::get('/movimientos', [MovimientoStockController::class, 'index']);
@@ -241,6 +242,11 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware(['permiso:caja_registrar_egreso']);
             //Crear movimiento
             Route::post('/movimientos', [CajaController::class, 'crearMovimiento']);
+            //Obtener cajas sin cerrar de dias anteriores
+            Route::get('/sin-cerrar', [CajaController::class, 'cajasSinCerrar']);
+            //Cerrar cajas de dias anteriores
+            Route::post('/cerrar-antiguas', [CajaController::class, 'cerrarAntiguas'])
+                ->middleware('permiso:cerrar_caja');
             //Abrir caja
             Route::post('/abrir', [CajaController::class, 'abrir']);
             //Cerrar caja

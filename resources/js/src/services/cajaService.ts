@@ -121,4 +121,16 @@ export const cajaService = {
         const response = await api.get(`/caja/fecha/${fecha}/usuario/${usuario_id}/estado/${estado}/metodo_pago/${metodo_pago}/tipo_venta/${tipo_venta}/producto/${producto_id}`);
         return response.data;
     },
+
+    // Obtener cajas sin cerrar de días anteriores
+    async getCajasSinCerrar() {
+        const response = await api.get('/caja/sin-cerrar');
+        return response.data;
+    },
+
+    // Cerrar automáticamente las cajas de días anteriores
+    async cerrarCajasAntiguas() {
+        const response = await api.post('/caja/cerrar-antiguas');
+        return response.data;
+    },
 }

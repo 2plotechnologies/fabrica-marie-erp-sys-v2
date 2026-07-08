@@ -36,6 +36,9 @@ const CurrentCash = () => {
   const [movDescripcion, setMovDescripcion] = useState('');
   const selectedDate = new Date();
   const [isLoading, setIsLoading] = useState(true);
+  const [cajasSinCerrarCount, setCajasSinCerrarCount] = useState(0);
+  const [isOpenCajasSinCerrarDialog, setIsOpenCajasSinCerrarDialog] = useState(false);
+  const [isClosingAntiguas, setIsClosingAntiguas] = useState(false);
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
   const isToday = dateStr === format(new Date(), 'yyyy-MM-dd');
@@ -63,9 +66,37 @@ const CurrentCash = () => {
     }
   };
 
+  const checkCajasSinCerrar = async () => {
+    try {
+      const data = await cajaService.getCajasSinCerrar();
+      if (data && data.cantidad > 0) {
+        setCajasSinCerrarCount(data.cantidad);
+        setIsOpenCajasSinCerrarDialog(true);
+      }
+    } catch (error) {
+      console.log('Error al verificar cajas sin cerrar:', error);
+    }
+  };
+
+  const handleCerrarCajasAntiguas = async () => {
+    setIsClosingAntiguas(true);
+    try {
+      await cajaService.cerrarCajasAntiguas();
+      toast.success("Cajas anteriores cerradas automáticamente.");
+      setIsOpenCajasSinCerrarDialog(false);
+      setCajasSinCerrarCount(0);
+      await fetchCajaActual();
+    } catch (error) {
+      console.log("Error al cerrar cajas anteriores:", error);
+      toast.error(formatErrorMessage('Error al cerrar cajas anteriores', error, 'No se pudieron cerrar las cajas anteriores.'));
+    } finally {
+      setIsClosingAntiguas(false);
+    }
+  };
 
   useEffect(() => {
     fetchCajaActual();
+    checkCajasSinCerrar();
   }, []);
 
   const handleOpenCash = async () => {
@@ -445,6 +476,56 @@ const CurrentCash = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de cajas sin cerrar de dias anteriores */}
+      <Dialog open={isOpenCajasSinCerrarDialog} onOpenChange={setIsOpenCajasSinCerrarDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5 text-destructive animate-pulse" />
+              Cajas sin Cerrar Detectadas
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Se han detectado <span className="font-semibold text-foreground">{cajasSinCerrarCount}</span> cajas de días anteriores que aún permanecen abiertas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Alert variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 my-4">
+            <AlertTitle className="flex items-center gap-2 font-semibold">
+              <AlertTriangle className="h-4 w-4" />
+              Advertencia
+            </AlertTitle>
+            <AlertDescription className="text-xs mt-1 leading-relaxed">
+              Estimado <strong>administrador, gerente, supervisor o cajero</strong>: al proceder con este cierre automático, el sistema asumirá que el conteo de efectivo real coincide exactamente con el saldo teórico registrado. Las diferencias se registrarán como S/ 0.00.
+            </AlertDescription>
+          </Alert>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsOpenCajasSinCerrarDialog(false)}
+              disabled={isClosingAntiguas}
+            >
+              Cerrar Ventana
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCerrarCajasAntiguas}
+              disabled={isClosingAntiguas}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isClosingAntiguas ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cerrando...
+                </>
+              ) : (
+                'Cerrar Cajas'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

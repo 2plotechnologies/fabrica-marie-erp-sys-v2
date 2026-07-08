@@ -115,4 +115,43 @@ class CajaService
 
         return $movimiento;
     }
+
+    public function cerrarCajasAntiguas()
+    {
+        $cajasAbiertas = Caja::with('movimientos')
+            ->where('estado', 'ABIERTA')
+            ->where('fecha', '<', now()->toDateString())
+            ->get();
+
+        foreach ($cajasAbiertas as $caja) {
+            $ingresos = $caja->movimientos
+                ->where('tipo', 'INGRESO')
+                ->sum('monto');
+
+            $egresos = $caja->movimientos
+                ->where('tipo', 'EGRESO')
+                ->where('estado', 'APROBADO')
+                ->sum('monto');
+
+            $caja->total_ingresos = $ingresos;
+            $caja->total_egresos = $egresos;
+            $caja->saldo_actual = $caja->saldo_inicial + $ingresos - $egresos;
+            $caja->estado = 'CERRADA';
+            $caja->cerrado_at = now();
+            $caja->cerrado_by = auth()->id() ?? 1;
+            $caja->save();
+
+            CierreCaja::updateOrCreate(
+                ['caja_id' => $caja->id],
+                [
+                    'conteo_real' => $caja->saldo_actual,
+                    'saldo_teorico' => $caja->saldo_actual,
+                    'diferencia' => 0,
+                    'estado' => 'CUADRADO',
+                ]
+            );
+        }
+
+        return $cajasAbiertas;
+    }
 }

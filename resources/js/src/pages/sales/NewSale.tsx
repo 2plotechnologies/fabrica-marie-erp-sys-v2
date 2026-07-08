@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { ClientSelector } from '@/components/sales/ClientSelector';
 import { ProductSearch } from '@/components/sales/ProductSearch';
 import { SaleCart } from '@/components/sales/SaleCart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle, Lock } from 'lucide-react';
 import type { CartItem } from '@/types/sales';
 import { ventaService } from '@/services/ventaService';
 import { useRole } from '@/contexts/RoleContext';
@@ -18,6 +21,8 @@ const NewSale = () => {
   const { currentRole, roleLabels } = useRole();
   const { user } = useAuth();
   const isVendedor = currentRole === "VENDEDOR";
+  const navigate = useNavigate();
+  const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
   const [productos, setProductos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
@@ -146,10 +151,10 @@ const NewSale = () => {
     toast.success(`${product.nombre} agregado al carrito`);
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (productId: string, quantity: number) => {
     setCart(cart.map(item => {
       if (item.productId === productId) {
-        const newQuantity = Math.max(0, item.quantity + delta);
+        const newQuantity = Math.max(0, quantity);
         return { ...item, quantity: newQuantity };
       }
       return item;
@@ -225,17 +230,26 @@ const NewSale = () => {
         })),
       });
       toast.success('Venta creada exitosamente');
-    } catch (error) {
+      setCart([]);
+      setSelectedClient('');
+      setDiscount(0);
+      setAdelanto(0);
+      setMetodoPago('efectivo');
+    } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(formatErrorMessage('Error al crear venta', error, 'No se pudo crear la venta.'));
-    }
+      
+      const errorMessage = error.response?.data?.message || '';
+      const isCajaCerrada = error.response?.status === 403 && 
+        (errorMessage.toLowerCase().includes('caja abierta') || 
+         errorMessage.toLowerCase().includes('caja cerrada'));
 
-    setCart([]);
-    setSelectedClient('');
-    setDiscount(0);
-    setAdelanto(0);
-    setMetodoPago('efectivo');
+      if (isCajaCerrada) {
+        setIsCajaCerradaModalOpen(true);
+      } else {
+        toast.error(formatErrorMessage('Error al crear venta', error, 'No se pudo crear la venta.'));
+      }
+    }
   };
 
   return (
@@ -338,6 +352,66 @@ const NewSale = () => {
           />
         </div>
       </div>
+
+      {/* Modal de Caja Cerrada */}
+      <Dialog open={isCajaCerradaModalOpen} onOpenChange={setIsCajaCerradaModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="flex flex-col items-center justify-center text-center pt-4">
+            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 mb-3 animate-bounce">
+              <Lock className="h-6 w-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold font-display text-red-600 dark:text-red-400">
+              Apertura de Caja Requerida
+            </DialogTitle>
+            <DialogDescription className="text-center text-muted-foreground mt-2">
+              No se ha detectado una caja abierta para el día de hoy. Es indispensable contar con una caja abierta antes de realizar ventas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 text-center">
+            {isVendedor ? (
+              <div className="bg-muted p-4 rounded-lg text-sm font-medium border border-border text-left">
+                Por favor, solicite a un <span className="text-primary font-bold">administrador, gerente, supervisor o cajero</span> que aperture la caja para continuar con la venta.
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Como usuario administrador o de gestión, puede proceder a realizar la apertura de caja directamente en la vista de caja.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="flex sm:justify-center gap-2">
+            {isVendedor ? (
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => setIsCajaCerradaModalOpen(false)}
+              >
+                Entendido
+              </Button>
+            ) : (
+              <div className="flex w-full gap-2 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsCajaCerradaModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="gradient" 
+                  className="gap-2"
+                  onClick={() => {
+                    setIsCajaCerradaModalOpen(false);
+                    navigate('/caja');
+                  }}
+                >
+                  Ir a la Vista de Caja
+                </Button>
+              </div>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

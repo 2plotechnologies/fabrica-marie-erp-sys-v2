@@ -4,9 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Package, Truck, ShoppingCart } from 'lucide-react';
+import { Search, Package, Truck, ShoppingCart, ArrowRightLeft } from 'lucide-react';
 import { stockService } from '@/services/stockService';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 const StockVendedoresPage = () => {
   const [stockVendedores, setStockVendedores] = useState<any[]>([]);
@@ -15,17 +18,23 @@ const StockVendedoresPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [origenId, setOrigenId] = useState('');
+  const [destinoId, setDestinoId] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  const fetchStockVendedores = async () => {
+    try {
+      const data = await stockService.getStockVendedores();
+      setStockVendedores(data);
+    } catch (error) {
+      console.error('Error al obtener stock de vendedores:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStockVendedores = async () => {
-      try {
-        const data = await stockService.getStockVendedores();
-        setStockVendedores(data);
-      } catch (error) {
-        console.error('Error al obtener stock de vendedores:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
     const fetchVendedores = async () => {
       try {
@@ -38,6 +47,33 @@ const StockVendedoresPage = () => {
     fetchStockVendedores();
     fetchVendedores();
   }, []);
+
+  const handleTransfer = async () => {
+    if (!origenId || !destinoId) {
+      toast.error('Selecciona el origen y el destino');
+      return;
+    }
+    if (origenId === destinoId) {
+      toast.error('El origen y destino no pueden ser el mismo');
+      return;
+    }
+    setIsTransferring(true);
+    try {
+      await stockService.transferirStock({
+        origen_vendedor_id: Number(origenId),
+        destino_vendedor_id: Number(destinoId)
+      });
+      toast.success('Stock transferido correctamente');
+      setIsTransferModalOpen(false);
+      setOrigenId('');
+      setDestinoId('');
+      fetchStockVendedores();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Error al transferir stock');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
 
   const filtered = stockVendedores.filter(sv =>
     sv.producto?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,9 +97,58 @@ const StockVendedoresPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in">
-        <h1 className="text-2xl lg:text-3xl font-display font-bold">Stock de Vendedores</h1>
-        <p className="text-muted-foreground mt-1">Productos asignados a cada vendedor desde salidas de fábrica</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-display font-bold">Stock de Vendedores</h1>
+          <p className="text-muted-foreground mt-1">Productos asignados a cada vendedor desde salidas de fábrica</p>
+        </div>
+        <Dialog open={isTransferModalOpen} onOpenChange={setIsTransferModalOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <ArrowRightLeft className="h-4 w-4" />
+              Transferir Stock
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Transferir Stock Restante</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Vendedor Origen (Averiado)</Label>
+                <Select value={origenId} onValueChange={setOrigenId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores.map(v => (
+                      <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Vendedor Destino</Label>
+                <Select value={destinoId} onValueChange={setDestinoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores.map(v => (
+                      <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsTransferModalOpen(false)}>Cancelar</Button>
+              <Button onClick={handleTransfer} disabled={isTransferring}>
+                {isTransferring ? 'Transfiriendo...' : 'Confirmar Transferencia'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-slide-up">

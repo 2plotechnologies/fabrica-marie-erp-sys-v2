@@ -149,4 +149,28 @@ class CajaController extends Controller
 
         return $caja;
     }
+
+    public function cajasSinCerrar()
+    {
+        $cajas = Caja::where('estado', 'ABIERTA')
+            ->where('fecha', '<', now()->toDateString())
+            ->get();
+
+        return response()->json([
+            'cantidad' => $cajas->count(),
+            'cajas' => $cajas
+        ]);
+    }
+
+    public function cerrarAntiguas(CajaService $service)
+    {
+        return DB::transaction(function () use ($service) {
+            $cajasCerradas = $service->cerrarCajasAntiguas();
+            return response()->json([
+                'message' => 'Cajas anteriores cerradas correctamente',
+                'cantidad' => count($cajasCerradas),
+                'cajas' => $cajasCerradas
+            ]);
+        });
+    }
 }

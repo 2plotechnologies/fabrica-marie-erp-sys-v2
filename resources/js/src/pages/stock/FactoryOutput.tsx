@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus, FileDown, Truck, Package, Search, Eye, AlertTriangle } from 'lucide-react';
 import { salidaService } from '@/services/salidaService';
+import { stockService } from '@/services/stockService';
 import { SalidaItemPayload } from '@/services/salidaService';
 import { toast } from 'sonner';
 import { formatErrorMessage } from '@/lib/axios-error';
@@ -23,6 +24,7 @@ const FactoryOutput = () => {
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [rumas, setRumas] = useState<any[]>([]);
   const [rutas, setRutas] = useState<any[]>([]);
+  const [stockInfo, setStockInfo] = useState<any[]>([]);
 
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -98,6 +100,15 @@ const FactoryOutput = () => {
     }
   };
 
+  const fetchStock = async () => {
+    try {
+      const data = await stockService.getAll();
+      setStockInfo(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const fetchRutas = async () => {
     try {
       const data = await salidaService.getRutas();
@@ -132,6 +143,7 @@ const FactoryOutput = () => {
     fetchRutas();
     fetchVehiculos();
     fetchVendedores();
+    fetchStock();
   }, []);
 
   const handleAddItem = () => {
@@ -187,10 +199,11 @@ const FactoryOutput = () => {
       setItems([]);
       setIsNewOpen(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      toast.error(formatErrorMessage('Error al crear salida', error, 'No se pudo crear la salida.'));
+      const backendError = error.response?.data?.error || error.response?.data?.message || 'No se pudo crear la salida.';
+      toast.error(backendError);
     }
   };
 
@@ -243,9 +256,31 @@ const FactoryOutput = () => {
                 <CardHeader className="pb-3"><CardTitle className="text-base">Agregar Productos</CardTitle></CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-4 gap-2">
-                    <Select value={tempItem.producto_id} onValueChange={v => setTempItem({ ...tempItem, producto_id: v })}><SelectTrigger><SelectValue placeholder="Producto" /></SelectTrigger><SelectContent>{productos.map(p => <SelectItem key={p.id} value={p.id}>{p.nombre} ({p.sku})</SelectItem>)}</SelectContent></Select>
+                    <Select value={tempItem.producto_id} onValueChange={v => { setTempItem({ ...tempItem, producto_id: v, ruma_id: '' }); }}>
+                      <SelectTrigger><SelectValue placeholder="Producto" /></SelectTrigger>
+                      <SelectContent>
+                        {productos.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} ({p.sku})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    
                     <Input type="number" placeholder="Cantidad" value={tempItem.cantidad} onChange={e => setTempItem({ ...tempItem, cantidad: e.target.value })} />
-                    <Select value={tempItem.ruma_id} onValueChange={v => setTempItem({ ...tempItem, ruma_id: v })}><SelectTrigger><SelectValue placeholder="Ruma origen" /></SelectTrigger><SelectContent>{rumas.map(r => <SelectItem key={r.id} value={r.id}>{r.codigo}</SelectItem>)}</SelectContent></Select>
+                    
+                    <Select value={tempItem.ruma_id} onValueChange={v => setTempItem({ ...tempItem, ruma_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Ruma origen" /></SelectTrigger>
+                      <SelectContent>
+                        {tempItem.producto_id ? (
+                          (stockInfo.find(s => String(s.producto_id) === String(tempItem.producto_id))?.rumas || []).length > 0 ? (
+                            stockInfo.find(s => String(s.producto_id) === String(tempItem.producto_id))?.rumas.map((r: any) => (
+                              <SelectItem key={r.id} value={r.id.toString()}>{r.codigo} (Disp: {r.cantidad})</SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>Sin stock en rumas</SelectItem>
+                          )
+                        ) : (
+                          <SelectItem value="none" disabled>Selecciona producto primero</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
                     <Button onClick={handleAddItem}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
                   </div>
                 </CardContent>

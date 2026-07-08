@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   ShoppingCart,
   Plus,
@@ -28,7 +29,7 @@ interface SaleCartProps {
   onDiscountChange: (discount: number) => void;
   onMetodoPagoChange: (metodo: string) => void;
   onAdelantoChange: (adelanto: number) => void;
-  onUpdateQuantity: (productId: string, delta: number) => void;
+  onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
   onToggleBonificacion: (productId: string) => void;
   onToggleDegustacion: (productId: string) => void;
@@ -236,51 +237,95 @@ export const SaleCart = ({
 
 interface CartItemRowProps {
   item: CartItem;
-  onUpdateQuantity: (productId: string, delta: number) => void;
+  onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemove: (productId: string) => void;
   onToggleBonificacion: (productId: string) => void;
   onToggleDegustacion: (productId: string) => void;
   isFree?: boolean;
 }
 
-const CartItemRow = ({ item, onUpdateQuantity, onRemove, onToggleBonificacion, onToggleDegustacion, isFree }: CartItemRowProps) => (
-  <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
-    <div className="flex items-start justify-between">
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{item.name}</p>
-        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          {item.marca && <Badge variant="outline" className="text-xs h-5">{item.marca}</Badge>}
-          {item.presentacion && <span className="text-xs text-muted-foreground">{item.presentacion}</span>}
+const CartItemRow = ({ item, onUpdateQuantity, onRemove, onToggleBonificacion, onToggleDegustacion, isFree }: CartItemRowProps) => {
+  const [inputValue, setInputValue] = useState(item.quantity.toString());
+
+  useEffect(() => {
+    setInputValue(item.quantity.toString());
+  }, [item.quantity]);
+
+  return (
+    <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">{item.name}</p>
+          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+            {item.marca && <Badge variant="outline" className="text-xs h-5">{item.marca}</Badge>}
+            {item.presentacion && <span className="text-xs text-muted-foreground">{item.presentacion}</span>}
+          </div>
+          {!isFree && (
+            <p className="text-xs text-muted-foreground mt-1">
+              S/ {Number(item.price).toFixed(2)} x {item.quantity} = S/ {(Number(item.price) * item.quantity).toFixed(2)}
+            </p>
+          )}
+          {isFree && <p className="text-xs text-muted-foreground mt-1">Cantidad: {item.quantity}</p>}
+        </div>
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive shrink-0" onClick={() => onRemove(item.productId)}>
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <Button 
+            size="icon" 
+            variant="outline" 
+            className="h-7 w-7" 
+            onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <Input
+            type="number"
+            value={inputValue}
+            onChange={(e) => {
+              const valStr = e.target.value;
+              setInputValue(valStr);
+              const val = parseInt(valStr, 10);
+              if (!isNaN(val) && val > 0) {
+                onUpdateQuantity(item.productId, val);
+              }
+            }}
+            onBlur={() => {
+              const val = parseInt(inputValue, 10);
+              if (isNaN(val) || val <= 0) {
+                onUpdateQuantity(item.productId, 1);
+                setInputValue("1");
+              } else {
+                onUpdateQuantity(item.productId, val);
+                setInputValue(val.toString());
+              }
+            }}
+            className="w-14 text-center h-7 px-1 focus-visible:ring-1 border-input bg-background rounded-md text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <Button 
+            size="icon" 
+            variant="outline" 
+            className="h-7 w-7" 
+            onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
         </div>
         {!isFree && (
-          <p className="text-xs text-muted-foreground mt-1">
-            S/ {Number(item.price).toFixed(2)} x {item.quantity} = S/ {(Number(item.price) * item.quantity).toFixed(2)}
-          </p>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1 text-xs cursor-pointer">
+              <Checkbox checked={false} onCheckedChange={() => onToggleBonificacion(item.productId)} className="h-3.5 w-3.5" />
+              <Gift className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+            </label>
+            <label className="flex items-center gap-1 text-xs cursor-pointer">
+              <Checkbox checked={false} onCheckedChange={() => onToggleDegustacion(item.productId)} className="h-3.5 w-3.5" />
+              <Coffee className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+            </label>
+          </div>
         )}
-        {isFree && <p className="text-xs text-muted-foreground mt-1">Cantidad: {item.quantity}</p>}
       </div>
-      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive shrink-0" onClick={() => onRemove(item.productId)}>
-        <Trash2 className="h-3 w-3" />
-      </Button>
     </div>
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-1">
-        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onUpdateQuantity(item.productId, -1)}><Minus className="h-3 w-3" /></Button>
-        <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
-        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onUpdateQuantity(item.productId, 1)}><Plus className="h-3 w-3" /></Button>
-      </div>
-      {!isFree && (
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1 text-xs cursor-pointer">
-            <Checkbox checked={false} onCheckedChange={() => onToggleBonificacion(item.productId)} className="h-3.5 w-3.5" />
-            <Gift className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-          </label>
-          <label className="flex items-center gap-1 text-xs cursor-pointer">
-            <Checkbox checked={false} onCheckedChange={() => onToggleDegustacion(item.productId)} className="h-3.5 w-3.5" />
-            <Coffee className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-          </label>
-        </div>
-      )}
-    </div>
-  </div>
-);
+  );
+};

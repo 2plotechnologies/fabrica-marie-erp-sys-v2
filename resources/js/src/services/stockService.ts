@@ -39,4 +39,10 @@ export const stockService = {
     const response = await api.get('/vendedores');
     return response.data;
   },
+
+  /* Transferir stock entre vendedores */
+  async transferirStock(data: { origen_vendedor_id: number; destino_vendedor_id: number }) {
+    const response = await api.post('/inventario/stock/transferir', data);
+    return response.data;
+  },
 };
