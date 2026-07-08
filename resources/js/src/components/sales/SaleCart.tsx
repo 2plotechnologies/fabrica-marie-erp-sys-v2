@@ -30,6 +30,7 @@ interface SaleCartProps {
   onMetodoPagoChange: (metodo: string) => void;
   onAdelantoChange: (adelanto: number) => void;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  onUpdatePrice: (productId: string, price: number) => void;
   onRemoveItem: (productId: string) => void;
   onToggleBonificacion: (productId: string) => void;
   onToggleDegustacion: (productId: string) => void;
@@ -49,6 +50,7 @@ export const SaleCart = ({
   onMetodoPagoChange,
   onAdelantoChange,
   onUpdateQuantity,
+  onUpdatePrice,
   onRemoveItem,
   onToggleBonificacion,
   onToggleDegustacion,
@@ -89,6 +91,7 @@ export const SaleCart = ({
                   key={item.productId}
                   item={item}
                   onUpdateQuantity={onUpdateQuantity}
+                  onUpdatePrice={onUpdatePrice}
                   onRemove={onRemoveItem}
                   onToggleBonificacion={onToggleBonificacion}
                   onToggleDegustacion={onToggleDegustacion}
@@ -102,7 +105,7 @@ export const SaleCart = ({
                 <Gift className="h-3 w-3" /> Bonificaciones
               </h4>
               {bonificaciones.map((item) => (
-                <CartItemRow key={item.productId} item={item} onUpdateQuantity={onUpdateQuantity} onRemove={onRemoveItem} onToggleBonificacion={onToggleBonificacion} onToggleDegustacion={onToggleDegustacion} isFree />
+                <CartItemRow key={item.productId} item={item} onUpdateQuantity={onUpdateQuantity} onUpdatePrice={onUpdatePrice} onRemove={onRemoveItem} onToggleBonificacion={onToggleBonificacion} onToggleDegustacion={onToggleDegustacion} isFree />
               ))}
             </div>
           )}
@@ -112,7 +115,7 @@ export const SaleCart = ({
                 <Coffee className="h-3 w-3" /> Degustaciones
               </h4>
               {degustaciones.map((item) => (
-                <CartItemRow key={item.productId} item={item} onUpdateQuantity={onUpdateQuantity} onRemove={onRemoveItem} onToggleBonificacion={onToggleBonificacion} onToggleDegustacion={onToggleDegustacion} isFree />
+                <CartItemRow key={item.productId} item={item} onUpdateQuantity={onUpdateQuantity} onUpdatePrice={onUpdatePrice} onRemove={onRemoveItem} onToggleBonificacion={onToggleBonificacion} onToggleDegustacion={onToggleDegustacion} isFree />
               ))}
             </div>
           )}
@@ -238,18 +241,24 @@ export const SaleCart = ({
 interface CartItemRowProps {
   item: CartItem;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  onUpdatePrice: (productId: string, price: number) => void;
   onRemove: (productId: string) => void;
   onToggleBonificacion: (productId: string) => void;
   onToggleDegustacion: (productId: string) => void;
   isFree?: boolean;
 }
 
-const CartItemRow = ({ item, onUpdateQuantity, onRemove, onToggleBonificacion, onToggleDegustacion, isFree }: CartItemRowProps) => {
+const CartItemRow = ({ item, onUpdateQuantity, onUpdatePrice, onRemove, onToggleBonificacion, onToggleDegustacion, isFree }: CartItemRowProps) => {
   const [inputValue, setInputValue] = useState(item.quantity.toString());
+  const [inputPrice, setInputPrice] = useState(Number(item.price).toFixed(2));
 
   useEffect(() => {
     setInputValue(item.quantity.toString());
   }, [item.quantity]);
+
+  useEffect(() => {
+    setInputPrice(Number(item.price).toFixed(2));
+  }, [item.price]);
 
   return (
     <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
@@ -261,9 +270,33 @@ const CartItemRow = ({ item, onUpdateQuantity, onRemove, onToggleBonificacion, o
             {item.presentacion && <span className="text-xs text-muted-foreground">{item.presentacion}</span>}
           </div>
           {!isFree && (
-            <p className="text-xs text-muted-foreground mt-1">
-              S/ {Number(item.price).toFixed(2)} x {item.quantity} = S/ {(Number(item.price) * item.quantity).toFixed(2)}
-            </p>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+              <span>S/</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={inputPrice}
+                onChange={(e) => {
+                  setInputPrice(e.target.value);
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val) && val >= 0) {
+                    onUpdatePrice(item.productId, val);
+                  }
+                }}
+                onBlur={() => {
+                  const val = parseFloat(inputPrice);
+                  if (isNaN(val) || val < 0) {
+                    onUpdatePrice(item.productId, Number(item.price));
+                    setInputPrice(Number(item.price).toFixed(2));
+                  } else {
+                    setInputPrice(val.toFixed(2));
+                  }
+                }}
+                className="w-16 h-6 px-1 text-xs py-0 focus-visible:ring-1 bg-background border-input"
+              />
+              <span>x {item.quantity} = S/ {(Number(item.price) * item.quantity).toFixed(2)}</span>
+            </div>
           )}
           {isFree && <p className="text-xs text-muted-foreground mt-1">Cantidad: {item.quantity}</p>}
         </div>

@@ -24,6 +24,7 @@ interface Producto {
     costo: number;
     categoria: string;
     estado: string;
+    stock?: number;
     created_at: string;
     updated_at: string;
   }
@@ -122,6 +123,11 @@ export const ProductSearch = ({ onAddProduct, lista_productos }: ProductSearchPr
                 )}
                 {product.peso && (
                   <span className="text-xs text-muted-foreground">• {product.peso} Kg</span>
+                )}
+                {product.stock !== undefined && (
+                  <span className={`text-xs font-semibold ${product.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    • Stock: {product.stock}
+                  </span>
                 )}
               </div>
             </div>

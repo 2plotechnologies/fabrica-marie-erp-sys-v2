@@ -161,6 +161,16 @@ const NewSale = () => {
     }).filter(item => item.quantity > 0));
   };
 
+  const updatePrice = (productId: string, price: number) => {
+    setCart(cart.map(item => {
+      if (item.productId === productId) {
+        const newPrice = Math.max(0, price);
+        return { ...item, price: newPrice };
+      }
+      return item;
+    }));
+  };
+
   const removeFromCart = (productId: string) => {
     setCart(cart.filter(item => item.productId !== productId));
   };
@@ -343,6 +353,7 @@ const NewSale = () => {
             onMetodoPagoChange={setMetodoPago}
             onAdelantoChange={setAdelanto}
             onUpdateQuantity={updateQuantity}
+            onUpdatePrice={updatePrice}
             onRemoveItem={removeFromCart}
             onToggleBonificacion={toggleBonificacion}
             onToggleDegustacion={toggleDegustacion}
