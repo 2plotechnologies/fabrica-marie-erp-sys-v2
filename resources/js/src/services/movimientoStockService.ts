@@ -54,8 +54,8 @@ export const movimientoService = {
     return response.data;
   },
 
-  /* Eliminar ruma */
+  /* Eliminar ruma / Revertir movimiento */
   delete: async (id: number): Promise<void> => {
-    await api.delete(`/inventario/movimiento/${id}`);
+    await api.delete(`/inventario/movimientos/${id}`);
   },
 };

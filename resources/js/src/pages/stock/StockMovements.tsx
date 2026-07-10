@@ -14,6 +14,17 @@ import { es } from 'date-fns/locale';
 import { movimientoService } from '@/services/movimientoStockService';
 import { toast } from '@/hooks/use-toast';
 import { setFips } from 'crypto';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const StockMovements = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,6 +113,24 @@ const StockMovements = () => {
       });
     }
   }
+
+  const handleRevertir = async (id: number) => {
+    try {
+      await movimientoService.delete(id);
+      toast({
+        title: "Éxito",
+        description: "Movimiento revertido correctamente.",
+      });
+      await fetchMovimientos();
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || err.message || "No se pudo revertir el movimiento.",
+        variant: "destructive",
+      });
+    }
+  };
 
   /*
   const [formData, setFormData] = useState({
@@ -233,23 +262,54 @@ const StockMovements = () => {
                 <TableHead>Ruma</TableHead><TableHead className="text-center">Cantidad</TableHead>
                 <TableHead className="text-center">Stock Anterior</TableHead><TableHead className="text-center">Stock Nuevo</TableHead>
                 <TableHead>Motivo</TableHead>
+                <TableHead className="text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedMovements.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="font-medium">{format(new Date(m.created_at), "dd MMM yyyy, HH:mm", { locale: es })}</TableCell>
-                  <TableCell><div className="flex items-center gap-2">{getTypeIcon(m.tipo)}{getTypeBadge(m.tipo)}</div></TableCell>
-                  <TableCell>{m.producto?.nombre}</TableCell>
-                  <TableCell>{m.ruma?.codigo || '-'}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">{getTypeIcon(m.tipo)}{getTypeBadge(m.tipo)}</div>
+                      {m.estado === 'ANULADO' && <Badge variant="outline" className="w-fit text-xs border-red-200 text-red-500 bg-red-50/50">Anulado</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell className={m.estado === 'ANULADO' ? 'line-through text-muted-foreground' : ''}>{m.producto?.nombre}</TableCell>
+                  <TableCell className={m.estado === 'ANULADO' ? 'line-through text-muted-foreground' : ''}>{m.ruma?.codigo || '-'}</TableCell>
                   {/** Si es devolucion mala, la cantidad no es positiva ni negativa, ya que no sube el stock. Ni se resta.*/}
-                  <TableCell className="text-center font-semibold"><span className={m.tipo === 'SALIDA' || m.tipo === 'DESECHO' || m.tipo === 'DEVOLUCION_MALA' ? 'text-red-500' : 'text-emerald-500'}>{m.tipo === 'SALIDA' || m.tipo === 'DESECHO' ? '-' : '+'}{Number(m.cantidad)}</span></TableCell>
-                  <TableCell className="text-center text-muted-foreground">{Number(m.stock_anterior)}</TableCell>
-                  <TableCell className="text-center font-medium">{Number(m.stock_post_mov)}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[150px] truncate">{m.motivo || '-'}</TableCell>
+                  <TableCell className={`text-center font-semibold ${m.estado === 'ANULADO' ? 'line-through text-muted-foreground' : ''}`}><span className={m.estado === 'ANULADO' ? 'text-muted-foreground' : (m.tipo === 'SALIDA' || m.tipo === 'DESECHO' || m.tipo === 'DEVOLUCION_MALA' ? 'text-red-500' : 'text-emerald-500')}>{m.tipo === 'SALIDA' || m.tipo === 'DESECHO' ? '-' : '+'}{Number(m.cantidad)}</span></TableCell>
+                  <TableCell className={`text-center text-muted-foreground ${m.estado === 'ANULADO' ? 'line-through' : ''}`}>{Number(m.stock_anterior)}</TableCell>
+                  <TableCell className={`text-center font-medium ${m.estado === 'ANULADO' ? 'line-through text-muted-foreground' : ''}`}>{Number(m.stock_post_mov)}</TableCell>
+                  <TableCell className={`text-sm text-muted-foreground max-w-[150px] truncate ${m.estado === 'ANULADO' ? 'line-through' : ''}`}>{m.motivo || '-'}</TableCell>
+                  <TableCell className="text-center">
+                    {m.estado !== 'ANULADO' && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Revertir movimiento">
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Revertir movimiento?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción revertirá el stock de este movimiento y lo marcará como anulado. ¿Estás seguro?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRevertir(m.id)} className="bg-red-500 hover:bg-red-600 text-white">
+                              Sí, revertir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
-              {filteredMovements.length === 0 && <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay movimientos registrados</TableCell></TableRow>}
+              {filteredMovements.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay movimientos registrados</TableCell></TableRow>}
             </TableBody>
           </Table>
           {totalPages > 1 && (

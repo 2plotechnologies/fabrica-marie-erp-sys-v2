@@ -7,6 +7,8 @@ use App\Services\StockService;
 use Illuminate\Http\Request;
 use App\Models\Ruma;
 use App\Models\StockActual;
+use Illuminate\Support\Facades\DB;
+use Exception;
 
 class MovimientoStockController extends Controller
 {
