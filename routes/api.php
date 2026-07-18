@@ -92,30 +92,30 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/rumas/{id}', [RumaController::class, 'update']);
         Route::delete('/rumas/{id}', [RumaController::class, 'destroy']);
 
-        // Stock
+        // Stock.
         Route::get('/stock', [StockController::class, 'index']);
         Route::get('/stock-vendedores', [StockController::class, 'stockVendedores']);
         Route::post('/stock/transferir', [StockController::class, 'transferirStock']);
 
-        // Movimientos
+        // Movimientos.
         Route::get('/movimientos', [MovimientoStockController::class, 'index']);
         Route::post('/movimientos', [MovimientoStockController::class, 'store']);
         Route::delete('/movimientos/{id}', [MovimientoStockController::class, 'destroy']);
 
-        //Salidas
+        //Salidas.
         Route::get('/salidas', [SalidaController::class, 'index']);
+        Route::get('/salidas/vehiculo/{id}/sobrantes', [SalidaController::class, 'getSobrantes']);
         Route::get('/salidas/{id}', [SalidaController::class, 'show']);
         Route::post('/salidas', [SalidaController::class, 'store']);
-        Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado'])
-            ->middleware(['permiso:caja_registrar_egreso']);
+        Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado']);
 
-        //Devoluciones
+        //Devoluciones.
         Route::get('/devoluciones', [DevolucionController::class, 'index']);
         Route::get('/devoluciones/{id}', [DevolucionController::class, 'show']);
         Route::post('/devoluciones', [DevolucionController::class, 'store']);
         Route::put('/devoluciones/estado/{id}', [DevolucionController::class, 'updateEstado']);
 
-        // Kardex
+        // Kardex.
         Route::get('/kardex/{productoId}',
             [MovimientoStockController::class, 'kardex']);
 

@@ -229,7 +229,7 @@ export const SaleCart = ({
         className="w-full"
         size="lg"
         onClick={onSubmit}
-        disabled={regularItems.length === 0 || !isClientSelected}
+        disabled={(regularItems.length === 0 && !cart.some(item => item.esDegustacion)) || !isClientSelected}
       >
         <ShoppingCart className="h-4 w-4 mr-2" />
         {isSubmitting ? 'Registrando...' : 'Registrar Venta'}

@@ -50,6 +50,7 @@ class SalidaController
             'items.*.producto_id' => 'required|exists:productos,id',
             'items.*.ruma_id' => 'required|exists:rumas,id',
             'items.*.cantidad' => 'required|integer|min:1',
+            'items.*.es_sobrante' => 'boolean|nullable',
         ]);
 
         //Verificar que el vendedor no este en una salida con estado EN RUTA.
@@ -121,14 +122,35 @@ class SalidaController
                     'cantidad_entregada' => $item['cantidad'],
                 ]);
 
-                StockService::registrarMovimiento([
-                    'tipo' => 'SALIDA',
-                    'producto_id' => $item['producto_id'],
-                    'ruma_id' => $item['ruma_id'],
-                    'cantidad' => $item['cantidad'],
-                    'motivo' => 'Despacho de fabrica. Salida #' . $salida->id,
-                    'user_id' => auth()->id() // null por ahora si no hay auth
-                ]);
+                if (isset($item['es_sobrante']) && $item['es_sobrante'] == true) {
+                    // Descontar del stock anterior para transferirlo a esta nueva salida
+                    $ultimaSalida = Salida::where('vehiculo_id', $request->vehiculo_id)
+                        ->where('estado', 'COMPLETADO')
+                        ->where('id', '!=', $salida->id)
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($ultimaSalida) {
+                        $stockAnterior = StockVendedor::where('salida_id', $ultimaSalida->id)
+                            ->where('producto_id', $item['producto_id'])
+                            ->where('cantidad', '>=', $item['cantidad'])
+                            ->first();
+
+                        if ($stockAnterior) {
+                            $stockAnterior->cantidad -= $item['cantidad'];
+                            $stockAnterior->save();
+                        }
+                    }
+                } else {
+                    StockService::registrarMovimiento([
+                        'tipo' => 'SALIDA',
+                        'producto_id' => $item['producto_id'],
+                        'ruma_id' => $item['ruma_id'],
+                        'cantidad' => $item['cantidad'],
+                        'motivo' => 'Despacho de fabrica. Salida #' . $salida->id,
+                        'user_id' => auth()->id() // null por ahora si no hay auth
+                    ]);
+                }
             }
 
             DB::commit();
@@ -172,12 +194,12 @@ class SalidaController
                 ], 400);
             }
 
-            //Cambiar estado del vehiculo a EN_RUTA
+            //Cambiar estado del vehiculo a EN_RUTA.
             $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
             $vehiculo->estado = 'EN_RUTA';
             $vehiculo->save();
         }else if($request->estado == 'COMPLETADO'){
-            //Cambiar estado del vehiculo a DISPONIBLE
+            //Cambiar estado del vehiculo a DISPONIBLE.
             $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
             $vehiculo->estado = 'DISPONIBLE';
             $vehiculo->save();
@@ -189,5 +211,41 @@ class SalidaController
 
 
         return response()->json(['message' => 'Estado Actualizado']);
+    }
+
+    public function getSobrantes($id)
+    {
+        $ultimaSalida = Salida::where('vehiculo_id', $id)
+            ->where('estado', 'COMPLETADO')
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$ultimaSalida) {
+            return response()->json([]);
+        }
+
+        $sobrantes = StockVendedor::where('salida_id', $ultimaSalida->id)
+            ->where('cantidad', '>', 0)
+            ->with(['producto'])
+            ->get();
+
+        $salidaItems = SalidaItem::where('salida_id', $ultimaSalida->id)->get();
+        $items = [];
+
+        foreach ($sobrantes as $stock) {
+            $salidaItem = $salidaItems->where('producto_id', $stock->producto_id)
+                                      ->where('cantidad', '>=', $stock->cantidad)
+                                      ->first() ?? $salidaItems->where('producto_id', $stock->producto_id)->first();
+            
+            $items[] = [
+                'producto_id' => $stock->producto_id,
+                'ruma_id' => $salidaItem ? $salidaItem->ruma_id : null,
+                'cantidad' => $stock->cantidad,
+                'es_sobrante' => true,
+                'producto' => $stock->producto
+            ];
+        }
+
+        return response()->json($items);
     }
 }

@@ -39,6 +39,11 @@ export const vehiculoService = {
     return response.data;
   },
 
+  async update(id: number, data: Partial<VehiculoPayload>) {
+    const response = await api.put(`/vehiculos/${id}`, data);
+    return response.data;
+  },
+
   //Actualizar estado
   delete: async (id: number): Promise<void> => {
     await api.delete(`/vehiculos/${id}`);

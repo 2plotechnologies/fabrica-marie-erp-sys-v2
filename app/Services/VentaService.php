@@ -84,29 +84,33 @@ class VentaService
             }
 
             if ($venta->tipo_pago === 'CONTADO') {
-                MovimientoCaja::create([
-                    'caja_id' => $caja->id,
-                    'tipo' => 'EGRESO',
-                    'estado' => 'APROBADO',
-                    'monto' => $venta->total_neto,
-                    'referencia_tipo' => 'ANULACION_VENTA',
-                    'referencia_id' => $venta->id,
-                    'categoria' => 'VENTA',
-                    'descripcion' => 'Venta Anulada, ID: ' . $venta->id,
-                    'created_at' => now()
-                ]);
+                if ($venta->total_neto > 0) {
+                    MovimientoCaja::create([
+                        'caja_id' => $caja->id,
+                        'tipo' => 'EGRESO',
+                        'estado' => 'APROBADO',
+                        'monto' => $venta->total_neto,
+                        'referencia_tipo' => 'ANULACION_VENTA',
+                        'referencia_id' => $venta->id,
+                        'categoria' => 'VENTA',
+                        'descripcion' => 'Venta Anulada, ID: ' . $venta->id,
+                        'created_at' => now()
+                    ]);
+                }
             }else{
-                MovimientoCaja::create([
-                    'caja_id' => $caja->id,
-                    'tipo' => 'EGRESO',
-                    'estado' => 'APROBADO',
-                    'monto' => $venta->adelanto,
-                    'referencia_tipo' => 'ANULACION_VENTA',
-                    'referencia_id' => $venta->id,
-                    'categoria' => 'VENTA',
-                    'descripcion' => 'Venta Anulada, ID: ' . $venta->id,
-                    'created_at' => now()
-                ]);
+                if ($venta->adelanto > 0) {
+                    MovimientoCaja::create([
+                        'caja_id' => $caja->id,
+                        'tipo' => 'EGRESO',
+                        'estado' => 'APROBADO',
+                        'monto' => $venta->adelanto,
+                        'referencia_tipo' => 'ANULACION_VENTA',
+                        'referencia_id' => $venta->id,
+                        'categoria' => 'VENTA',
+                        'descripcion' => 'Venta Anulada, ID: ' . $venta->id,
+                        'created_at' => now()
+                    ]);
+                }
             }
 
             /*

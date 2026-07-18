@@ -217,9 +217,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     .join('') || 'US';
 
   // Filtrar navegación según permisos del rol
-  const filteredNavigation = navigation.filter(item =>
-    rolePermissions[currentRole]?.includes(item.module)
-  );
+  const filteredNavigation = navigation
+    .filter(item => rolePermissions[currentRole]?.includes(item.module))
+    .map(item => {
+      if (item.module === 'almacen' && currentRole === 'VENDEDOR') {
+        return {
+          ...item,
+          subItems: item.subItems?.filter(sub => sub.to === '/almacen/seguimiento')
+        };
+      }
+      return item;
+    });
 
   return (
     <>

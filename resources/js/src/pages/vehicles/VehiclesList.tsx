@@ -41,6 +41,7 @@ import {
   Pencil,
   User,
   Users,
+  Trash2,
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -59,6 +60,11 @@ const VehiclesList = () => {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [vehicleToDeactivate, setVehicleToDeactivate] = useState<any>(null);
 
   const filteredVehicles = vehiculos.filter((vehicle) => {
     const matchesSearch =
@@ -232,6 +238,92 @@ const VehiclesList = () => {
       toast({
         title: "Error",
         description: "No se pudo asignar el vendedor: " + err.response?.data.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenEditDialog = (vehicle: any) => {
+    setSelectedVehicle(vehicle);
+    setForm({
+      placa: vehicle.placa || '',
+      tipo: vehicle.tipo || '',
+      marca: vehicle.marca || '',
+      modelo: vehicle.modelo || '',
+      chofer: vehicle.chofer || '',
+      anio: vehicle.anio?.toString() || '',
+      estado: vehicle.estado || 'DISPONIBLE',
+      activo: vehicle.activo !== undefined ? vehicle.activo : 1
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditVehiculo = async () => {
+    if (!selectedVehicle?.id || !form.placa || !form.marca) return;
+
+    try {
+      await vehiculoService.update(selectedVehicle.id, {
+        placa: form.placa,
+        tipo: form.tipo,
+        marca: form.marca,
+        modelo: form.modelo,
+        chofer: form.chofer,
+        anio: form.anio,
+        estado: form.estado,
+        activo: form.activo
+      });
+
+      await fetchVehiculos();
+      setIsEditDialogOpen(false);
+      setSelectedVehicle(null);
+      setForm({
+        placa: '',
+        tipo: '',
+        marca: '',
+        modelo: '',
+        chofer: '',
+        anio: '',
+        estado: 'DISPONIBLE',
+        activo: 1
+      });
+
+      toast({
+        title: "Vehículo actualizado",
+        description: "El vehículo ha sido actualizado exitosamente.",
+      });
+
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo actualizar el vehículo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenDeactivateDialog = (vehicle: any) => {
+    setVehicleToDeactivate(vehicle);
+    setIsDeactivateDialogOpen(true);
+  };
+
+  const handleDeactivateVehiculo = async () => {
+    if (!vehicleToDeactivate?.id) return;
+
+    try {
+      await vehiculoService.delete(vehicleToDeactivate.id);
+      await fetchVehiculos();
+      setIsDeactivateDialogOpen(false);
+      setVehicleToDeactivate(null);
+      toast({
+        title: "Vehículo desactivado",
+        description: "El vehículo ha sido desactivado exitosamente.",
+      });
+    } catch (err: any) {
+      console.log("ERROR COMPLETO:", err);
+      toast({
+        title: "Error",
+        description: err?.message || "No se pudo desactivar el vehículo.",
         variant: "destructive",
       });
     }
@@ -505,15 +597,14 @@ const VehiclesList = () => {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       {/*Asignar vendedor*/}
-                      {/*Al clickar el boton de usuario, se debe abrir un dialog para asignar un vendedor*/}
                       <Button variant="ghost" size="icon" onClick={() => handleAssignVendedor(vehicle.id)}>
                         <User className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenEditDialog(vehicle)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <Wrench className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDeactivateDialog(vehicle)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </TableCell>
@@ -544,6 +635,127 @@ const VehiclesList = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog para editar vehículo */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setForm({
+            placa: '',
+            tipo: '',
+            marca: '',
+            modelo: '',
+            chofer: '',
+            anio: '',
+            estado: 'DISPONIBLE',
+            activo: 1
+          });
+          setSelectedVehicle(null);
+        }
+        setIsEditDialogOpen(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Vehículo</DialogTitle>
+            <DialogDescription>
+              Modifica los datos del vehículo
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-plate">Placa</Label>
+                <Input id="edit-plate" placeholder="ABC-123"
+                  value={form.placa}
+                  onChange={(e) => setForm({ ...form, placa: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Tipo</Label>
+                <Select value={form.tipo}
+                  onValueChange={(v) => setForm({ ...form, tipo: v })}>
+                  <SelectTrigger id="edit-type">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="camioneta">Camioneta</SelectItem>
+                    <SelectItem value="furgon">Furgón</SelectItem>
+                    <SelectItem value="camion">Camión Ligero</SelectItem>
+                    <SelectItem value="minivan">Minivan</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-brand">Marca</Label>
+                <Input id="edit-brand" placeholder="Toyota" value={form.marca}
+                  onChange={(e) => setForm({ ...form, marca: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-model">Modelo</Label>
+                <Input id="edit-model" placeholder="Hilux" value={form.modelo}
+                  onChange={(e) => setForm({ ...form, modelo: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-chofer">Chofer</Label>
+                <Input id="edit-chofer" placeholder="Juan" value={form.chofer}
+                  onChange={(e) => setForm({ ...form, chofer: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-year">Año</Label>
+                <Input id="edit-year" type="number" placeholder="2024"
+                  value={form.anio}
+                  onChange={(e) => setForm({ ...form, anio: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-estado">Estado</Label>
+                <Select value={form.estado}
+                  onValueChange={(v) => setForm({ ...form, estado: v })}>
+                  <SelectTrigger id="edit-estado">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DISPONIBLE">Disponible</SelectItem>
+                    <SelectItem value="EN_RUTA">En Ruta</SelectItem>
+                    <SelectItem value="MANTENIMIENTO">Mantenimiento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button className="bg-gradient-warm hover:opacity-90" onClick={handleEditVehiculo}>
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para confirmar desactivación */}
+      <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Desactivar Vehículo</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas desactivar el vehículo con placa <strong>{vehicleToDeactivate?.placa}</strong>? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeactivateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeactivateVehiculo}>
+              Desactivar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

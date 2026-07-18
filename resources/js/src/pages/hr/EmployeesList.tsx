@@ -291,10 +291,10 @@ const EmployeesList = () => {
     setSelectedEmployee(employees.find((employee) => employee.id === id));
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     try {
-      empleadoService.delete(id);
-      fetchEmployees();
+      await empleadoService.delete(id);
+      await fetchEmployees();
       setIsViewDialogOpen(false);
       toast({
         title: "Empleado eliminado",

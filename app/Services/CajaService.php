@@ -73,6 +73,10 @@ class CajaService
 
     public static function registrarMovimiento(array $data)
     {
+        if (isset($data['monto']) && $data['monto'] <= 0) {
+            return null;
+        }
+
         $caja = self::obtenerCajaAbierta();
 
         //No permitir registrar movimientos si no existe una caja abierta

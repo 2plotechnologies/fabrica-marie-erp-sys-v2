@@ -353,25 +353,29 @@ class VentaController extends Controller
             }
 
             if($venta->tipo_pago === 'CONTADO'){
-                $movimientoCaja = CajaService::registrarMovimiento([
-                    'tipo' => 'INGRESO',
-                    'estado' => 'APROBADO',
-                    'monto' => $venta->total_neto,
-                    'categoria' => 'VENTA',
-                    'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
-                    'referencia_tipo' => 'VENTA',
-                    'referencia_id' => $venta->id
-                ]);
+                if ($venta->total_neto > 0) {
+                    $movimientoCaja = CajaService::registrarMovimiento([
+                        'tipo' => 'INGRESO',
+                        'estado' => 'APROBADO',
+                        'monto' => $venta->total_neto,
+                        'categoria' => 'VENTA',
+                        'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
+                        'referencia_tipo' => 'VENTA',
+                        'referencia_id' => $venta->id
+                    ]);
+                }
             }else{
-                $movimientoCaja = CajaService::registrarMovimiento([
-                    'tipo' => 'INGRESO',
-                    'estado' => 'APROBADO',
-                    'monto' => $venta->adelanto,
-                    'categoria' => 'VENTA',
-                    'descripcion' => 'Venta al crédito confirmada, Venta #'.$venta->id,
-                    'referencia_tipo' => 'VENTA',
-                    'referencia_id' => $venta->id
-                ]);
+                if ($venta->adelanto > 0) {
+                    $movimientoCaja = CajaService::registrarMovimiento([
+                        'tipo' => 'INGRESO',
+                        'estado' => 'APROBADO',
+                        'monto' => $venta->adelanto,
+                        'categoria' => 'VENTA',
+                        'descripcion' => 'Venta al crédito confirmada, Venta #'.$venta->id,
+                        'referencia_tipo' => 'VENTA',
+                        'referencia_id' => $venta->id
+                    ]);
+                }
             }
 
             $venta->estado = 'CONFIRMADA';

@@ -217,7 +217,21 @@ const NewSale = () => {
     if (!selectedClient) { toast.error('Selecciona un cliente'); return; }
     if (!selectedVendedor) { toast.error('Selecciona un vendedor'); return; }
 
-    if (regularItems.length === 0) { toast.error('Agrega productos al carrito'); return; }
+    const hasDegustacion = cart.some(item => item.esDegustacion);
+    if (cart.length === 0) {
+      toast.error('Agrega productos al carrito');
+      return;
+    }
+
+    if (regularItems.length === 0 && !hasDegustacion) {
+      toast.error('Agrega productos al carrito');
+      return;
+    }
+
+    if (total === 0 && !hasDegustacion) {
+      toast.error('El total no puede ser cero a menos que la venta incluya al menos una degustación.');
+      return;
+    }
 
     try {
       await ventaService.create({
@@ -248,11 +262,11 @@ const NewSale = () => {
     } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      
+
       const errorMessage = error.response?.data?.message || '';
-      const isCajaCerrada = error.response?.status === 403 && 
-        (errorMessage.toLowerCase().includes('caja abierta') || 
-         errorMessage.toLowerCase().includes('caja cerrada'));
+      const isCajaCerrada = error.response?.status === 403 &&
+        (errorMessage.toLowerCase().includes('caja abierta') ||
+          errorMessage.toLowerCase().includes('caja cerrada'));
 
       if (isCajaCerrada) {
         setIsCajaCerradaModalOpen(true);
@@ -393,23 +407,23 @@ const NewSale = () => {
 
           <DialogFooter className="flex sm:justify-center gap-2">
             {isVendedor ? (
-              <Button 
-                variant="outline" 
-                className="w-full" 
+              <Button
+                variant="outline"
+                className="w-full"
                 onClick={() => setIsCajaCerradaModalOpen(false)}
               >
                 Entendido
               </Button>
             ) : (
               <div className="flex w-full gap-2 justify-end">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setIsCajaCerradaModalOpen(false)}
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  variant="gradient" 
+                <Button
+                  variant="gradient"
                   className="gap-2"
                   onClick={() => {
                     setIsCajaCerradaModalOpen(false);

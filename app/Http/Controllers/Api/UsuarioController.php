@@ -140,6 +140,9 @@ class UsuarioController extends Controller
         $usuario->deleted_at = Carbon::now();
         $usuario->save();
 
+        // Si el usuario es un vendedor, desactivar su registro en la tabla vendedores
+        Vendedor::where('usuario_id', $usuario->id)->update(['activo' => false]);
+
         return response()->json([
             'message' => 'Usuario eliminado correctamente'
         ], 200);

@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { RoleProvider } from "@/contexts/RoleContext";
+import { RoleProvider, useRole } from "@/contexts/RoleContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext"; // Importamos AuthProvider y useAuth
 import { MainLayout } from "@/components/layout/MainLayout";
 import Login from "@/components/auth/login"; // Importamos el componente Login
@@ -117,6 +117,8 @@ const RootHandler = () => {
 
 // Componente principal de rutas (necesita estar dentro del contexto de autenticación)
 const AppRoutes = () => {
+  const { currentRole } = useRole();
+
   return (
     <Routes>
       {/* Ruta raíz - redirige según autenticación */}
@@ -143,18 +145,46 @@ const AppRoutes = () => {
         } />
 
         {/* Almacén */}
-        <Route path="/almacen" element={<StockList />} />
-        <Route path="/almacen/stock" element={<StockList />} />
-        <Route path="/almacen/movimientos" element={<StockMovements />} />
-        <Route path="/almacen/productos" element={<ProductsList />} />
-        <Route path="/almacen/rumas" element={<RumaManagement />} />
+        <Route path="/almacen" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/almacen/seguimiento" replace /> 
+            : <StockList />
+        } />
+        <Route path="/almacen/stock" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/dashboard" replace /> 
+            : <StockList />
+        } />
+        <Route path="/almacen/movimientos" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/dashboard" replace /> 
+            : <StockMovements />
+        } />
+        <Route path="/almacen/productos" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/dashboard" replace /> 
+            : <ProductsList />
+        } />
+        <Route path="/almacen/rumas" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/dashboard" replace /> 
+            : <RumaManagement />
+        } />
         <Route path="/almacen/seguimiento" element={
           <ErrorBoundary key={location.pathname}>
             <ProductTracking />
           </ErrorBoundary>
         } />
-        <Route path="/almacen/salida-fabrica" element={<FactoryOutput />} />
-        <Route path="/almacen/devoluciones" element={<WarehouseReturns />} />
+        <Route path="/almacen/salida-fabrica" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/dashboard" replace /> 
+            : <FactoryOutput />
+        } />
+        <Route path="/almacen/devoluciones" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/dashboard" replace /> 
+            : <WarehouseReturns />
+        } />
 
         {/* Ventas */}
         <Route path="/ventas" element={<SalesHistory />} />

@@ -19,6 +19,7 @@ export interface SalidaItemPayload {
   producto_id: number;
   ruma_id: number;
   cantidad: number;
+  es_sobrante?: boolean;
 }
 
 /* ============================
@@ -73,6 +74,11 @@ export const salidaService = {
   //Actualizar estado
   async updateEstado(id: number, estado: string) {
     const response = await api.put(`/inventario/salidas/estado/${id}`, { estado });
+    return response.data;
+  },
+  //Obtener sobrantes del vehiculo
+  async getSobrantes(vehiculoId: string) {
+    const response = await api.get(`/inventario/salidas/vehiculo/${vehiculoId}/sobrantes`);
     return response.data;
   }
 };

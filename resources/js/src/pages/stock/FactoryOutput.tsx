@@ -37,13 +37,26 @@ const FactoryOutput = () => {
   const [tempItem, setTempItem] = useState({ producto_id: '', cantidad: '', ruma_id: '' });
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleVehiculoChange = (vehiculoId: string) => {
+  const handleVehiculoChange = async (vehiculoId: string) => {
     const vehiculoSeleccionado = vehiculos.find(v => String(v.id) === vehiculoId);
     setForm(prev => ({
       ...prev,
       vehiculo_id: vehiculoId,
       conductor: vehiculoSeleccionado?.chofer || prev.conductor,
     }));
+
+    try {
+      const sobrantes = await salidaService.getSobrantes(vehiculoId);
+      if (sobrantes && sobrantes.length > 0) {
+        setItems(sobrantes);
+        toast.success(`Se agregaron ${sobrantes.length} productos sobrantes del vehículo.`);
+      } else {
+        setItems([]);
+      }
+    } catch (error) {
+      console.log('Error al obtener sobrantes', error);
+      setItems([]);
+    }
   };
 
   const handleRutaChange = (rutaId: string) => {
@@ -295,7 +308,10 @@ const FactoryOutput = () => {
                       const ruma = rumas.find(r => r.id === item.ruma_id);
                       return (
                         <TableRow key={idx}>
-                          <TableCell>{prod?.nombre} ({prod?.sku})</TableCell>
+                          <TableCell>
+                            {prod?.nombre} ({prod?.sku})
+                            {item.es_sobrante && <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">Sobrante</Badge>}
+                          </TableCell>
                           <TableCell>{ruma?.codigo || '-'}</TableCell>
                           <TableCell className="text-right font-semibold">{item.cantidad}</TableCell>
                           <TableCell><Button variant="ghost" size="sm" onClick={() => setItems(items.filter((_, i) => i !== idx))}>×</Button></TableCell>

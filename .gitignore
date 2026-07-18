@@ -22,3 +22,7 @@ test_save.php
 test_schema.php
 test_update.php
 schema.json
+package-lock.json
+resources.zip
+public.zip
+app.zip
