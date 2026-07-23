@@ -114,13 +114,23 @@ class SalidaController
                     'cantidad' => $item['cantidad'],
                 ]);
 
-                StockVendedor::create([
-                    'salida_id' => $salida->id,
-                    'producto_id' => $item['producto_id'],
-                    'vendedor_id' => $request->vendedor_id,
-                    'cantidad' => $item['cantidad'],
-                    'cantidad_entregada' => $item['cantidad'],
-                ]);
+                $stockVendedor = StockVendedor::where('salida_id', $salida->id)
+                    ->where('producto_id', $item['producto_id'])
+                    ->first();
+
+                if ($stockVendedor) {
+                    $stockVendedor->cantidad += $item['cantidad'];
+                    $stockVendedor->cantidad_entregada += $item['cantidad'];
+                    $stockVendedor->save();
+                } else {
+                    StockVendedor::create([
+                        'salida_id' => $salida->id,
+                        'producto_id' => $item['producto_id'],
+                        'vendedor_id' => $request->vendedor_id,
+                        'cantidad' => $item['cantidad'],
+                        'cantidad_entregada' => $item['cantidad'],
+                    ]);
+                }
 
                 if (isset($item['es_sobrante']) && $item['es_sobrante'] == true) {
                     // Descontar del stock anterior para transferirlo a esta nueva salida
@@ -286,6 +296,215 @@ class SalidaController
             DB::rollBack();
             return response()->json([
                 'error' => 'Error al anular la salida',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $salida = Salida::findOrFail($id);
+
+        if (!in_array($salida->estado, ['PENDIENTE', 'EN_RUTA'])) {
+            return response()->json([
+                'error' => 'Solo se pueden modificar salidas en estado PENDIENTE o EN_RUTA.'
+            ], 400);
+        }
+
+        $request->validate([
+            'fecha' => 'required|date',
+            'vendedor_id' => 'required|exists:vendedores,id',
+            'vehiculo_id' => 'required|exists:vehiculos,id',
+            'ruta_id' => 'required|exists:rutas,id',
+            'zona' => 'required|string',
+            'conductor' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.producto_id' => 'required|exists:productos,id',
+            'items.*.ruma_id' => 'required|exists:rumas,id',
+            'items.*.cantidad' => 'required|integer|min:1',
+            'items.*.es_sobrante' => 'boolean|nullable',
+        ]);
+
+        // Verificar vendedor disponible en ruta (si cambió o es diferente a esta salida)
+        $vendedorSalida = Salida::where('vendedor_id', $request->vendedor_id)
+            ->where('estado', 'EN_RUTA')
+            ->where('id', '!=', $salida->id)
+            ->first();
+
+        if ($vendedorSalida) {
+            return response()->json([
+                'error' => 'El vendedor seleccionado ya tiene otra salida en ruta.'
+            ], 400);
+        }
+
+        // Verificar vehiculo disponible en ruta (excluyendo esta salida)
+        $vehiculoSalida = Salida::where('vehiculo_id', $request->vehiculo_id)
+            ->where('estado', 'EN_RUTA')
+            ->where('id', '!=', $salida->id)
+            ->first();
+
+        if ($vehiculoSalida) {
+            return response()->json([
+                'error' => 'El vehículo seleccionado ya tiene otra salida en ruta.'
+            ], 400);
+        }
+
+        // Verificar que el nuevo vehiculo no está en mantenimiento
+        if ($request->vehiculo_id != $salida->vehiculo_id) {
+            $vehiculoMantenimiento = Vehiculo::where('id', $request->vehiculo_id)
+                ->where('estado', '!=', 'DISPONIBLE')
+                ->first();
+
+            if ($vehiculoMantenimiento) {
+                return response()->json([
+                    'error' => 'El nuevo vehículo seleccionado no está disponible.'
+                ], 400);
+            }
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // 1. Manejo de estados de vehículos si está EN_RUTA y cambia de vehículo
+            if ($salida->estado === 'EN_RUTA' && $request->vehiculo_id != $salida->vehiculo_id) {
+                $oldVehiculo = Vehiculo::find($salida->vehiculo_id);
+                if ($oldVehiculo) {
+                    $oldVehiculo->estado = 'DISPONIBLE';
+                    $oldVehiculo->save();
+                }
+
+                $newVehiculo = Vehiculo::findOrFail($request->vehiculo_id);
+                $newVehiculo->estado = 'EN_RUTA';
+                $newVehiculo->save();
+            }
+
+            // 2. Revertir inventario anterior de la salida
+            $movimientosAnteriores = \App\Models\MovimientoStock::where('motivo', 'Despacho de fabrica. Salida #' . $salida->id)
+                ->where('tipo', 'SALIDA')
+                ->get();
+
+            foreach ($movimientosAnteriores as $mov) {
+                StockService::registrarMovimiento([
+                    'tipo' => 'DEVOLUCION_BUENA',
+                    'producto_id' => $mov->producto_id,
+                    'ruma_id' => $mov->ruma_id,
+                    'cantidad' => $mov->cantidad,
+                    'motivo' => 'Modificacion de despacho (Reversion). Salida #' . $salida->id,
+                    'user_id' => auth()->id()
+                ]);
+            }
+
+            // Revertir sobrantes anteriores si aplica
+            $ultimaSalidaAnterior = Salida::where('vehiculo_id', $salida->vehiculo_id)
+                ->where('estado', 'COMPLETADO')
+                ->where('id', '<', $salida->id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $salidaItemsAnteriores = SalidaItem::where('salida_id', $salida->id)->get();
+            foreach ($salidaItemsAnteriores as $oldItem) {
+                $eraSobrante = !$movimientosAnteriores->where('producto_id', $oldItem->producto_id)
+                    ->where('ruma_id', $oldItem->ruma_id)
+                    ->where('cantidad', $oldItem->cantidad)
+                    ->first();
+                if ($eraSobrante && $ultimaSalidaAnterior) {
+                    $stockAnterior = StockVendedor::where('salida_id', $ultimaSalidaAnterior->id)
+                        ->where('producto_id', $oldItem->producto_id)
+                        ->first();
+                    if ($stockAnterior) {
+                        $stockAnterior->cantidad += $oldItem->cantidad;
+                        $stockAnterior->save();
+                    }
+                }
+            }
+
+            // Eliminar SalidaItem y StockVendedor anteriores de esta salida
+            SalidaItem::where('salida_id', $salida->id)->delete();
+            StockVendedor::where('salida_id', $salida->id)->delete();
+
+            // 3. Actualizar cabecera de la salida
+            $vehiculo = Vehiculo::findOrFail($request->vehiculo_id);
+            if (!$vehiculo->vendedores()->where('vendedor_id', $request->vendedor_id)->exists()) {
+                $vehiculo->vendedores()->attach($request->vendedor_id);
+            }
+
+            $salida->update([
+                'fecha' => $request->fecha,
+                'vendedor_id' => $request->vendedor_id,
+                'conductor' => $request->conductor,
+                'vehiculo_id' => $request->vehiculo_id,
+                'zona' => $request->zona,
+                'ruta_id' => $request->ruta_id,
+            ]);
+
+            // 4. Registrar los nuevos ítems
+            foreach ($request->items as $item) {
+                SalidaItem::create([
+                    'salida_id' => $salida->id,
+                    'producto_id' => $item['producto_id'],
+                    'ruma_id' => $item['ruma_id'],
+                    'cantidad' => $item['cantidad'],
+                ]);
+
+                $stockVendedor = StockVendedor::where('salida_id', $salida->id)
+                    ->where('producto_id', $item['producto_id'])
+                    ->first();
+
+                if ($stockVendedor) {
+                    $stockVendedor->cantidad += $item['cantidad'];
+                    $stockVendedor->cantidad_entregada += $item['cantidad'];
+                    $stockVendedor->save();
+                } else {
+                    StockVendedor::create([
+                        'salida_id' => $salida->id,
+                        'producto_id' => $item['producto_id'],
+                        'vendedor_id' => $request->vendedor_id,
+                        'cantidad' => $item['cantidad'],
+                        'cantidad_entregada' => $item['cantidad'],
+                    ]);
+                }
+
+                if (isset($item['es_sobrante']) && $item['es_sobrante'] == true) {
+                    $ultimaSalida = Salida::where('vehiculo_id', $request->vehiculo_id)
+                        ->where('estado', 'COMPLETADO')
+                        ->where('id', '!=', $salida->id)
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if ($ultimaSalida) {
+                        $stockAnterior = StockVendedor::where('salida_id', $ultimaSalida->id)
+                            ->where('producto_id', $item['producto_id'])
+                            ->where('cantidad', '>=', $item['cantidad'])
+                            ->first();
+
+                        if ($stockAnterior) {
+                            $stockAnterior->cantidad -= $item['cantidad'];
+                            $stockAnterior->save();
+                        }
+                    }
+                } else {
+                    StockService::registrarMovimiento([
+                        'tipo' => 'SALIDA',
+                        'producto_id' => $item['producto_id'],
+                        'ruma_id' => $item['ruma_id'],
+                        'cantidad' => $item['cantidad'],
+                        'motivo' => 'Despacho de fabrica. Salida #' . $salida->id,
+                        'user_id' => auth()->id()
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Salida actualizada correctamente',
+                'salida' => $salida->load('items.producto', 'items.ruma')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'error' => 'Error al actualizar la salida',
                 'details' => $e->getMessage()
             ], 500);
         }

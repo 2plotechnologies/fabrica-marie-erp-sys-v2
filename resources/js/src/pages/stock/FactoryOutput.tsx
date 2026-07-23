@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Plus, FileDown, Truck, Package, Search, Eye, AlertTriangle } from 'lucide-react';
+import { Plus, FileDown, Truck, Package, Search, Eye, AlertTriangle, Pencil } from 'lucide-react';
 import { salidaService } from '@/services/salidaService';
 import { stockService } from '@/services/stockService';
 import { SalidaItemPayload } from '@/services/salidaService';
@@ -27,6 +27,8 @@ const FactoryOutput = () => {
   const [stockInfo, setStockInfo] = useState<any[]>([]);
 
   const [isNewOpen, setIsNewOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingSalidaId, setEditingSalidaId] = useState<number | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedSalida, setSelectedSalida] = useState<typeof salidas[0] | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -165,14 +167,26 @@ const FactoryOutput = () => {
       return;
     }
 
-    setItems([
-      ...items,
-      {
-        producto_id: Number(tempItem.producto_id),
-        ruma_id: Number(tempItem.ruma_id),
-        cantidad: Number(tempItem.cantidad),
-      }
-    ]);
+    const prodId = Number(tempItem.producto_id);
+    const rumaId = Number(tempItem.ruma_id);
+    const cant = Number(tempItem.cantidad);
+
+    const existingIdx = items.findIndex(i => i.producto_id === prodId && i.ruma_id === rumaId && !i.es_sobrante);
+
+    if (existingIdx >= 0) {
+      const newItems = [...items];
+      newItems[existingIdx].cantidad += cant;
+      setItems(newItems);
+    } else {
+      setItems([
+        ...items,
+        {
+          producto_id: prodId,
+          ruma_id: rumaId,
+          cantidad: cant,
+        }
+      ]);
+    }
 
     setTempItem({ producto_id: '', cantidad: '', ruma_id: '' });
   };
@@ -216,6 +230,67 @@ const FactoryOutput = () => {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
       const backendError = error.response?.data?.error || error.response?.data?.message || 'No se pudo crear la salida.';
+      toast.error(backendError);
+    }
+  };
+
+  const handleOpenEdit = (salida: any) => {
+    setEditingSalidaId(salida.id);
+    setForm({
+      fecha: salida.fecha,
+      vendedor_id: String(salida.vendedor_id),
+      conductor: salida.conductor || '',
+      vehiculo_id: String(salida.vehiculo_id),
+      zona: salida.zona || '',
+      ruta: String(salida.ruta_id),
+    });
+    setItems(salida.items.map((item: any) => ({
+      producto_id: item.producto_id,
+      ruma_id: item.ruma_id,
+      cantidad: Number(item.cantidad),
+      es_sobrante: item.es_sobrante || false,
+    })));
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingSalidaId) return;
+    if (!form.vendedor_id || items.length === 0) {
+      toast.error('Selecciona vendedor y agrega productos');
+      return;
+    }
+
+    try {
+      await salidaService.update(editingSalidaId, {
+        fecha: form.fecha,
+        conductor: form.conductor,
+        vehiculo_id: Number(form.vehiculo_id),
+        vendedor_id: Number(form.vendedor_id),
+        zona: form.zona,
+        ruta_id: Number(form.ruta),
+        estado: "PENDIENTE",
+        items: items
+      });
+
+      toast.success("Salida actualizada correctamente");
+
+      setForm({
+        fecha: new Date().toISOString().split('T')[0],
+        vendedor_id: '',
+        conductor: '',
+        vehiculo_id: '',
+        zona: '',
+        ruta: ''
+      });
+
+      await fetchSalidas();
+      setItems([]);
+      setEditingSalidaId(null);
+      setIsEditOpen(false);
+
+    } catch (error: any) {
+      console.log("ERROR ACTUALIZACION:", error);
+      const backendError = error.response?.data?.error || error.response?.data?.message || 'No se pudo actualizar la salida.';
       toast.error(backendError);
     }
   };
@@ -370,6 +445,9 @@ const FactoryOutput = () => {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedSalida(s); setIsDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
+                      {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && (
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(s)}><Pencil className="h-4 w-4 text-blue-600" /></Button>
+                      )}
                       {s.estado === 'PENDIENTE' && <Button size="sm" variant="outline" onClick={() => handleUpdateEstado(s.id, 'EN_RUTA')}>Despachar</Button>}
                       {s.estado === 'EN_RUTA' && <Button size="sm" variant="outline" onClick={() => handleUpdateEstado(s.id, 'COMPLETADO')}>Completar</Button>}
                       {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && (
@@ -408,6 +486,99 @@ const FactoryOutput = () => {
         </CardContent>
       </Card>
 
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Editar Salida de Fábrica #{editingSalidaId}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Vendedor *</Label><Select value={form.vendedor_id} onValueChange={v => setForm({ ...form, vendedor_id: v })}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={String(v.id)}>{v.usuario.nombre}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>Vehiculo *</Label><Select value={form.vehiculo_id} onValueChange={handleVehiculoChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={String(v.id)}>{v.placa} - {v.chofer} - {v.marca} {v.modelo} ({v.estado})</SelectItem>)}</SelectContent></Select></div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Zona</Label><Input value={form.zona} onChange={e => setForm({ ...form, zona: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={handleRutaChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={String(v.id)}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
+            </div>
+
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">Agregar Productos</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-2">
+                  <Select value={tempItem.producto_id} onValueChange={v => { setTempItem({ ...tempItem, producto_id: v, ruma_id: '' }); }}>
+                    <SelectTrigger><SelectValue placeholder="Producto" /></SelectTrigger>
+                    <SelectContent>
+                      {productos.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} ({p.sku})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Input type="number" placeholder="Cantidad" value={tempItem.cantidad} onChange={e => setTempItem({ ...tempItem, cantidad: e.target.value })} />
+                  
+                  <Select value={tempItem.ruma_id} onValueChange={v => setTempItem({ ...tempItem, ruma_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Ruma origen" /></SelectTrigger>
+                    <SelectContent>
+                      {tempItem.producto_id ? (
+                        (stockInfo.find(s => String(s.producto_id) === String(tempItem.producto_id))?.rumas || []).length > 0 ? (
+                          stockInfo.find(s => String(s.producto_id) === String(tempItem.producto_id))?.rumas.map((r: any) => (
+                            <SelectItem key={r.id} value={r.id.toString()}>{r.codigo} (Disp: {r.cantidad})</SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>Sin stock en rumas</SelectItem>
+                        )
+                      ) : (
+                        <SelectItem value="none" disabled>Selecciona producto primero</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={handleAddItem}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {items.length > 0 && (
+              <Table>
+                <TableHeader><TableRow><TableHead>Producto</TableHead><TableHead>Ruma</TableHead><TableHead className="text-right">Cantidad</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {items.map((item, idx) => {
+                    const prod = productos.find(p => p.id === item.producto_id);
+                    const ruma = rumas.find(r => r.id === item.ruma_id);
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell>
+                          {prod?.nombre} ({prod?.sku})
+                          {item.es_sobrante && <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">Sobrante</Badge>}
+                        </TableCell>
+                        <TableCell>{ruma?.codigo || '-'}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          <Input 
+                            type="number" 
+                            className="w-24 text-right inline-block" 
+                            value={item.cantidad} 
+                            onChange={e => {
+                              const newCant = Number(e.target.value);
+                              if (newCant >= 1) {
+                                const updated = [...items];
+                                updated[idx].cantidad = newCant;
+                                setItems(updated);
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell><Button variant="ghost" size="sm" onClick={() => setItems(items.filter((_, i) => i !== idx))}>×</Button></TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleUpdate} className="bg-gradient-warm hover:opacity-90">Guardar Cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-2xl">
           {selectedSalida && (
@@ -422,14 +593,26 @@ const FactoryOutput = () => {
                 <Table>
                   <TableHeader><TableRow><TableHead>Producto</TableHead><TableHead>Marca</TableHead><TableHead>Ruma</TableHead><TableHead className="text-right">Cantidad</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {selectedSalida.items?.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.producto?.nombre} ({item.producto?.sku})</TableCell>
-                        <TableCell>{item.producto?.marca || '-'}</TableCell>
-                        <TableCell>{item.ruma?.codigo || '-'}</TableCell>
-                        <TableCell className="text-right font-semibold">{Number(item.cantidad)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {(() => {
+                      const groupedItems = selectedSalida.items?.reduce((acc: any[], currentItem: any) => {
+                        const existing = acc.find(i => i.producto_id === currentItem.producto_id && i.ruma_id === currentItem.ruma_id);
+                        if (existing) {
+                          existing.cantidad = Number(existing.cantidad) + Number(currentItem.cantidad);
+                        } else {
+                          acc.push({ ...currentItem, cantidad: Number(currentItem.cantidad) });
+                        }
+                        return acc;
+                      }, []) || [];
+
+                      return groupedItems.map((item: any) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.producto?.nombre} ({item.producto?.sku})</TableCell>
+                          <TableCell>{item.producto?.marca || '-'}</TableCell>
+                          <TableCell>{item.ruma?.codigo || '-'}</TableCell>
+                          <TableCell className="text-right font-semibold">{item.cantidad}</TableCell>
+                        </TableRow>
+                      ));
+                    })()}
                   </TableBody>
                 </Table>
               </div>

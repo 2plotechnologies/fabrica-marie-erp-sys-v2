@@ -39,7 +39,7 @@ export const salidaService = {
     const response = await api.get('/inventario/rumas');
     return response.data;
   },
-    //Obtener vehiculos.
+  //Obtener vehiculos.
   async getVehiculos() {
     const response = await api.get('/vehiculos');
     return response.data;
@@ -54,7 +54,7 @@ export const salidaService = {
     const response = await api.get('/rutas');
     return response.data;
   },
- /* Obtener todas las salidas. */
+  /* Obtener todas las salidas. */
   async getAll() {
     const response = await api.get('/inventario/salidas');
     return response.data;
@@ -71,17 +71,22 @@ export const salidaService = {
     const response = await api.post('/inventario/salidas', data);
     return response.data;
   },
-  //Actualizar estado
+  /* Actualizar salida. */
+  async update(id: number, data: SalidaPayload) {
+    const response = await api.put(`/inventario/salidas/${id}`, data);
+    return response.data;
+  },
+  //Actualizar estado.
   async updateEstado(id: number, estado: string) {
     const response = await api.put(`/inventario/salidas/estado/${id}`, { estado });
     return response.data;
   },
-  //Anular salida
+  //Anular salida.
   async anular(id: number) {
     const response = await api.put(`/inventario/salidas/anular/${id}`);
     return response.data;
   },
-  //Obtener sobrantes del vehiculo
+  //Obtener sobrantes del vehiculo.
   async getSobrantes(vehiculoId: string) {
     const response = await api.get(`/inventario/salidas/vehiculo/${vehiculoId}/sobrantes`);
     return response.data;

@@ -109,6 +109,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/salidas', [SalidaController::class, 'store']);
         Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado']);
         Route::put('/salidas/anular/{id}', [SalidaController::class, 'anular']);
+        Route::put('/salidas/{id}', [SalidaController::class, 'update']);
 
         //Devoluciones.
         Route::get('/devoluciones', [DevolucionController::class, 'index']);
@@ -180,7 +181,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('rutas')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO,FIDELIZACION,MANTENIMIENTO')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,ALMACENERO,VENDEDOR,CAJERO,FIDELIZACION,MANTENIMIENTO')
         ->group(function () {
         Route::get('/', [RutaController::class, 'index']);
         Route::get('/paginado', [RutaController::class, 'listPaginado']); // paginación + búsqueda
@@ -311,7 +312,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Vehículos
     Route::prefix('vehiculos')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,MANTENIMIENTO')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,ALMACENERO,VENDEDOR,MANTENIMIENTO')
         ->group(function () {
         Route::get('/', [VehiculoController::class, 'index']);
         Route::post('/', [VehiculoController::class, 'store']);
