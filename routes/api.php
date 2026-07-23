@@ -108,6 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/salidas/{id}', [SalidaController::class, 'show']);
         Route::post('/salidas', [SalidaController::class, 'store']);
         Route::put('/salidas/estado/{id}', [SalidaController::class, 'updateEstado']);
+        Route::put('/salidas/anular/{id}', [SalidaController::class, 'anular']);
 
         //Devoluciones.
         Route::get('/devoluciones', [DevolucionController::class, 'index']);

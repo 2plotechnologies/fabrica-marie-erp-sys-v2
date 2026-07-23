@@ -234,11 +234,25 @@ const FactoryOutput = () => {
     }
   };
 
+  const handleAnular = async (id: number) => {
+    if (!window.confirm("¿Estás seguro de anular esta salida? Se revertirá el stock descontado y los sobrantes de la salida anterior.")) {
+      return;
+    }
+    try {
+      await salidaService.anular(id);
+      toast.success("Salida anulada y stock revertido.");
+      await fetchSalidas();
+    } catch (error) {
+      toast.error(formatErrorMessage('Error al anular la salida', error, 'No se pudo anular la salida.'));
+    }
+  };
+
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case 'PENDIENTE': return <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">Pendiente</Badge>;
       case 'EN_RUTA': return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30">En Ruta</Badge>;
       case 'COMPLETADO': return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/30">Completada</Badge>;
+      case 'ANULADO': return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">Anulada</Badge>;
       default: return <Badge variant="outline">{estado}</Badge>;
     }
   };
@@ -358,6 +372,11 @@ const FactoryOutput = () => {
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedSalida(s); setIsDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
                       {s.estado === 'PENDIENTE' && <Button size="sm" variant="outline" onClick={() => handleUpdateEstado(s.id, 'EN_RUTA')}>Despachar</Button>}
                       {s.estado === 'EN_RUTA' && <Button size="sm" variant="outline" onClick={() => handleUpdateEstado(s.id, 'COMPLETADO')}>Completar</Button>}
+                      {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && (
+                        <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleAnular(s.id)}>
+                          Anular
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -213,6 +213,84 @@ class SalidaController
         return response()->json(['message' => 'Estado Actualizado']);
     }
 
+    public function anular(Request $request, $id){
+        $salida = Salida::findOrFail($id);
+
+        if (!in_array($salida->estado, ['PENDIENTE', 'EN_RUTA'])) {
+            return response()->json([
+                'error' => 'Solo se pueden anular salidas en estado PENDIENTE o EN_RUTA.'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            if ($salida->estado == 'EN_RUTA') {
+                $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
+                if ($vehiculo->estado == 'EN_RUTA') {
+                    $vehiculo->estado = 'DISPONIBLE';
+                    $vehiculo->save();
+                }
+            }
+
+            $salida->estado = 'ANULADO';
+            $salida->save();
+
+            // Revertir inventario
+            $movimientos = \App\Models\MovimientoStock::where('motivo', 'Despacho de fabrica. Salida #' . $salida->id)
+                ->where('tipo', 'SALIDA')
+                ->get();
+
+            foreach ($movimientos as $mov) {
+                StockService::registrarMovimiento([
+                    'tipo' => 'DEVOLUCION_BUENA',
+                    'producto_id' => $mov->producto_id,
+                    'ruma_id' => $mov->ruma_id,
+                    'cantidad' => $mov->cantidad,
+                    'motivo' => 'Anulacion de despacho. Salida #' . $salida->id,
+                    'user_id' => auth()->id()
+                ]);
+            }
+
+            // Revertir sobrantes descontados del vehiculo
+            $ultimaSalida = Salida::where('vehiculo_id', $salida->vehiculo_id)
+                ->where('estado', 'COMPLETADO')
+                ->where('id', '<', $salida->id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $salidaItems = SalidaItem::where('salida_id', $salida->id)->get();
+            foreach ($salidaItems as $item) {
+                $esSobrante = !$movimientos->where('producto_id', $item->producto_id)
+                                           ->where('ruma_id', $item->ruma_id)
+                                           ->where('cantidad', $item->cantidad)
+                                           ->first();
+                if ($esSobrante && $ultimaSalida) {
+                    $stockAnterior = StockVendedor::where('salida_id', $ultimaSalida->id)
+                        ->where('producto_id', $item->producto_id)
+                        ->first();
+                    if ($stockAnterior) {
+                        $stockAnterior->cantidad += $item->cantidad;
+                        $stockAnterior->save();
+                    }
+                }
+            }
+
+            // Eliminar StockVendedor de esta salida
+            StockVendedor::where('salida_id', $salida->id)->delete();
+
+            DB::commit();
+
+            return response()->json(['message' => 'Salida anulada correctamente y stock revertido.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Error al anular la salida',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getSobrantes($id)
     {
         $ultimaSalida = Salida::where('vehiculo_id', $id)

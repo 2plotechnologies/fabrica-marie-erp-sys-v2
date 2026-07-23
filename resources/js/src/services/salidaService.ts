@@ -76,6 +76,11 @@ export const salidaService = {
     const response = await api.put(`/inventario/salidas/estado/${id}`, { estado });
     return response.data;
   },
+  //Anular salida
+  async anular(id: number) {
+    const response = await api.put(`/inventario/salidas/anular/${id}`);
+    return response.data;
+  },
   //Obtener sobrantes del vehiculo
   async getSobrantes(vehiculoId: string) {
     const response = await api.get(`/inventario/salidas/vehiculo/${vehiculoId}/sobrantes`);
