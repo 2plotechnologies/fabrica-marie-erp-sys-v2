@@ -29,6 +29,26 @@ interface SaleDetailItem {
   tipoCliente: 'DISTRIBUIDOR' | 'MAYORISTA' | 'SUPER_MAYORISTA' | 'TIENDA' | 'MINIMARKET';
 }
 
+interface AbonoDetailItem {
+  id: string;
+  monto: number;
+  metodoPago?: string;
+  banco?: string;
+  numeroOperacion?: string;
+  referencia?: string;
+  fecha: string;
+  estado?: string;
+}
+
+interface CuentaDetail {
+  id: string;
+  montoTotal: number;
+  saldo: number;
+  estado: string;
+  fechaVencimiento?: string;
+  abonos?: AbonoDetailItem[];
+}
+
 interface SaleDetail {
   id: string;
   fecha: string;
@@ -44,10 +64,12 @@ interface SaleDetail {
   totalDegustacion: number;
   total: string;
   condicionVenta: 'CONTADO' | 'CREDITO' | 'DEPOSITO';
-  metodoPago: 'efectivo' | 'transferencia' | 'yape' | 'plin' | 'deposito';
+  metodoPago: 'efectivo' | 'transferencia' | 'yape' | 'plin' | 'deposito' | string;
   notaPedido: string;
   tipoCliente: string;
   createdAt: string;
+  adelanto?: number;
+  cuenta?: CuentaDetail | null;
 }
 
 // Tipo para promociones/degustaciones detalladas
@@ -67,6 +89,12 @@ interface PromocionDegustacion {
   ruta: string;
   diaRuta: number; // Día 1, 2, 3... de la ruta (para rutas largas)
 }
+
+const isVentaDeposito = (v: SaleDetail) => {
+  const cond = (v.condicionVenta || '').toUpperCase();
+  const metodo = (v.metodoPago || '').toUpperCase();
+  return cond === 'DEPOSITO' || ['DEPOSITO', 'TRANSFERENCIA', 'YAPE', 'PLIN'].includes(metodo);
+};
 
 const SalesDetailPage = () => {
   const [ventas, setVentas] = useState<SaleDetail[]>([]);
@@ -119,7 +147,8 @@ const SalesDetailPage = () => {
       venta.notaPedido.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesVendedor = filterVendedor === 'all' || venta.vendedorId === filterVendedor;
     const matchesCliente = filterCliente === 'all' || venta.clienteId === filterCliente;
-    const matchesCondicion = filterCondicion === 'all' || venta.condicionVenta === filterCondicion;
+    const matchesCondicion = filterCondicion === 'all' ||
+      (filterCondicion === 'DEPOSITO' ? isVentaDeposito(venta) : venta.condicionVenta === filterCondicion);
     const matchesTipo = filterTipoCliente === 'all' || venta.tipoCliente === filterTipoCliente;
     const vFecha = new Date(venta.fecha);
     const inRange = isNaN(vFecha.getTime()) ? true : (vFecha >= dateRange.from && vFecha <= dateRange.to);
@@ -130,7 +159,7 @@ const SalesDetailPage = () => {
   const totalVentas = filteredVentas.reduce((acc, v) => acc + Number(v.total || 0), 0);
   const ventasContado = filteredVentas.filter(v => v.condicionVenta === 'CONTADO').reduce((acc, v) => acc + Number(v.total || 0), 0);
   const ventasCredito = filteredVentas.filter(v => v.condicionVenta === 'CREDITO').reduce((acc, v) => acc + Number(v.total || 0), 0);
-  const ventasDeposito = filteredVentas.filter(v => v.metodoPago === 'deposito' || v.metodoPago === 'yape' || v.metodoPago === 'plin' || v.metodoPago === 'transferencia').reduce((acc, v) => acc + Number(v.total || 0), 0);
+  const ventasDeposito = filteredVentas.filter(isVentaDeposito).reduce((acc, v) => acc + Number(v.total || 0), 0);
   const totalBonificaciones = filteredVentas.reduce((acc, v) => acc + Number(v.totalBonificacion || 0), 0);
   const totalDegustaciones = filteredVentas.reduce((acc, v) => acc + Number(v.totalDegustacion || 0), 0);
   const clientesAtendidos = new Set(filteredVentas.map(v => v.clienteId)).size;
@@ -518,8 +547,8 @@ const SalesDetailPage = () => {
                         const existing = productosMap.get(item.presentacion) || { cantidad: 0, bonif: 0, degust: 0, total: 0 };
                         productosMap.set(item.presentacion, {
                           cantidad: existing.cantidad + Number(item.cantidad || 0),
-                          bonif: existing.bonif + (item.bonificacion ? 1 : 0), // If the backend returns boolean
-                          degust: existing.degust + (item.degustacion ? 1 : 0), // If the backend returns boolean
+                          bonif: existing.bonif + (item.bonificacion ? 1 : 0),
+                          degust: existing.degust + (item.degustacion ? 1 : 0),
                           total: existing.total + Number(item.total || 0),
                         });
                       });
@@ -758,34 +787,129 @@ const SalesDetailPage = () => {
                 </div>
               </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Presentación</TableHead>
-                    <TableHead className="text-right">Cantidad</TableHead>
-                    <TableHead className="text-right">Precio</TableHead>
-                    <TableHead className="text-right">Bonif.</TableHead>
-                    <TableHead className="text-right">Degust.</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedVenta.items.map((item, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{item.presentacion}</TableCell>
-                      <TableCell className="text-right">{item.cantidad}</TableCell>
-                      <TableCell className="text-right">S/ {Number(item.precio).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{item.bonificacion ? 'Sí' : 'No'}</TableCell>
-                      <TableCell className="text-right">{item.degustacion ? 'Sí' : 'No'}</TableCell>
-                      <TableCell className="text-right font-bold">S/ {Number(item.total).toFixed(2)}</TableCell>
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Productos Vendidos</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Presentación</TableHead>
+                      <TableHead className="text-right">Cantidad</TableHead>
+                      <TableHead className="text-right">Precio</TableHead>
+                      <TableHead className="text-right">Bonif.</TableHead>
+                      <TableHead className="text-right">Degust.</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
                     </TableRow>
-                  ))}
-                  <TableRow className="bg-muted/50">
-                    <TableCell colSpan={5} className="text-right font-bold">Total:</TableCell>
-                    <TableCell className="text-right font-bold text-lg">S/ {Number(selectedVenta.total).toLocaleString()}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedVenta.items.map((item, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{item.presentacion}</TableCell>
+                        <TableCell className="text-right">{item.cantidad}</TableCell>
+                        <TableCell className="text-right">S/ {Number(item.precio).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{item.bonificacion ? 'Sí' : 'No'}</TableCell>
+                        <TableCell className="text-right">{item.degustacion ? 'Sí' : 'No'}</TableCell>
+                        <TableCell className="text-right font-bold">S/ {Number(item.total).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/50">
+                      <TableCell colSpan={5} className="text-right font-bold">Total Venta:</TableCell>
+                      <TableCell className="text-right font-bold text-lg">S/ {Number(selectedVenta.total).toLocaleString()}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Información de Crédito, Adelanto y Abonos */}
+              {(selectedVenta.condicionVenta === 'CREDITO' || selectedVenta.cuenta || (selectedVenta.adelanto && selectedVenta.adelanto > 0)) && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-md font-bold text-foreground">Estado de Crédito y Abonos</h3>
+                    {selectedVenta.cuenta?.estado && (
+                      <Badge className={
+                        selectedVenta.cuenta.estado === 'PAGADO' ? 'bg-emerald-500/10 text-emerald-500' :
+                        selectedVenta.cuenta.estado === 'PARCIAL' ? 'bg-amber-500/10 text-amber-500' :
+                        'bg-rose-500/10 text-rose-500'
+                      }>
+                        {selectedVenta.cuenta.estado}
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-muted/40 p-4 rounded-lg">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Monto Total Crédito</p>
+                      <p className="font-semibold text-foreground">S/ {Number(selectedVenta.total).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Adelanto Inicial</p>
+                      <p className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        S/ {Number(selectedVenta.adelanto || 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Saldo Pendiente</p>
+                      <p className="font-bold text-amber-600 dark:text-amber-400">
+                        S/ {Number(selectedVenta.cuenta?.saldo ?? (Number(selectedVenta.total) - Number(selectedVenta.adelanto || 0))).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 text-muted-foreground">Historial de Pagos / Abonos registrados</h4>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Concepto / Referencia</TableHead>
+                          <TableHead>Método de Pago</TableHead>
+                          <TableHead>Banco / Op.</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedVenta.adelanto && selectedVenta.adelanto > 0 && (
+                          <TableRow className="bg-emerald-500/5">
+                            <TableCell>{selectedVenta.fecha}</TableCell>
+                            <TableCell className="font-medium text-emerald-700 dark:text-emerald-300">
+                              Adelanto Inicial
+                            </TableCell>
+                            <TableCell className="capitalize">{selectedVenta.metodoPago || 'Efectivo'}</TableCell>
+                            <TableCell>-</TableCell>
+                            <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                              S/ {Number(selectedVenta.adelanto).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {selectedVenta.cuenta?.abonos && selectedVenta.cuenta.abonos.length > 0 ? (
+                          selectedVenta.cuenta.abonos.map((abono) => (
+                            <TableRow key={abono.id}>
+                              <TableCell>{abono.fecha}</TableCell>
+                              <TableCell className="font-medium">{abono.referencia || 'Abono a cuenta'}</TableCell>
+                              <TableCell className="capitalize">{abono.metodoPago || '-'}</TableCell>
+                              <TableCell>
+                                {abono.banco && abono.banco !== '-' ? abono.banco : ''} 
+                                {abono.numeroOperacion && abono.numeroOperacion !== '-' ? ` (Op: ${abono.numeroOperacion})` : '-'}
+                              </TableCell>
+                              <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                S/ {Number(abono.monto).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : null}
+
+                        {(!selectedVenta.adelanto || selectedVenta.adelanto <= 0) &&
+                         (!selectedVenta.cuenta?.abonos || selectedVenta.cuenta.abonos.length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                              No hay adelantos ni abonos registrados para esta venta.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

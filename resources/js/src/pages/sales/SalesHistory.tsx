@@ -39,6 +39,8 @@ const SalesHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   const handleConfirmSale = async (saleId: number) => {
@@ -105,7 +107,24 @@ const SalesHistory = () => {
       .includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
     const matchesPayment = paymentFilter === 'all' || sale.tipo_pago === paymentFilter;
-    return matchesSearch && matchesStatus && matchesPayment;
+    
+    let matchesDate = true;
+    if (startDate || endDate) {
+      try {
+        const saleDate = new Date(sale.fecha);
+        const saleDateStr = format(saleDate, 'yyyy-MM-dd');
+        if (startDate && saleDateStr < startDate) {
+          matchesDate = false;
+        }
+        if (endDate && saleDateStr > endDate) {
+          matchesDate = false;
+        }
+      } catch (error) {
+        console.error("Error matching date for sale:", sale, error);
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesPayment && matchesDate;
   });
 
   const itemsPerPage = 4;
@@ -135,7 +154,7 @@ const SalesHistory = () => {
     );
   };
 
-  const confirmedSales = ventas.filter(v => v.estado === 'CONFIRMADA');
+  const confirmedSales = filteredSales.filter(v => v.estado === 'CONFIRMADA');
 
   const totalSales = confirmedSales.reduce(
     (acc, sale) => acc + Number(sale.total_neto || 0),
@@ -214,8 +233,8 @@ const SalesHistory = () => {
       {/* Filters */}
       <Card className="shadow-card">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-col xl:flex-row gap-4 xl:items-center">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por cliente..."
@@ -224,28 +243,60 @@ const SalesHistory = () => {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="PENDIENTE">Pendiente</SelectItem>
-                <SelectItem value="CONFIRMADA">Confirmada</SelectItem>
-                <SelectItem value="ANULADA">Anulada</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Pago" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="CONTADO">Contado</SelectItem>
-                <SelectItem value="CREDITO">Crédito</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="PENDIENTE">Pendiente</SelectItem>
+                  <SelectItem value="CONFIRMADA">Confirmada</SelectItem>
+                  <SelectItem value="ANULADA">Anulada</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="CONTADO">Contado</SelectItem>
+                  <SelectItem value="CREDITO">Crédito</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  placeholder="Desde"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full sm:w-36 text-xs sm:text-sm"
+                />
+                <span className="text-muted-foreground text-xs sm:text-sm">a</span>
+                <Input
+                  type="date"
+                  placeholder="Hasta"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full sm:w-36 text-xs sm:text-sm"
+                />
+                {(startDate || endDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setStartDate('');
+                      setEndDate('');
+                    }}
+                    className="h-9 px-2 text-muted-foreground hover:text-foreground text-xs sm:text-sm"
+                  >
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

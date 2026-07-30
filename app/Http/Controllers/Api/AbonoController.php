@@ -39,6 +39,8 @@ class AbonoController extends Controller
             $request->validate([
                 'monto' => 'required|numeric|min:0',
                 'metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,YAPE,PLIN,DEPOSITO',
+                'banco' => 'required_if:metodo_pago,DEPOSITO|nullable|string',
+                'numero_operacion' => 'required_if:metodo_pago,DEPOSITO|nullable|string',
             ]);
 
             $cuenta = CuentaPorCobrar::findOrFail($cuenta_id);
@@ -47,6 +49,15 @@ class AbonoController extends Controller
                 ->where('fecha', now()->format('Y-m-d'))
                 ->first();
 
+            $referencia = $request->referencia;
+            if (!$referencia) {
+                if ($request->metodo_pago === 'DEPOSITO' && $request->banco && $request->numero_operacion) {
+                    $referencia = 'Depósito ' . $request->banco . ' - Op: ' . $request->numero_operacion;
+                } else {
+                    $referencia = 'Abono ' . strtolower($request->metodo_pago);
+                }
+            }
+
             $mov = MovimientoCaja::create([
                 'caja_id' => $caja->id,
                 'tipo' => 'INGRESO',
@@ -54,7 +65,7 @@ class AbonoController extends Controller
                 'monto' => $request->monto,
                 'usuario_id' => auth()->id(),
                 'categoria' => 'ABONO',
-                'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id,
+                'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id . ' (' . $referencia . ')',
                 'referencia_tipo' => 'ABONO',
                 'referencia_id' => $cuenta->id,
                 'created_at' => now()
@@ -65,6 +76,9 @@ class AbonoController extends Controller
                 'usuario_id' => auth()->id(),
                 'monto' => $request->monto,
                 'metodo_pago' => $request->metodo_pago,
+                'banco' => $request->banco,
+                'numero_operacion' => $request->numero_operacion,
+                'referencia' => $referencia,
                 'fecha' => now(),
                 'movimiento_caja_id' => $mov->id
             ]);

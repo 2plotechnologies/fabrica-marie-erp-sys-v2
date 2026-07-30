@@ -26,3 +26,4 @@ package-lock.json
 resources.zip
 public.zip
 app.zip
+database/migrations/sql_crudo

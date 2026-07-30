@@ -45,6 +45,8 @@ const AccountsReceivable = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [payMethod, setPayMethod] = useState('EFECTIVO');
+  const [bank, setBank] = useState('');
+  const [operationNumber, setOperationNumber] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
 
   const [pagosDialog, setPagosDialog] = useState<any>(null);
@@ -122,36 +124,60 @@ const AccountsReceivable = () => {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const getDaysInfo = (dueDate: Date) => {
-    if (!dueDate) {
-      return { text: 'Sin fecha de vencimiento establecida', isOverdue: false };
+  const getDaysInfo = (account: any) => {
+    if (!account) return { diasPlazo: 0, text: 'Sin fecha de vencimiento establecida', isOverdue: false };
+
+    let diasPlazo = account.cliente?.dias_credito || 0;
+    if (!diasPlazo && account.fecha_vencimiento && account.venta?.fecha) {
+      const start = new Date(typeof account.venta.fecha === 'string' ? account.venta.fecha.substring(0, 10) + "T00:00:00" : account.venta.fecha);
+      const end = new Date(typeof account.fecha_vencimiento === 'string' ? account.fecha_vencimiento.substring(0, 10) + "T00:00:00" : account.fecha_vencimiento);
+      diasPlazo = Math.max(0, differenceInDays(end, start));
     }
-    const days = differenceInDays(dueDate, new Date());
+
+    if (!account.fecha_vencimiento) {
+      return { diasPlazo, text: 'Sin fecha de vencimiento establecida', isOverdue: false };
+    }
+
+    const dueDate = new Date(typeof account.fecha_vencimiento === 'string' ? account.fecha_vencimiento.substring(0, 10) + "T00:00:00" : account.fecha_vencimiento);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days = differenceInDays(dueDate, today);
+
     if (days < 0) {
-      return { text: `${Math.abs(days)} días vencido`, isOverdue: true };
+      return { diasPlazo, text: `${Math.abs(days)} días vencido`, isOverdue: true };
     } else if (days === 0) {
-      return { text: 'Vence hoy', isOverdue: false };
+      return { diasPlazo, text: 'Vence hoy', isOverdue: false };
     } else {
-      return { text: `${days} días restantes`, isOverdue: false };
+      return { diasPlazo, text: `${days} días restantes`, isOverdue: false };
     }
   };
 
-  const handlePayment = async (id) => {
-
+  const handlePayment = async (id: string) => {
+    if (payMethod === 'DEPOSITO') {
+      if (!bank.trim() || !operationNumber.trim()) {
+        toast.error('Por favor ingresa el banco y el número de operación para depósitos.');
+        return;
+      }
+    }
     try {
       await cobranzasService.registrarAbono(id, {
         fecha: new Date().toISOString().split('T')[0],
         monto: Number(paymentAmount),
         metodo_pago: payMethod,
+        banco: payMethod === 'DEPOSITO' ? bank : undefined,
+        numero_operacion: payMethod === 'DEPOSITO' ? operationNumber : undefined,
       });
+      toast.success('Pago registrado exitosamente');
       fetchCuentas();
       setIsDialogOpen(false);
-    } catch (error) {
+      setPaymentAmount('');
+      setBank('');
+      setOperationNumber('');
+    } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
       toast.error(formatErrorMessage('Error al crear abono', error, 'No se pudo crear el abono.'));
     }
-    setPaymentAmount('');
   };
 
   const totalPending = cuentas
@@ -300,7 +326,7 @@ const AccountsReceivable = () => {
             </TableHeader>
             <TableBody>
               {paginatedAccounts.map((account) => {
-                const daysInfo = getDaysInfo(account.fecha_vencimiento);
+                const daysInfo = getDaysInfo(account);
                 return (
                   <TableRow key={account.id} className="hover:bg-muted/50">
                     <TableCell>
@@ -322,19 +348,25 @@ const AccountsReceivable = () => {
                     </TableCell>
                     <TableCell>
                       <div>
-                        {account.fecha_vencimiento && (
-                          <p className="text-sm">
-                            {format(account.fecha_vencimiento, "dd MMM yyyy", { locale: es })}
+                        {account.fecha_vencimiento ? (
+                          <p className="text-sm font-medium">
+                            {format(new Date(typeof account.fecha_vencimiento === 'string' ? account.fecha_vencimiento.substring(0, 10) + "T00:00:00" : account.fecha_vencimiento), "dd MMM yyyy", { locale: es })}
                           </p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Sin fecha establecida</p>
                         )}
-                        {!account.fecha_vencimiento && (
-                          <p className="text-sm">Sin fecha de vencimiento establecida</p>
-                        )}
-                        {account.fecha_vencimiento && account.estado !== 'PAGADO' && (
-                          <p className={`text-xs ${daysInfo.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
-                            {daysInfo.text}
-                          </p>
-                        )}
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          {daysInfo.diasPlazo > 0 && (
+                            <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                              Plazo: {daysInfo.diasPlazo} días
+                            </span>
+                          )}
+                          {account.fecha_vencimiento && account.estado !== 'PAGADO' && (
+                            <span className={`text-xs ${daysInfo.isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                              {daysInfo.text}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(account.estado)}</TableCell>
@@ -354,11 +386,15 @@ const AccountsReceivable = () => {
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Registrar Pago</DialogTitle>
+                              <DialogTitle>Registrar Pago / Cobranza</DialogTitle>
                               <DialogDescription>
                                 Cliente: {selectedAccount?.cliente?.razon_social}
                                 <br />
                                 Saldo pendiente: S/ {Number(selectedAccount?.saldo).toLocaleString()}
+                                {(() => {
+                                  const info = getDaysInfo(selectedAccount);
+                                  return info.diasPlazo > 0 ? ` — Plazo de amortización: ${info.diasPlazo} días` : '';
+                                })()}
                               </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
@@ -388,12 +424,41 @@ const AccountsReceivable = () => {
                                   </SelectContent>
                                 </Select>
                               </div>
+                              {payMethod === 'DEPOSITO' && (
+                                <div className="space-y-4 pt-2 border-t border-border/50">
+                                  <div className="space-y-2">
+                                    <Label>Banco donde se paga <span className="text-red-500">*</span></Label>
+                                    <Select value={bank} onValueChange={setBank}>
+                                      <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="BCP">BCP (Banco de Crédito)</SelectItem>
+                                        <SelectItem value="BBVA">BBVA</SelectItem>
+                                        <SelectItem value="Interbank">Interbank</SelectItem>
+                                        <SelectItem value="Scotiabank">Scotiabank</SelectItem>
+                                        <SelectItem value="Banco de la Nacion">Banco de la Nación</SelectItem>
+                                        <SelectItem value="BanBif">BanBif</SelectItem>
+                                        <SelectItem value="Otro">Otro Banco</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Número de Operación <span className="text-red-500">*</span></Label>
+                                    <Input
+                                      placeholder="Ej: 00482910"
+                                      value={operationNumber}
+                                      onChange={(e) => setOperationNumber(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             <DialogFooter>
-                              <Button variant="outline">Cancelar</Button>
+                              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
                               <Button
                                 className="bg-gradient-warm hover:opacity-90"
-                                onClick={() => handlePayment(selectedAccount.id)}>
+                                onClick={() => handlePayment(selectedAccount.id)}
+                                disabled={!paymentAmount || (payMethod === 'DEPOSITO' && (!bank || !operationNumber))}
+                              >
                                 Confirmar Pago
                               </Button>
                             </DialogFooter>

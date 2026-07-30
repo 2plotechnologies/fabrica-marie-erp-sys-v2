@@ -133,10 +133,14 @@ class VentaService
     {
         foreach ($venta->items as $item) {
 
-            $stock = StockVendedor::where('producto_id', $item->producto_id)
-                ->where('vendedor_id', $venta->vendedor_id)
-                ->lockForUpdate()
-                ->first();
+            $query = StockVendedor::where('producto_id', $item->producto_id)
+                ->where('vendedor_id', $venta->vendedor_id);
+
+            if (!empty($item->salida_id)) {
+                $query->where('salida_id', $item->salida_id);
+            }
+
+            $stock = $query->lockForUpdate()->first();
 
             if (!$stock) {
                 continue;

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,9 +21,11 @@ const CollectionsPage = () => {
   const [selectedCuentaId, setSelectedCuentaId] = useState<string | null>(null);
 
   // Payment dialog
-  const [payDialog, setPayDialog] = useState<{ cuentaId: string; saldo: number; clienteName: string } | null>(null);
+  const [payDialog, setPayDialog] = useState<{ cuentaId: string; saldo: number; clienteName: string; diasPlazo?: number } | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('EFECTIVO');
+  const [bank, setBank] = useState('');
+  const [operationNumber, setOperationNumber] = useState('');
 
   // Extend date dialog  
   const [extendDialog, setExtendDialog] = useState<{ cuentaId: string; currentDate: string } | null>(null);
@@ -83,19 +85,61 @@ const CollectionsPage = () => {
     fetchVendedores();
   }, []);
 
+  const calculateAmortizationDays = (cuenta: any) => {
+    if (!cuenta) return { diasPlazo: 0, textRestantes: '', isOverdue: false };
+    let diasPlazo = cuenta.cliente?.dias_credito || 0;
+    if (!diasPlazo && cuenta.fecha_vencimiento && cuenta.venta?.fecha) {
+      const start = new Date(cuenta.venta.fecha.substring(0, 10) + "T00:00:00");
+      const end = new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00");
+      diasPlazo = Math.max(0, differenceInDays(end, start));
+    }
+
+    let textRestantes = '';
+    let isOverdue = false;
+
+    if (cuenta.fecha_vencimiento) {
+      const dueDate = new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const days = differenceInDays(dueDate, today);
+
+      if (days < 0) {
+        isOverdue = true;
+        textRestantes = `${Math.abs(days)} días vencido`;
+      } else if (days === 0) {
+        textRestantes = 'Vence hoy';
+      } else {
+        textRestantes = `${days} días restantes`;
+      }
+    }
+
+    return { diasPlazo, textRestantes, isOverdue };
+  };
+
   const handlePay = async () => {
     if (!payDialog || !payAmount) return;
+    if (payMethod === 'DEPOSITO') {
+      if (!bank.trim() || !operationNumber.trim()) {
+        toast.error('Por favor ingresa el banco y el número de operación para depósitos.');
+        return;
+      }
+    }
     try {
       await cobranzasService.registrarAbono(payDialog.cuentaId, {
         fecha: format(new Date(), 'yyyy-MM-dd'),
         monto: parseFloat(payAmount),
         metodo_pago: payMethod,
+        banco: payMethod === 'DEPOSITO' ? bank : undefined,
+        numero_operacion: payMethod === 'DEPOSITO' ? operationNumber : undefined,
       });
+      toast.success('Abono registrado correctamente');
       setPayDialog(null);
       fetchCuentas();
       fetchPagos();
       setPayAmount('');
-    } catch (error) {
+      setBank('');
+      setOperationNumber('');
+    } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
       toast.error(formatErrorMessage('Error al crear abono', error, 'No se pudo crear el abono.'));
@@ -252,12 +296,32 @@ const CollectionsPage = () => {
                         <TableCell className="text-right">S/ {Number(cuenta.monto_total).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-emerald-600 font-medium">S/ {Number(cuenta.monto_pagado).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-bold">S/ {Number(cuenta.saldo).toLocaleString()}</TableCell>
-                        {cuenta.fecha_vencimiento && (
-                          <TableCell className="text-sm">{format(new Date(cuenta.fecha_vencimiento), "dd/MM/yyyy")}</TableCell>
-                        )}
-                        {!cuenta.fecha_vencimiento && (
-                          <TableCell className="text-sm">Sin fecha de vencimiento establecida</TableCell>
-                        )}
+                        <TableCell>
+                          {(() => {
+                            const { diasPlazo, textRestantes, isOverdue } = calculateAmortizationDays(cuenta);
+                            return (
+                              <div>
+                                {cuenta.fecha_vencimiento ? (
+                                  <p className="text-sm font-medium">{format(new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy")}</p>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">Sin fecha establecida</p>
+                                )}
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                  {diasPlazo > 0 && (
+                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                                      Plazo: {diasPlazo} días
+                                    </span>
+                                  )}
+                                  {cuenta.fecha_vencimiento && cuenta.estado !== 'PAGADO' && textRestantes && (
+                                    <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                                      {textRestantes}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell>{getEstadoBadge(cuenta.estado)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end flex-wrap">
@@ -265,7 +329,10 @@ const CollectionsPage = () => {
                               size="sm"
                               className="bg-gradient-warm hover:opacity-90"
                               disabled={cuenta.estado === 'PAGADO'}
-                              onClick={() => setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '' })}
+                              onClick={() => {
+                                const { diasPlazo } = calculateAmortizationDays(cuenta);
+                                setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
+                              }}
                             >
                               <DollarSign className="h-3 w-3 mr-1" />Pagar
                             </Button>
@@ -273,7 +340,10 @@ const CollectionsPage = () => {
                               size="sm"
                               variant="outline"
                               disabled={cuenta.estado === 'PAGADO'}
-                              onClick={() => setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '' })}
+                              onClick={() => {
+                                const { diasPlazo } = calculateAmortizationDays(cuenta);
+                                setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
+                              }}
                             >
                               <Coins className="h-3 w-3 mr-1" />Amortizar
                             </Button>
@@ -371,9 +441,10 @@ const CollectionsPage = () => {
       <Dialog open={!!payDialog} onOpenChange={() => setPayDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Registrar Pago</DialogTitle>
+            <DialogTitle>Registrar Pago / Amortización</DialogTitle>
             <DialogDescription>
               Cliente: {payDialog?.clienteName} — Saldo: S/ {payDialog?.saldo.toLocaleString()}
+              {payDialog?.diasPlazo && payDialog.diasPlazo > 0 ? ` — Plazo de amortización: ${payDialog.diasPlazo} días` : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -394,10 +465,41 @@ const CollectionsPage = () => {
                 </SelectContent>
               </Select>
             </div>
+            {payMethod === 'DEPOSITO' && (
+              <div className="space-y-4 pt-2 border-t border-border/50">
+                <div className="space-y-2">
+                  <Label>Banco donde se paga <span className="text-red-500">*</span></Label>
+                  <Select value={bank} onValueChange={setBank}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BCP">BCP (Banco de Crédito)</SelectItem>
+                      <SelectItem value="BBVA">BBVA</SelectItem>
+                      <SelectItem value="Interbank">Interbank</SelectItem>
+                      <SelectItem value="Scotiabank">Scotiabank</SelectItem>
+                      <SelectItem value="Banco de la Nacion">Banco de la Nación</SelectItem>
+                      <SelectItem value="BanBif">BanBif</SelectItem>
+                      <SelectItem value="Otro">Otro Banco</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Número de Operación <span className="text-red-500">*</span></Label>
+                  <Input
+                    placeholder="Ej: 00482910"
+                    value={operationNumber}
+                    onChange={(e) => setOperationNumber(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayDialog(null)}>Cancelar</Button>
-            <Button className="bg-gradient-warm hover:opacity-90" onClick={handlePay} disabled={!payAmount}>
+            <Button
+              className="bg-gradient-warm hover:opacity-90"
+              onClick={handlePay}
+              disabled={!payAmount || (payMethod === 'DEPOSITO' && (!bank || !operationNumber))}
+            >
               Confirmar Pago
             </Button>
           </DialogFooter>

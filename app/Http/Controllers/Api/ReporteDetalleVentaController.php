@@ -18,7 +18,8 @@ class ReporteDetalleVentaController
             'cliente.ruta',
             'vendedor.usuario',
             'items.producto',
-            'items.salida.vehiculo'
+            'items.salida.vehiculo',
+            'cuenta.abonos'
         ])->where('estado', 'CONFIRMADA');
 
         if ($fechaInicio && $fechaFin) {
@@ -111,7 +112,29 @@ class ReporteDetalleVentaController
 
                 "tipoCliente" => $venta->cliente->tipo_cliente ?? null,
 
-                "createdAt" => $venta->fecha
+                "createdAt" => $venta->fecha,
+
+                "adelanto" => (float)($venta->adelanto ?? 0),
+
+                "cuenta" => $venta->cuenta ? [
+                    "id" => (string)$venta->cuenta->id,
+                    "montoTotal" => (float)$venta->cuenta->monto_total,
+                    "saldo" => (float)$venta->cuenta->saldo,
+                    "estado" => $venta->cuenta->estado,
+                    "fechaVencimiento" => $venta->cuenta->fecha_vencimiento,
+                    "abonos" => $venta->cuenta->abonos ? $venta->cuenta->abonos->map(function ($abono) {
+                        return [
+                            "id" => (string)$abono->id,
+                            "monto" => (float)$abono->monto,
+                            "metodoPago" => $abono->metodo_pago,
+                            "banco" => $abono->banco,
+                            "numeroOperacion" => $abono->numero_operacion,
+                            "referencia" => $abono->referencia,
+                            "fecha" => $abono->fecha,
+                            "estado" => $abono->estado ?? 'APROBADO',
+                        ];
+                    })->values()->toArray() : [],
+                ] : null,
             ];
         }
 
