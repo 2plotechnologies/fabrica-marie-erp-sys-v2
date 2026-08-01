@@ -17,9 +17,18 @@ class ResumenDiarioController extends Controller
 {
     public function index()
     {
-        $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
-        ->orderBy('fecha', 'desc')
-        ->get();
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $query = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
+            ->orderBy('fecha', 'desc');
+
+        if ($vendedor) {
+            $query->where('vendedor_id', $vendedor->id);
+        }
+
+        $resumenDiario = $query->get();
         return response()->json($resumenDiario);
     }
 
@@ -165,10 +174,16 @@ class ResumenDiarioController extends Controller
         if($request->monederoVirtual){
             $request->depositos = $request->depositos + $request->monederoVirtual;
         }
+
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+        $vendedorId = $vendedor ? $vendedor->id : $request->vendedor_id;
+
         $resumenDiario = ResumenDiario::create(
             [
                 'fecha' => $request->fecha,
-                'vendedor_id' => $request->vendedor_id,
+                'vendedor_id' => $vendedorId,
                 'vehiculo_id' => $request->vehiculo_id,
                 'ruta_id' => $request->ruta_id,
                 'salida_id' => $request->salida_id,
@@ -261,7 +276,17 @@ class ResumenDiarioController extends Controller
     //Listar gastos
     public function getGastos()
     {
-        $gastos = Gasto::with('vendedor.usuario')->orderBy('id', 'desc')->get();
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $query = Gasto::with('vendedor.usuario')->orderBy('id', 'desc');
+
+        if ($vendedor) {
+            $query->where('vendedor_id', $vendedor->id);
+        }
+
+        $gastos = $query->get();
         return response()->json($gastos);
     }
 
@@ -275,9 +300,15 @@ class ResumenDiarioController extends Controller
             'tipo' => 'required',
             'fecha' => 'required',
         ]);
+
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+        $vendedorId = $vendedor ? $vendedor->id : $request->vendedor_id;
+
         $gasto = Gasto::create(
             [
-                'vendedor_id' => $request->vendedor_id,
+                'vendedor_id' => $vendedorId,
                 'monto' => $request->monto,
                 'comprobante' => $request->comprobante,
                 'tipo' => $request->tipo,

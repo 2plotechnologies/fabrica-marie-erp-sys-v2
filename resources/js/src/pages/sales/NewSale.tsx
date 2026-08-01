@@ -18,11 +18,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatErrorMessage } from '@/lib/axios-error';
 
 const NewSale = () => {
-  const { currentRole, roleLabels } = useRole();
+  const { currentRole } = useRole();
   const { user } = useAuth();
   const isVendedor = currentRole === "VENDEDOR";
   const navigate = useNavigate();
   const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
+  const [tipoOrigen, setTipoOrigen] = useState<'RUTA' | 'FABRICA'>('RUTA');
   const [productos, setProductos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
@@ -47,7 +48,7 @@ const NewSale = () => {
     costo: number;
     categoria: string;
     estado: string;
-    salida_id: number;
+    salida_id?: number | null;
     created_at: string;
     updated_at: string;
   }
@@ -55,8 +56,6 @@ const NewSale = () => {
   const fetchProductos = async (vendedorId: string) => {
     try {
       const data = await ventaService.getProductosByVendedor(vendedorId);
-
-      console.log(data);
 
       // Adaptar datos al formato que usa ProductSearch
       const productosAdaptados = data.map((item: any) => ({
@@ -67,6 +66,22 @@ const NewSale = () => {
 
       setProductos(productosAdaptados);
 
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const fetchProductosFabrica = async () => {
+    try {
+      const data = await ventaService.getProductosFabrica();
+
+      const productosAdaptados = data.map((item: any) => ({
+        ...item.producto,
+        salida_id: null,
+        stock: item.cantidad - item.stock_reservado
+      }));
+
+      setProductos(productosAdaptados);
     } catch (error) {
       console.log(error);
     }
@@ -101,10 +116,14 @@ const NewSale = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedVendedor) {
+    if (tipoOrigen === 'FABRICA') {
+      fetchProductosFabrica();
+    } else if (selectedVendedor) {
       fetchProductos(selectedVendedor);
+    } else {
+      setProductos([]);
     }
-  }, [selectedVendedor]);
+  }, [tipoOrigen, selectedVendedor]);
 
   useEffect(() => {
     if (isVendedor && vendedorActual) {
@@ -136,7 +155,7 @@ const NewSale = () => {
     } else {
       setCart([...cart, {
         productId: product.id,
-        salida_id: Number(product.salida_id),
+        salida_id: product.salida_id ? Number(product.salida_id) : null,
         name: product.nombre,
         price: product.precio_base,
         quantity: 1,
@@ -245,7 +264,7 @@ const NewSale = () => {
         total_neto: total,
         items: cart.map(item => ({
           producto_id: Number(String(item.productId).split('-')[0]),
-          salida_id: Number(item.salida_id),
+          salida_id: item.salida_id ? Number(item.salida_id) : null,
           cantidad: Number(item.quantity),
           precio_unitario: Number(item.price),
           subtotal: Number(item.price) * Number(item.quantity),
@@ -259,6 +278,14 @@ const NewSale = () => {
       setDiscount(0);
       setAdelanto(0);
       setMetodoPago('efectivo');
+
+      // Actualizar el stock de productos y los clientes
+      if (tipoOrigen === 'FABRICA') {
+        fetchProductosFabrica();
+      } else if (selectedVendedor) {
+        fetchProductos(selectedVendedor);
+      }
+      fetchClientes();
     } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
@@ -281,7 +308,7 @@ const NewSale = () => {
       <div className="animate-fade-in">
         <h1 className="text-2xl lg:text-3xl font-display font-bold">Nueva Venta</h1>
         <p className="text-muted-foreground mt-1">
-          Registra una venta con productos, bonificaciones y degustaciones
+          Registra una venta en ruta o directa desde la fábrica
         </p>
       </div>
 
@@ -302,9 +329,43 @@ const NewSale = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
+
+          {/* Selector de Tipo de Venta: Ruta vs Fábrica */}
+          <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up">
+            <Label className="font-semibold block mb-3">Origen de la Venta</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={tipoOrigen === 'RUTA' ? 'default' : 'outline'}
+                className="flex items-center justify-center gap-2 py-5"
+                onClick={() => {
+                  if (tipoOrigen !== 'RUTA') {
+                    setTipoOrigen('RUTA');
+                    setCart([]);
+                  }
+                }}
+              >
+                <span>🚚 Venta en Ruta (Vehículo)</span>
+              </Button>
+              <Button
+                type="button"
+                variant={tipoOrigen === 'FABRICA' ? 'default' : 'outline'}
+                className="flex items-center justify-center gap-2 py-5"
+                onClick={() => {
+                  if (tipoOrigen !== 'FABRICA') {
+                    setTipoOrigen('FABRICA');
+                    setCart([]);
+                  }
+                }}
+              >
+                <span>🏢 Venta Directa (Fábrica)</span>
+              </Button>
+            </div>
+          </div>
+
           <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up">
             <div className="space-y-2">
-              <Label className="font-semibold">Vendedor</Label>
+              <Label className="font-semibold">Vendedor / Responsable</Label>
               {isLoadingVendedores ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -313,7 +374,7 @@ const NewSale = () => {
               ) : (
                 <Select value={selectedVendedor} onValueChange={setSelectedVendedor} disabled={isVendedor}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar vendedor..." />
+                    <SelectValue placeholder="Seleccionar vendedor / responsable..." />
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.map(v => (

@@ -98,6 +98,7 @@ class UsuarioController extends Controller
             'username' => 'required|string|max:50|unique:usuarios,username,' . $id,
             'email' => 'required|email|unique:usuarios,email,' . $id,
             'nombre' => 'required|string|max:150',
+            'activo' => 'nullable|boolean',
             // Información Salarial
             'sueldo_base' => 'required|numeric|min:0',
             'horas_extra' => 'required|numeric|min:0',
@@ -116,11 +117,21 @@ class UsuarioController extends Controller
             'nombre' => $validated['nombre'],
         ];
 
+        if ($request->has('activo')) {
+            $updateData['activo'] = $request->boolean('activo');
+        }
+
         if ($request->filled('password')) {
             $updateData['password_hash'] = Hash::make($request->password);
         }
 
         $usuario->update($updateData);
+
+        // Si el usuario fue desactivado, eliminar sus tokens activos
+        if ($request->has('activo') && !$request->boolean('activo')) {
+            $usuario->tokens()->delete();
+            Vendedor::where('usuario_id', $usuario->id)->update(['activo' => false]);
+        }
 
         $usuario->informacionSalarial()->update([
             'sueldo_base' => $validated['sueldo_base'],
@@ -137,8 +148,12 @@ class UsuarioController extends Controller
     {
         $usuario = Usuario::findOrFail($id);
         $usuario->deleted = true;
+        $usuario->activo = false;
         $usuario->deleted_at = Carbon::now();
         $usuario->save();
+
+        // Revocar todos los tokens de acceso del usuario
+        $usuario->tokens()->delete();
 
         // Si el usuario es un vendedor, desactivar su registro en la tabla vendedores
         Vendedor::where('usuario_id', $usuario->id)->update(['activo' => false]);

@@ -13,6 +13,7 @@ import { es } from 'date-fns/locale';
 import { Plus, FileDown, Truck, Package, Search, Eye, AlertTriangle, Pencil } from 'lucide-react';
 import { salidaService } from '@/services/salidaService';
 import { stockService } from '@/services/stockService';
+import { mapaInteractivoService } from '@/services/mapaInteractivoService';
 import { SalidaItemPayload } from '@/services/salidaService';
 import { toast } from 'sonner';
 import { formatErrorMessage } from '@/lib/axios-error';
@@ -25,6 +26,7 @@ const FactoryOutput = () => {
   const [rumas, setRumas] = useState<any[]>([]);
   const [rutas, setRutas] = useState<any[]>([]);
   const [stockInfo, setStockInfo] = useState<any[]>([]);
+  const [zonas, setZonas] = useState<any[]>([]);
 
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -151,6 +153,15 @@ const FactoryOutput = () => {
     }
   };
 
+  const fetchZonas = async () => {
+    try {
+      const data = await mapaInteractivoService.getZonas();
+      setZonas(data);
+    } catch (error) {
+      console.log('Error fetching zones:', error);
+    }
+  };
+
   useEffect(() => {
     fetchSalidas();
     fetchProductos();
@@ -159,6 +170,7 @@ const FactoryOutput = () => {
     fetchVehiculos();
     fetchVendedores();
     fetchStock();
+    fetchZonas();
   }, []);
 
   const handleAddItem = () => {
@@ -350,7 +362,19 @@ const FactoryOutput = () => {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
-                <div className="space-y-2"><Label>Zona</Label><Input value={form.zona} onChange={e => setForm({ ...form, zona: e.target.value })} /></div>
+                <div className="space-y-2">
+                  <Label>Zona</Label>
+                  <Select value={form.zona} onValueChange={v => setForm({ ...form, zona: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {zonas.map(z => (
+                        <SelectItem key={z.id} value={z.nombre}>{z.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={handleRutaChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
               </div>
 
@@ -497,7 +521,19 @@ const FactoryOutput = () => {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
-              <div className="space-y-2"><Label>Zona</Label><Input value={form.zona} onChange={e => setForm({ ...form, zona: e.target.value })} /></div>
+              <div className="space-y-2">
+                <Label>Zona</Label>
+                <Select value={form.zona} onValueChange={v => setForm({ ...form, zona: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zonas.map(z => (
+                      <SelectItem key={z.id} value={z.nombre}>{z.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={handleRutaChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={String(v.id)}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
             </div>
 

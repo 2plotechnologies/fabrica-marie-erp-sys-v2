@@ -10,8 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useRole } from '@/contexts/RoleContext';
 
 const StockVendedoresPage = () => {
+  const { currentRole } = useRole();
+  const isVendedor = currentRole === 'VENDEDOR';
+
   const [stockVendedores, setStockVendedores] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [filterVendedor, setFilterVendedor] = useState('all');
@@ -102,53 +106,55 @@ const StockVendedoresPage = () => {
           <h1 className="text-2xl lg:text-3xl font-display font-bold">Stock de Vendedores</h1>
           <p className="text-muted-foreground mt-1">Productos asignados a cada vendedor desde salidas de fábrica</p>
         </div>
-        <Dialog open={isTransferModalOpen} onOpenChange={setIsTransferModalOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              <ArrowRightLeft className="h-4 w-4" />
-              Transferir Stock
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Transferir Stock Restante</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Vendedor Origen (Averiado)</Label>
-                <Select value={origenId} onValueChange={setOrigenId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar origen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendedores.map(v => (
-                      <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Vendedor Destino</Label>
-                <Select value={destinoId} onValueChange={setDestinoId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar destino" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendedores.map(v => (
-                      <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsTransferModalOpen(false)}>Cancelar</Button>
-              <Button onClick={handleTransfer} disabled={isTransferring}>
-                {isTransferring ? 'Transfiriendo...' : 'Confirmar Transferencia'}
+        {!isVendedor && (
+          <Dialog open={isTransferModalOpen} onOpenChange={setIsTransferModalOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <ArrowRightLeft className="h-4 w-4" />
+                Transferir Stock
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Transferir Stock Restante</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Vendedor Origen (Averiado)</Label>
+                  <Select value={origenId} onValueChange={setOrigenId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar origen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => (
+                        <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Vendedor Destino</Label>
+                  <Select value={destinoId} onValueChange={setDestinoId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => (
+                        <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsTransferModalOpen(false)}>Cancelar</Button>
+                <Button onClick={handleTransfer} disabled={isTransferring}>
+                  {isTransferring ? 'Transfiriendo...' : 'Confirmar Transferencia'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-slide-up">
@@ -160,7 +166,9 @@ const StockVendedoresPage = () => {
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar producto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" /></div>
-        <Select value={filterVendedor} onValueChange={setFilterVendedor}><SelectTrigger className="w-[220px]"><SelectValue placeholder="Todos los vendedores" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los vendedores</SelectItem>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>)}</SelectContent></Select>
+        {!isVendedor && (
+          <Select value={filterVendedor} onValueChange={setFilterVendedor}><SelectTrigger className="w-[220px]"><SelectValue placeholder="Todos los vendedores" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los vendedores</SelectItem>{vendedores.map(v => <SelectItem key={v.id} value={v.id.toString()}>{v.usuario?.nombre}</SelectItem>)}</SelectContent></Select>
+        )}
       </div>
 
       <div className="bg-card rounded-xl border shadow-card overflow-hidden">

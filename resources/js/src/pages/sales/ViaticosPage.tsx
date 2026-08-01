@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cajaChicaService } from '@/services/cajaChicaService';
+import { mapaInteractivoService } from '@/services/mapaInteractivoService';
 import { toast } from 'sonner';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -65,6 +66,7 @@ const ViaticosPage = () => {
   const [liquidacion, setLiquidacion] = useState({ usado: 0, vuelto: 0, comprobante: '' });
   const [selectedViatico, setSelectedViatico] = useState<any>(null);
   const [rutas, setRutas] = useState<any[]>([]);
+  const [zonas, setZonas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,7 +87,7 @@ const ViaticosPage = () => {
   const vendedorActual = vendedores.find(v => v.usuario_id === user?.id);
 
   const filteredViaticos = viaticos.filter(v => {
-    const matchVendedor = filterVendedor === 'all' || v.vendedor_id === filterVendedor;
+    const matchVendedor = filterVendedor === 'all' || String(v.vendedor_id) === String(filterVendedor);
     const matchTipo = filterTipo === 'all' || v.tipo === filterTipo;
     const matchEstado = filterEstado === 'all' || v.estado === filterEstado;
     return matchVendedor && matchTipo && matchEstado;
@@ -109,14 +111,16 @@ const ViaticosPage = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [viaticosData, vendedoresData, rutasData] = await Promise.all([
+        const [viaticosData, vendedoresData, rutasData, zonasData] = await Promise.all([
           cajaChicaService.getAll(),
           cajaChicaService.getVendedores(),
           cajaChicaService.getRutas(),
+          mapaInteractivoService.getZonas(),
         ]);
         setViaticos(viaticosData);
         setVendedores(vendedoresData);
         setRutas(rutasData);
+        setZonas(zonasData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -129,6 +133,7 @@ const ViaticosPage = () => {
   useEffect(() => {
     if (isVendedor && vendedorActual) {
       setFormVendedor(String(vendedorActual.id));
+      setFilterVendedor(String(vendedorActual.id));
     }
   }, [isVendedor, vendedorActual]);
 
@@ -308,11 +313,18 @@ const ViaticosPage = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Zona</Label>
-                  <Input
-                    placeholder="Ej: Norte"
-                    value={formZona}
-                    onChange={(e) => setFormZona(e.target.value)}
-                  />
+                  <Select value={formZona} onValueChange={setFormZona}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {zonas.map(z => (
+                        <SelectItem key={z.id} value={z.nombre}>
+                          {z.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Ruta</Label>
@@ -405,7 +417,7 @@ const ViaticosPage = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 animate-slide-up" style={{ animationDelay: '200ms' }}>
-        <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+        <Select value={filterVendedor} onValueChange={setFilterVendedor} disabled={isVendedor}>
           <SelectTrigger className="w-[200px]">
             <Filter className="h-3.5 w-3.5 mr-1" />
             <SelectValue placeholder="Vendedor" />
@@ -505,7 +517,7 @@ const ViaticosPage = () => {
                       <Badge variant={badge.variant}>{badge.label}</Badge>
                     </TableCell>
                     <TableCell>
-                      {v.estado === 'PENDIENTE' && (
+                      {v.estado === 'PENDIENTE' && !isVendedor && (
                         <div className="flex gap-1">
                           <Button
                             size="sm"
@@ -525,7 +537,7 @@ const ViaticosPage = () => {
                           </Button>
                         </div>
                       )}
-                      {v.estado === 'APROBADO' && (
+                      {v.estado === 'APROBADO' && !isVendedor && (
                         <Button variant="outline" size="sm" onClick={() => openLiquidar(v)}>
                           <CheckCircle2 className="h-4 w-4 mr-1" />Liquidar
                         </Button>

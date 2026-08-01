@@ -72,6 +72,10 @@ class VentaController extends Controller
 
     private function buildReporteQuery(Request $request)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
         return Venta::query()
             ->with([
                 'cliente:id,razon_social',
@@ -79,6 +83,9 @@ class VentaController extends Controller
                 'vendedor.usuario:id,nombre',
                 'items.producto:id,nombre',
             ])
+            ->when($vendedor, function ($query) use ($vendedor) {
+                $query->where('vendedor_id', $vendedor->id);
+            })
             ->when($request->filled('fecha_desde'), function ($query) use ($request) {
                 $query->whereDate('fecha', '>=', $request->input('fecha_desde'));
             })
@@ -188,7 +195,7 @@ class VentaController extends Controller
             'total_neto' => ['required', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.producto_id' => ['required', 'exists:productos,id'],
-            'items.*.salida_id' => ['required', 'exists:salidas,id'],
+            'items.*.salida_id' => ['nullable', 'exists:salidas,id'],
             'items.*.cantidad' => ['required', 'numeric', 'min:1'],
             'items.*.precio_unitario' => ['required', 'numeric', 'min:0'],
             'items.*.subtotal' => ['required', 'numeric', 'min:0'],
@@ -228,7 +235,7 @@ class VentaController extends Controller
             foreach ($validated['items'] as $item) {
                 $venta->items()->create([
                     'producto_id' => $item['producto_id'],
-                    'salida_id' => $item['salida_id'],
+                    'salida_id' => $item['salida_id'] ?? null,
                     'cantidad' => $item['cantidad'],
                     'precio_unitario' => $item['precio_unitario'],
                     'subtotal' => $item['subtotal'],
@@ -303,6 +310,17 @@ class VentaController extends Controller
 
             foreach ($venta->items as $item) {
 
+                if (empty($item->salida_id)) {
+                    // Venta directa desde fábrica: descontar directamente de almacén central
+                    $stockService->descontarStock(
+                        (int)$item->producto_id,
+                        (int)$item->cantidad,
+                        (int)$venta->id,
+                        (int)(auth()->id() ?? $venta->vendedor_id)
+                    );
+                    continue;
+                }
+
                 $stock = StockVendedor::where('producto_id', $item->producto_id)
                     ->where('vendedor_id', $venta->vendedor_id)
                     ->where('salida_id', $item->salida_id)
@@ -344,12 +362,14 @@ class VentaController extends Controller
                 $stock->save();
 
                 $salida = Salida::where('id', $item->salida_id)->first();
-                
-                $salidaItem = $salida->items()->where('producto_id', $item->producto_id)->first();
-                $salidaItem->cantidad -= $item->cantidad;
-                $salidaItem->save();
-
-                $salida->save();
+                if ($salida) {
+                    $salidaItem = $salida->items()->where('producto_id', $item->producto_id)->first();
+                    if ($salidaItem) {
+                        $salidaItem->cantidad -= $item->cantidad;
+                        $salidaItem->save();
+                    }
+                    $salida->save();
+                }
             }
 
             if($venta->tipo_pago === 'CONTADO'){
@@ -392,20 +412,30 @@ class VentaController extends Controller
     {
         foreach ($venta->items as $item) {
 
+            if (empty($item->salida_id)) {
+                $disponible = StockActual::where('producto_id', $item->producto_id)->sum('cantidad');
+                if ($item->cantidad > $disponible) {
+                    throw new Exception("Stock insuficiente en fábrica para reservar el producto ID: {$item->producto_id}");
+                }
+                continue;
+            }
+
             $stock = StockVendedor::where('producto_id', $item->producto_id)
                 ->where('vendedor_id', $venta->vendedor_id)
                 ->where('salida_id', $item->salida_id)
                 ->lockForUpdate()
                 ->first();
 
-            $disponible = $stock->cantidad - $stock->stock_reservado;
+            if ($stock) {
+                $disponible = $stock->cantidad - $stock->stock_reservado;
 
-            if ($item->cantidad > $disponible) {
-                throw new Exception('Stock insuficiente para reservar');
+                if ($item->cantidad > $disponible) {
+                    throw new Exception('Stock insuficiente para reservar');
+                }
+
+                $stock->stock_reservado += $item->cantidad;
+                $stock->save();
             }
-
-            $stock->stock_reservado += $item->cantidad;
-            $stock->save();
         }
     }
 

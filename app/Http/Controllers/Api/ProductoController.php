@@ -19,6 +19,24 @@ class ProductoController extends Controller
         );
     }
 
+    public function indexFabrica()
+    {
+        $productos = Producto::where('activo', true)
+            ->withSum('stock as total_stock', 'cantidad')
+            ->get();
+
+        $result = $productos->map(function ($producto) {
+            return [
+                'producto' => $producto,
+                'salida_id' => null,
+                'cantidad' => (int) ($producto->total_stock ?? 0),
+                'stock_reservado' => 0
+            ];
+        });
+
+        return response()->json($result);
+    }
+
     public function indexVendedores($vendedor_id)
     {
         $stockVendedores = StockVendedor::with('producto', 'vendedor')

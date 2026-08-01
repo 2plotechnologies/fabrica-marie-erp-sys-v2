@@ -138,7 +138,7 @@ const SalesDetailPage = () => {
     fetchVendedores();
   }, [dateRange]);
 
-  const uniqueVendedores = Array.from(new Map(ventas.map(v => [v.vendedor, { id: v.vendedor, nombre: v.vendedor, placa: v.vehiculoPlaca || 'Sin Vehículo' }])).values());
+  const uniqueVendedores = Array.from(new Map(ventas.map(v => [v.vendedor, { id: v.vendedor, nombre: v.vendedor, placa: v.vehiculoPlaca || 'Venta Directa' }])).values());
   const uniqueClientes = Array.from(new Map(ventas.map(v => [v.clienteId, { id: v.clienteId, nombre: v.cliente, tipo: v.tipoCliente }])).values());
 
   // Filtrar ventas
@@ -768,7 +768,7 @@ const SalesDetailPage = () => {
 
           {selectedVenta && (
             <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Fecha</p>
                   <p className="font-medium">{selectedVenta.fecha}</p>
@@ -780,6 +780,10 @@ const SalesDetailPage = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Vendedor</p>
                   <p className="font-medium">{selectedVenta.vendedor}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Vehículo / Origen</p>
+                  <p className="font-medium">{selectedVenta.vehiculoPlaca || "Venta Directa (Fábrica)"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Condición</p>

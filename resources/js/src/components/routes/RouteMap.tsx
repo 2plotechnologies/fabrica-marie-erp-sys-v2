@@ -92,7 +92,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const [showEditRouteDialog, setShowEditRouteDialog] = useState(false);
   const [showEditZoneDialog, setShowEditZoneDialog] = useState(false);
   const [editRouteName, setEditRouteName] = useState('');
-  const [editRouteZone, setEditRouteZone] = useState('Norte');
+  const [editRouteZone, setEditRouteZone] = useState('');
   const [editZoneName, setEditZoneName] = useState('');
   const [editZoneColor, setEditZoneColor] = useState('#d97706');
 
@@ -182,7 +182,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const [rutasList, setRutasList] = useState<any[]>([]);
   const [selectedRutaId, setSelectedRutaId] = useState('');
   const [routeName, setRouteName] = useState('');
-  const [routeZone, setRouteZone] = useState('Norte');
+  const [routeZone, setRouteZone] = useState('');
   const [zoneName, setZoneName] = useState('');
   const [zoneColor, setZoneColor] = useState('#d97706');
 
@@ -1192,14 +1192,14 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
               <Label htmlFor="route-zone">Zona</Label>
               <Select value={routeZone} onValueChange={setRouteZone}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecciona zona" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Norte">Norte</SelectItem>
-                  <SelectItem value="Sur">Sur</SelectItem>
-                  <SelectItem value="Centro">Centro</SelectItem>
-                  <SelectItem value="Este">Este</SelectItem>
-                  <SelectItem value="Oeste">Oeste</SelectItem>
+                  {zones.map(z => (
+                    <SelectItem key={z.id} value={z.name}>
+                      {z.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1352,14 +1352,14 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
               <Label htmlFor="edit-route-zone">Zona</Label>
               <Select value={editRouteZone} onValueChange={setEditRouteZone}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecciona zona" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Norte">Norte</SelectItem>
-                  <SelectItem value="Sur">Sur</SelectItem>
-                  <SelectItem value="Centro">Centro</SelectItem>
-                  <SelectItem value="Este">Este</SelectItem>
-                  <SelectItem value="Oeste">Oeste</SelectItem>
+                  {zones.map(z => (
+                    <SelectItem key={z.id} value={z.name}>
+                      {z.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

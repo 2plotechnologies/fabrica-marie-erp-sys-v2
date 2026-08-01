@@ -35,15 +35,27 @@ import { cn } from '@/lib/utils';
 import RouteMap from '@/components/routes/RouteMap';
 import NewRouteDialog from '@/components/routes/NewRouteDialog';
 import { rutaService } from '@/services/rutaService';
+import { mapaInteractivoService } from '@/services/mapaInteractivoService';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/axios-error';
+import { useRole } from '@/contexts/RoleContext';
 
 const RoutesList = () => {
   const { toast } = useToast();
+  const { currentRole } = useRole();
+  const isVendedor = currentRole === 'VENDEDOR';
   const [activeTab, setActiveTab] = useState('list');
   const [showNewRouteDialog, setShowNewRouteDialog] = useState(false);
   const [routes, setRoutes] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
+  const [zonas, setZonas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // --- Búsqueda y paginación ---
@@ -111,8 +123,18 @@ const RoutesList = () => {
     fetchRutas(currentPage, searchTerm);
   }, [currentPage, searchTerm, fetchRutas]);
 
+  const fetchZonas = async () => {
+    try {
+      const data = await mapaInteractivoService.getZonas();
+      setZonas(data);
+    } catch (error: any) {
+      console.error('Error loading zones:', error);
+    }
+  };
+
   useEffect(() => {
     fetchVendedores();
+    fetchZonas();
   }, []);
 
   // Debounce del input de búsqueda (400 ms)
@@ -225,10 +247,12 @@ const RoutesList = () => {
             Gestiona las rutas y asignaciones de vendedores
           </p>
         </div>
-        <Button variant="gradient" className="gap-2" onClick={() => setShowNewRouteDialog(true)}>
-          <MapPin className="h-4 w-4" />
-          Nueva Ruta
-        </Button>
+        {!isVendedor && (
+          <Button variant="gradient" className="gap-2" onClick={() => setShowNewRouteDialog(true)}>
+            <MapPin className="h-4 w-4" />
+            Nueva Ruta
+          </Button>
+        )}
       </div>
 
       {/* Buscador */}
@@ -332,8 +356,8 @@ const RoutesList = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleViewDetail(route.id)}>Ver detalle</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleOpenEdit(route.id)}>Editar ruta</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleOpenReassign(route.id, route.vendedor_id)}>Reasignar vendedor</DropdownMenuItem>
+                          {!isVendedor && <DropdownMenuItem onClick={() => handleOpenEdit(route.id)}>Editar ruta</DropdownMenuItem>}
+                          {!isVendedor && <DropdownMenuItem onClick={() => handleOpenReassign(route.id, route.vendedor_id)}>Reasignar vendedor</DropdownMenuItem>}
                           <DropdownMenuItem onClick={() => handleViewClients(route.id, route.nombre)}>Ver clientes</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -490,7 +514,21 @@ const RoutesList = () => {
               </div>
               <div>
                 <Label>Zona</Label>
-                <Input value={editRoute.zona || ''} onChange={(e) => setEditRoute({ ...editRoute, zona: e.target.value })} />
+                <Select
+                  value={editRoute.zona || ''}
+                  onValueChange={(val) => setEditRoute({ ...editRoute, zona: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una zona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zonas.map((z) => (
+                      <SelectItem key={z.id} value={z.nombre}>
+                        {z.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Frecuencia</Label>

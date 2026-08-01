@@ -9,10 +9,27 @@ class CuentaPorCobrarController
 {
     public function index()
     {
-        $cuentas_por_cobrar = CuentaPorCobrar::with(['cliente', 'venta', 'abonos'])
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $query = CuentaPorCobrar::with(['cliente', 'venta', 'abonos'])
             ->withSum('abonos as monto_pagado_abonos', 'monto')
-            ->orderBy('saldo', 'desc')
-            ->get();
+            ->orderBy('saldo', 'desc');
+
+        if ($vendedor) {
+            $query->whereHas('cliente', function ($q) use ($vendedor) {
+                $q->where(function ($subQ) use ($vendedor) {
+                    $subQ->whereHas('rutas', function ($sub) use ($vendedor) {
+                        $sub->where('vendedor_id', $vendedor->id);
+                    })->orWhereHas('ruta', function ($sub) use ($vendedor) {
+                        $sub->where('vendedor_id', $vendedor->id);
+                    });
+                });
+            });
+        }
+
+        $cuentas_por_cobrar = $query->get();
 
         $cuentas_por_cobrar->each(function($cuenta) {
             $adelanto = $cuenta->venta ? (float)$cuenta->venta->adelanto : 0;
@@ -25,6 +42,12 @@ class CuentaPorCobrarController
 
     public function updateFechaVencimiento(Request $request, $id)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['message' => 'No autorizado para modificar la fecha de vencimiento.'], 403);
+        }
+
         $cuenta_por_cobrar = CuentaPorCobrar::findOrFail($id);
         $cuenta_por_cobrar->fecha_vencimiento = $request->fecha_vencimiento;
         $cuenta_por_cobrar->save();

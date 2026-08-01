@@ -9,10 +9,19 @@ class RutaController extends Controller
 {
     public function index()
     {
-        $rutas = Ruta::where('activo', true)
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $query = Ruta::where('activo', true)
             ->with('clientes')
-            ->withCount('clientes')
-            ->get();
+            ->withCount('clientes');
+
+        if ($vendedor) {
+            $query->where('vendedor_id', $vendedor->id);
+        }
+
+        $rutas = $query->get();
 
         return response()->json($rutas);
     }
@@ -26,8 +35,16 @@ class RutaController extends Controller
         $perPage = (int) $request->input('per_page', 6);
         $search  = $request->input('search', '');
 
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
         $query = Ruta::where('activo', true)
             ->withCount('clientes');
+
+        if ($vendedor) {
+            $query->where('vendedor_id', $vendedor->id);
+        }
 
         if ($search !== '') {
             $query->where('nombre', 'like', '%' . $search . '%');
@@ -40,6 +57,12 @@ class RutaController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['message' => 'No autorizado para crear rutas.'], 403);
+        }
+
         $ruta = Ruta::create($request->all());
         return response()->json($ruta, 201);
     }
@@ -69,6 +92,12 @@ class RutaController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['message' => 'No autorizado para editar rutas.'], 403);
+        }
+
         $ruta = Ruta::findOrFail($id);
         $ruta->update($request->all());
 
@@ -77,6 +106,12 @@ class RutaController extends Controller
 
     public function reasignarVendedor(Request $request, $id)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['message' => 'No autorizado para reasignar vendedores.'], 403);
+        }
+
         $ruta = Ruta::findOrFail($id);
 
         // Nota: si se requiere almacenar historial de reasignaciones, hace falta agregar
@@ -89,6 +124,12 @@ class RutaController extends Controller
 
     public function destroy($id)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['message' => 'No autorizado para desactivar rutas.'], 403);
+        }
+
         $ruta = Ruta::findOrFail($id);
         $ruta->activo = false;
         $ruta->save();
@@ -99,6 +140,12 @@ class RutaController extends Controller
     // Asignar clientes con orden
     public function asignarClientes(Request $request, $rutaId)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['message' => 'No autorizado para asignar clientes a rutas.'], 403);
+        }
+
         $ruta = Ruta::findOrFail($rutaId);
 
         $syncData = [];

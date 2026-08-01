@@ -33,6 +33,12 @@ export const devolucionService = {
     return response.data;
   },
 
+  //Obtener productos asignados al vendedor.
+  async getProductosVendedor(vendedorId: number) {
+    const response = await api.get(`/inventario/productos/vendedores/${vendedorId}`);
+    return response.data;
+  },
+
   //Obtener vendedores activos.
   async getVendedores() {
     const response = await api.get('/vendedores');

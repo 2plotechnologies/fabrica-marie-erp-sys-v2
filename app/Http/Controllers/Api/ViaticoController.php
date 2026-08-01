@@ -10,12 +10,21 @@ class ViaticoController
 {
     public function index()
     {
-        $viaticos = Viatico::with([
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $query = Viatico::with([
             'vendedor.usuario',
             'ruta'
         ])
-        ->orderBy('fecha', 'desc')
-        ->get();
+        ->orderBy('fecha', 'desc');
+
+        if ($vendedor) {
+            $query->where('vendedor_id', $vendedor->id);
+        }
+
+        $viaticos = $query->get();
         return response()->json($viaticos);
     }
 
@@ -32,8 +41,13 @@ class ViaticoController
             'descripcion' => 'nullable|string|max:255',
         ]);
 
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+        $vendedorId = $vendedor ? $vendedor->id : $request->vendedor_id;
+
         $viatico = Viatico::create([
-            'vendedor_id' => $request->vendedor_id,
+            'vendedor_id' => $vendedorId,
             'tipo' => $request->tipo,
             'fecha' => $request->fecha,
             'monto' => $request->monto,

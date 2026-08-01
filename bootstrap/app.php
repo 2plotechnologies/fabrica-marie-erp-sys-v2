@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permiso' => \App\Http\Middleware\CheckPermiso::class,
             'role' => \App\Http\Middleware\CheckRole::class,
             'caja.abierta' => \App\Http\Middleware\CajaAbierta::class,
+            'user.active' => \App\Http\Middleware\CheckUserActive::class,
         ]);
 
         $middleware->api([

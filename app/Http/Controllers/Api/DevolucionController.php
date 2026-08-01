@@ -22,10 +22,18 @@ class DevolucionController
 
     public function index()
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
         $devoluciones = Devolucion::with([
             'vendedor.usuario',
             'items.producto',
-        ])->orderBy('fecha', 'desc')->get();
+        ])
+        ->when($vendedor, function ($query) use ($vendedor) {
+            $query->where('vendedor_id', $vendedor->id);
+        })
+        ->orderBy('fecha', 'desc')->get();
 
         return response()->json($devoluciones);
     }
@@ -50,7 +58,32 @@ class DevolucionController
             'items.*.cantidad' => 'required|integer|min:1'
         ]);
 
-        $devolucion = $this->devolucionService->registrar($request->all());
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $data = $request->all();
+        if ($vendedor) {
+            $data['vendedor_id'] = $vendedor->id;
+
+            // Validar que el vendedor tenga stock asignado suficiente en rutas EN_RUTA
+            foreach ($data['items'] as $item) {
+                $totalDisponible = StockVendedor::where('producto_id', $item['producto_id'])
+                    ->where('vendedor_id', $vendedor->id)
+                    ->whereHas('salida', function ($query) {
+                        $query->where('estado', 'EN_RUTA');
+                    })
+                    ->sum('cantidad');
+
+                if ($totalDisponible < $item['cantidad']) {
+                    return response()->json([
+                        'message' => "No tienes stock suficiente del producto ID: {$item['producto_id']}. Disponible: {$totalDisponible}."
+                    ], 422);
+                }
+            }
+        }
+
+        $devolucion = $this->devolucionService->registrar($data);
 
         return response()->json([
             'message' => 'Devolución registrada correctamente',
@@ -60,6 +93,14 @@ class DevolucionController
 
     public function updateEstado(Request $request, $id)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json([
+                'message' => 'No autorizado para aprobar/rechazar devoluciones'
+            ], 403);
+        }
+
         $request->validate([
             'estado' => 'required|in:RECHAZADA,ACEPTADA'
         ]);

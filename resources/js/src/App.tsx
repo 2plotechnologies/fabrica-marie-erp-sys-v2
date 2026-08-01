@@ -181,9 +181,7 @@ const AppRoutes = () => {
             : <FactoryOutput />
         } />
         <Route path="/almacen/devoluciones" element={
-          currentRole === 'VENDEDOR' 
-            ? <Navigate to="/dashboard" replace /> 
-            : <WarehouseReturns />
+          <WarehouseReturns />
         } />
 
         {/* Ventas */}

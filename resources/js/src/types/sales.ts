@@ -1,7 +1,7 @@
 // Types for the enhanced sales module
 
 export interface CartItem {
-  salida_id: number;
+  salida_id: number | null;
   productId: string;
   name: string;
   price: number;

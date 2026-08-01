@@ -38,6 +38,37 @@ class VentaService
             */
 
             foreach ($venta->items as $item) {
+                if (empty($item->salida_id)) {
+                    // Venta directa fábrica: devolver a StockActual
+                    $stockActual = StockActual::where('producto_id', $item->producto_id)->orderBy('cantidad', 'asc')->first();
+                    if (!$stockActual) {
+                        $stockActual = StockActual::firstOrCreate(
+                            ['producto_id' => $item->producto_id],
+                            ['cantidad' => 0]
+                        );
+                    }
+                    $stockAnterior = $stockActual->cantidad;
+                    $stockActual->cantidad += $item->cantidad;
+                    $stockActual->fecha_ultimo_mov = now();
+                    $stockActual->save();
+
+                    MovimientoStock::create([
+                        'tipo' => 'DEVOLUCION_BUENA',
+                        'producto_id' => $item->producto_id,
+                        'ruma_id' => $stockActual->ruma_id,
+                        'cantidad' => $item->cantidad,
+                        'referencia_tipo' => 'ANULACION_VENTA',
+                        'referencia_id' => $venta->id,
+                        'motivo' => 'Anulación de venta directa fábrica',
+                        'stock_anterior' => $stockAnterior,
+                        'stock_post_mov' => $stockActual->cantidad,
+                        'user_id' => $userId,
+                        'estado' => 'REGISTRADO',
+                        'created_at' => now()
+                    ]);
+                    continue;
+                }
+
                 $stockVendedor = StockVendedor::where('producto_id', $item->producto_id)
                     ->where('vendedor_id', $venta->vendedor_id)
                     ->first();
@@ -132,6 +163,10 @@ class VentaService
     public function liberarReserva(Venta $venta)
     {
         foreach ($venta->items as $item) {
+
+            if (empty($item->salida_id)) {
+                continue;
+            }
 
             $query = StockVendedor::where('producto_id', $item->producto_id)
                 ->where('vendedor_id', $venta->vendedor_id);

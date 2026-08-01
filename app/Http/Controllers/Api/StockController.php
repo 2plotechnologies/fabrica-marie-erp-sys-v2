@@ -47,15 +47,26 @@ class StockController extends Controller
 
     public function stockVendedores()
     {
-        $salidas = Salida::where('estado', 'EN_RUTA')
-            ->with(['items'])
-            ->get();
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $salidasQuery = Salida::where('estado', 'EN_RUTA');
+        if ($vendedor) {
+            $salidasQuery->where('vendedor_id', $vendedor->id);
+        }
+        $salidas = $salidasQuery->with(['items'])->get();
 
         $salidaIds = $salidas->pluck('id');
 
-        $stock = StockVendedor::with(['producto', 'vendedor.usuario', 'salida.items'])
-            ->whereIn('salida_id', $salidaIds)
-            ->get();
+        $stockQuery = StockVendedor::with(['producto', 'vendedor.usuario', 'salida.items'])
+            ->whereIn('salida_id', $salidaIds);
+
+        if ($vendedor) {
+            $stockQuery->where('vendedor_id', $vendedor->id);
+        }
+
+        $stock = $stockQuery->get();
 
         // calcular cantidad despachada
         foreach ($stock as $item) {
@@ -72,6 +83,12 @@ class StockController extends Controller
 
     public function transferirStock(\Illuminate\Http\Request $request)
     {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        if ($isVendedor) {
+            return response()->json(['error' => 'No autorizado para transferir stock.'], 403);
+        }
+
         $request->validate([
             'origen_vendedor_id' => 'required|exists:vendedores,id',
             'destino_vendedor_id' => 'required|exists:vendedores,id|different:origen_vendedor_id',

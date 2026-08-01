@@ -223,7 +223,21 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       if (item.module === 'almacen' && currentRole === 'VENDEDOR') {
         return {
           ...item,
-          subItems: item.subItems?.filter(sub => sub.to === '/almacen/seguimiento')
+          subItems: item.subItems?.filter(sub => sub.to === '/almacen/seguimiento' || sub.to === '/almacen/devoluciones')
+        };
+      }
+      if (item.module === 'ventas' && currentRole === 'VENDEDOR') {
+        return {
+          ...item,
+          subItems: item.subItems?.filter(sub => 
+            sub.to === '/ventas/nueva' || 
+            sub.to === '/ventas/historial' || 
+            sub.to === '/ventas/detalle' || 
+            sub.to === '/ventas/cobranzas' || 
+            sub.to === '/ventas/caja-chica' || 
+            sub.to === '/ventas/resumen-diario' || 
+            sub.to === '/ventas/gastos'
+          )
         };
       }
       return item;

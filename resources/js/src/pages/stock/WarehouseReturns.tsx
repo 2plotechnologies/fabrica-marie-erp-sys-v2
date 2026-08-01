@@ -12,10 +12,15 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { devolucionService } from '@/services/devolucionService';
-import { DevolucionItemPayload } from '@/services/devolucionService';
 import { formatErrorMessage } from '@/lib/axios-error';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/contexts/RoleContext';
 
 const WarehouseReturns = () => {
+  const { currentRole } = useRole();
+  const { user } = useAuth();
+  const isVendedor = currentRole === 'VENDEDOR';
+
   const [devoluciones, setDevoluciones] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
@@ -25,9 +30,11 @@ const WarehouseReturns = () => {
   const [filterEstado, setFilterEstado] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [selectedDevolucion, setSelectedDevolucion] = useState<typeof devoluciones[0] | null>(null);
+  const [selectedDevolucion, setSelectedDevolucion] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [detailItems, setDetailItems] = useState<any[]>([]);
+
+  const vendedorActual = vendedores.find(v => v.usuario_id === user?.id);
 
   const fetchDevoluciones = async () => {
     try {
@@ -44,7 +51,16 @@ const WarehouseReturns = () => {
 
   const fetchProductos = async () => {
     try {
-      const data = await devolucionService.getProductos();
+      let data;
+      if (isVendedor && vendedorActual) {
+        const rawStock = await devolucionService.getProductosVendedor(vendedorActual.id);
+        data = rawStock.map((sv: any) => ({
+          ...sv.producto,
+          stockActual: sv.cantidad,
+        }));
+      } else {
+        data = await devolucionService.getProductos();
+      }
       setProductos(data);
     } catch (error) {
       console.log(error);
@@ -62,17 +78,28 @@ const WarehouseReturns = () => {
 
   useEffect(() => {
     fetchDevoluciones();
-    fetchProductos();
     fetchVendedores();
   }, []);
+
+  useEffect(() => {
+    if (vendedores.length > 0) {
+      fetchProductos();
+    }
+  }, [vendedores, currentRole]);
 
   const [formData, setFormData] = useState({
     fecha: format(new Date(), 'yyyy-MM-dd'),
     vendedor_id: '',
-    tipo_devolucion: '',
+    tipo_devolucion: 'BUENA',
     motivo: '',
     observaciones: '',
   });
+
+  useEffect(() => {
+    if (isVendedor && vendedorActual) {
+      setFormData(prev => ({ ...prev, vendedor_id: String(vendedorActual.id) }));
+    }
+  }, [isVendedor, vendedorActual]);
 
   const [formItems, setFormItems] = useState<{
     producto_id: number; cantidad: number; motivo: string | null;
@@ -97,9 +124,13 @@ const WarehouseReturns = () => {
 
   const handleAddProduct = () => {
     if (!selectedProduct) { toast.error('Selecciona un producto'); return; }
-    const product = productos.find(p => p.id === selectedProduct);
+    const product = productos.find(p => String(p.id) === selectedProduct);
     if (!product) return;
     if (formItems.some(item => item.producto_id === product.id)) { toast.error('Ya está en la lista'); return; }
+    if (isVendedor && product.stockActual !== undefined && product.stockActual <= 0) {
+      toast.error('No tienes stock de este producto');
+      return;
+    }
     setFormItems([...formItems, {
       producto_id: Number(product.id), cantidad: 1, motivo: null,
     }]);
@@ -125,7 +156,13 @@ const WarehouseReturns = () => {
       // refrescar lista
       await fetchDevoluciones();
 
-      setFormData({ fecha: format(new Date(), 'yyyy-MM-dd'), vendedor_id: '', tipo_devolucion: 'BUENA', motivo: '', observaciones: '' });
+      setFormData({
+        fecha: format(new Date(), 'yyyy-MM-dd'),
+        vendedor_id: isVendedor && vendedorActual ? String(vendedorActual.id) : '',
+        tipo_devolucion: 'BUENA',
+        motivo: '',
+        observaciones: ''
+      });
       setFormItems([]);
       setIsDialogOpen(false);
 
@@ -136,7 +173,7 @@ const WarehouseReturns = () => {
     }
   };
 
-  const handleViewDetail = async (devolucion: typeof devoluciones[0]) => {
+  const handleViewDetail = async (devolucion: any) => {
     setSelectedDevolucion(devolucion);
 
     const data = await devolucionService.getById(devolucion.id);
@@ -253,7 +290,25 @@ const WarehouseReturns = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} /></div>
-              <div className="space-y-2"><Label>Vendedor *</Label><Select value={formData.vendedor_id} onValueChange={(v) => setFormData({ ...formData, vendedor_id: v })}><SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger><SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.usuario.nombre}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2">
+                <Label>Vendedor *</Label>
+                <Select
+                  value={formData.vendedor_id}
+                  disabled={isVendedor}
+                  onValueChange={(v) => setFormData({ ...formData, vendedor_id: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendedores.map(v => (
+                      <SelectItem key={v.id} value={String(v.id)}>
+                        {v.usuario.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Tipo de Devolución</Label>
@@ -266,7 +321,18 @@ const WarehouseReturns = () => {
             <div className="space-y-3 border-t pt-4">
               <Label className="text-base font-semibold">Productos a Devolver</Label>
               <div className="flex gap-2">
-                <Select value={selectedProduct} onValueChange={setSelectedProduct}><SelectTrigger className="flex-1"><SelectValue placeholder="Seleccionar producto..." /></SelectTrigger><SelectContent>{productos.map(p => <SelectItem key={p.id} value={p.id}>{p.nombre} - {p.marca} ({p.presentacion})</SelectItem>)}</SelectContent></Select>
+                <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Seleccionar producto..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productos.map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.nombre} - {p.marca} ({p.presentacion}){p.stockActual !== undefined ? ` - Stock: ${p.stockActual}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button type="button" onClick={handleAddProduct}><Plus className="h-4 w-4" /></Button>
               </div>
               {formItems.length > 0 && (
@@ -276,7 +342,21 @@ const WarehouseReturns = () => {
                     return (
                       <div key={index} className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg">
                         <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{prod?.nombre}</p><p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p></div>
-                        <Input type="number" min="1" value={item.cantidad} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, cantidad: Math.max(1, parseInt(e.target.value) || 1) } : it))} className="w-20" />
+                        <Input
+                          type="number"
+                          min="1"
+                          max={prod?.stockActual !== undefined ? prod.stockActual : undefined}
+                          value={item.cantidad}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 1;
+                            const maxVal = prod?.stockActual !== undefined ? prod.stockActual : Infinity;
+                            setFormItems(formItems.map((it, i) => i === index ? {
+                              ...it,
+                              cantidad: Math.max(1, Math.min(maxVal, val))
+                            } : it));
+                          }}
+                          className="w-20"
+                        />
                         <Input placeholder="Motivo" value={item.motivo || ''} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, motivo: e.target.value || null } : it))} className="w-40" />
                         <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setFormItems(formItems.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
                       </div>
@@ -315,7 +395,7 @@ const WarehouseReturns = () => {
                     ))}
                   </TableBody>
                 </Table>
-                {selectedDevolucion.estado === 'PENDIENTE' && (
+                {selectedDevolucion.estado === 'PENDIENTE' && !isVendedor && (
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" className="gap-1 text-destructive" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'RECHAZADA')}><XCircle className="h-4 w-4" />Rechazar</Button>
                     <Button className="gap-1" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'ACEPTADA')}><CheckCircle className="h-4 w-4" />Recibir en Almacén</Button>

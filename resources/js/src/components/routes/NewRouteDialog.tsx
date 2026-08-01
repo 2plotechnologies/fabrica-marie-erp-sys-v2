@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { rutaService } from '@/services/rutaService';
+import { mapaInteractivoService } from '@/services/mapaInteractivoService';
 import {
   Dialog,
   DialogContent,
@@ -42,13 +43,21 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewR
     frecuencia: 'diaria',
   });
 
-  const zones = [
-    { id: 'Huancayo', label: 'Huancayo', color: '#3b82f6' },
-    { id: 'El Tambo', label: 'El Tambo', color: '#22c55e' },
-    { id: 'Chilca', label: 'Chilca', color: '#f59e0b' },
-    { id: 'Pilcomayo', label: 'Pilcomayo', color: '#8b5cf6' },
-    { id: 'Huancan', label: 'Huancan', color: '#ec4899' },
-  ];
+  const [dbZones, setDbZones] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const res = await mapaInteractivoService.getZonas();
+        setDbZones(res);
+      } catch (error) {
+        console.error('Error fetching zones:', error);
+      }
+    };
+    if (open) {
+      fetchZones();
+    }
+  }, [open]);
 
   const frequencies = [
     { id: 'diaria', label: 'Diaria' },
@@ -132,14 +141,14 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewR
                   <SelectValue placeholder="Selecciona zona" />
                 </SelectTrigger>
                 <SelectContent>
-                  {zones.map((zone) => (
-                    <SelectItem key={zone.id} value={zone.id}>
+                  {dbZones.map((zone) => (
+                    <SelectItem key={zone.id} value={zone.nombre}>
                       <div className="flex items-center gap-2">
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: zone.color }}
+                          style={{ backgroundColor: zone.color || '#3b82f6' }}
                         />
-                        {zone.label}
+                        {zone.nombre}
                       </div>
                     </SelectItem>
                   ))}
@@ -217,17 +226,17 @@ const NewRouteDialog = ({ open, onOpenChange, onRouteCreated, vendedores }: NewR
             <div className="bg-muted/50 rounded-lg p-4 flex items-center gap-3">
               <div
                 className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: zones.find(z => z.id === formData.zona)?.color + '20' }}
+                style={{ backgroundColor: (dbZones.find(z => z.nombre === formData.zona)?.color || '#3b82f6') + '20' }}
               >
                 <MapPin
                   className="h-5 w-5"
-                  style={{ color: zones.find(z => z.id === formData.zona)?.color }}
+                  style={{ color: dbZones.find(z => z.nombre === formData.zona)?.color || '#3b82f6' }}
                 />
               </div>
               <div>
                 <p className="font-medium">{formData.nombre || 'Nueva Ruta'}</p>
                 <p className="text-sm text-muted-foreground">
-                  {zones.find(z => z.id === formData.zona)?.label} • {frequencies.find(f => f.id === formData.frecuencia)?.label}
+                  {dbZones.find(z => z.nombre === formData.zona)?.nombre || formData.zona} • {frequencies.find(f => f.id === formData.frecuencia)?.label}
                 </p>
               </div>
             </div>

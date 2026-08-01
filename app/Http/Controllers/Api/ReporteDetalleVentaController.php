@@ -88,7 +88,7 @@ class ReporteDetalleVentaController
                 "fecha" => $venta->fecha,
 
                 "vehiculoId" => $vehiculo->id ?? null,
-                "vehiculoPlaca" => $vehiculo->placa ?? null,
+                "vehiculoPlaca" => $vehiculo->placa ?? "Venta Directa (Fábrica)",
 
                 "vendedor" => $venta->vendedor->usuario->nombre ?? null,
                 "vendedorId" => $venta->vendedor->id ?? null,
@@ -188,7 +188,7 @@ class ReporteDetalleVentaController
                 "vendedor" => $venta->vendedor->usuario->nombre ?? null,
                 "vendedorId" => $venta->vendedor->id ?? null,
 
-                "vehiculoPlaca" => $vehiculo->placa ?? null,
+                "vehiculoPlaca" => $vehiculo->placa ?? "Venta Directa (Fábrica)",
 
                 "cliente" => $venta->cliente->razon_social ?? null,
                 "clienteId" => (string)($venta->cliente->id ?? null),
@@ -205,7 +205,7 @@ class ReporteDetalleVentaController
 
                 "motivo" => null,
 
-                "ruta" => $venta->cliente->ruta->nombre ?? null,
+                "ruta" => $venta->cliente->ruta->nombre ?? "Fábrica Directa",
 
                 "diaRuta" => null
             ];

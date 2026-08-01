@@ -188,7 +188,7 @@ class SalidaController
 
         $salida = Salida::findOrFail($id);
 
-        //No permitir despacho si el vendedor o el vehiculo ya estan en ruta
+        //No permitir despacho si el vendedor o el vehiculo ya estan en ruta.
         if ($request->estado == 'EN_RUTA') {
             $vendedorSalida = Salida::where('vendedor_id', $salida->vendedor_id)
                 ->where('estado', 'EN_RUTA')

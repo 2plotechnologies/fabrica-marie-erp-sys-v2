@@ -58,7 +58,7 @@ Route::post('/login', [AuthController::class, 'login']);
 | Rutas autenticadas con Sanctum
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
 
     // Sesión
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -75,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Productos
         Route::get('/productos', [ProductoController::class, 'index']);
+        Route::get('/productos/fabrica', [ProductoController::class, 'indexFabrica']);
         Route::get('/productos/vendedores/{vendedor_id}', [ProductoController::class, 'indexVendedores']);
         Route::post('/productos', [ProductoController::class, 'store']);
         Route::get('/productos/{id}', [ProductoController::class, 'show']);

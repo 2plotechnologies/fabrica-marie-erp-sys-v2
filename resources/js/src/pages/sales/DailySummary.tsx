@@ -19,6 +19,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { resumenDiarioService } from '@/services/resumenDiarioService';
+import { mapaInteractivoService } from '@/services/mapaInteractivoService';
 import { toast } from 'sonner';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,6 +48,7 @@ const DailySummaryPage = () => {
   const [vehiculos, setVehiculos] = useState<any[]>([]);
   const [salidas, setSalidas] = useState<any[]>([]);
   const [resumenes, setResumenes] = useState<any[]>([]);
+  const [zonasList, setZonasList] = useState<any[]>([]);
   const [resumenVendedor, setResumenVendedor] = useState<any | null>(null);
   const ventasDelDia = resumenVendedor?.totalVentas || 0;
   const cobranzasDelDia = resumenVendedor?.totalCobranzas || 0;
@@ -156,12 +158,22 @@ const DailySummaryPage = () => {
     }
   }
 
+  const getZonas = async () => {
+    try {
+      const response = await mapaInteractivoService.getZonas();
+      setZonasList(response);
+    } catch (error) {
+      toast.error('Error al obtener las zonas');
+    }
+  };
+
   useEffect(() => {
     getResumenesDiarios();
     getVendedores();
     getRutas();
     getVehiculos();
     getSalidas();
+    getZonas();
   }, []);
 
   useEffect(() => {
@@ -227,7 +239,12 @@ const DailySummaryPage = () => {
   // Filtrar resúmenes
   const filteredResumenes = (Array.isArray(resumenes) ? resumenes : []).filter(resumen => {
     const vendedorNombre = resumen.vendedor?.usuario?.nombre || '';
-    const matchesSearch = vendedorNombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const conductor = resumen.conductor || '';
+    const zona = resumen.zona || '';
+    const matchesSearch =
+      vendedorNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      conductor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      zona.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -430,11 +447,11 @@ const DailySummaryPage = () => {
                         <SelectValue placeholder="Seleccionar zona" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Huancayo">Huancayo</SelectItem>
-                        <SelectItem value="El Tambo">El Tambo</SelectItem>
-                        <SelectItem value="Chilca">Chilca</SelectItem>
-                        <SelectItem value="Pilcomayo">Pilcomayo</SelectItem>
-                        <SelectItem value="Huancan">Huancan</SelectItem>
+                        {zonasList.map(z => (
+                          <SelectItem key={z.id} value={z.nombre}>
+                            {z.nombre}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -798,27 +815,29 @@ const DailySummaryPage = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative lg:col-span-2">
+            <div className={`relative ${isVendedor ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por vendedor..."
+                placeholder={isVendedor ? "Buscar por conductor o zona..." : "Buscar por vendedor, conductor o zona..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
-              <SelectTrigger>
-                <SelectValue placeholder="Vendedor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los vendedores</SelectItem>
-                {(Array.isArray(vendedores) ? vendedores : []).map(v => (
-                  <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!isVendedor && (
+              <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Vendedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los vendedores</SelectItem>
+                  {(Array.isArray(vendedores) ? vendedores : []).map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <Select value={filterEstado} onValueChange={setFilterEstado}>
               <SelectTrigger>
@@ -1072,7 +1091,7 @@ const DailySummaryPage = () => {
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
                                       <span className="font-medium">S/ {Number(gasto.monto).toLocaleString()}</span>
-                                      {selectedResumen.estado !== 'CONFIRMADO' && estadoVerif === 'PENDIENTE' && (
+                                      {selectedResumen.estado !== 'CONFIRMADO' && estadoVerif === 'PENDIENTE' && !isVendedor && (
                                         <div className="flex gap-1">
                                           <Button variant="ghost" size="sm" className="h-7 px-2 text-emerald-600 hover:bg-emerald-50" onClick={() => handleVerificarGasto(gasto.id, 'CONFIRMADO')}>
                                             <ShieldCheck className="h-3.5 w-3.5" />
@@ -1105,7 +1124,7 @@ const DailySummaryPage = () => {
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span className="font-medium">S/ {Number(gasto.monto).toLocaleString()}</span>
-                                  {selectedResumen.estado !== 'CONFIRMADO' && estadoVerif === 'PENDIENTE' && (
+                                  {selectedResumen.estado !== 'CONFIRMADO' && estadoVerif === 'PENDIENTE' && !isVendedor && (
                                     <div className="flex gap-1">
                                       <Button variant="ghost" size="sm" className="h-7 px-2 text-emerald-600 hover:bg-emerald-50" onClick={() => handleVerificarGasto(gasto.id, 'CONFIRMADO')}>
                                         <ShieldCheck className="h-3.5 w-3.5" />
@@ -1227,9 +1246,9 @@ const DailySummaryPage = () => {
               {selectedResumen.estado !== 'CONFIRMADO' && (
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setSelectedResumen(null)}>
-                    Cerrar
+                    {isVendedor ? 'Cerrar' : 'Cancelar'}
                   </Button>
-                  {selectedResumen.estado === 'PENDIENTE' && (
+                  {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
                     <Button
                       className="bg-red-600 hover:bg-red-700"
                       onClick={() => handleRechazar(selectedResumen.id)}>
@@ -1237,7 +1256,7 @@ const DailySummaryPage = () => {
                       Rechazar Resumen
                     </Button>
                   )}
-                  {selectedResumen.estado === 'PENDIENTE' && (
+                  {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
                     <Button
                       className="bg-emerald-600 hover:bg-emerald-700"
                       onClick={() => handleAprobar(selectedResumen.id)}>

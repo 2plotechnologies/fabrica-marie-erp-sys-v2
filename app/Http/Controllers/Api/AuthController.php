@@ -3,27 +3,44 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Controller;
+use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
         $credentials = $request->validate([
-            'email' => 'required|email',
+            'email' => 'required',
             'password' => 'required'
         ]);
 
-        if (!Auth::attempt([
-            'email' => $credentials['email'],
-            'password' => $credentials['password'],
-            'activo' => 1
-        ])) {
+        // Buscar usuario por email o username
+        $user = Usuario::where('email', $credentials['email'])
+            ->orWhere('username', $credentials['email'])
+            ->first();
+
+        if (!$user) {
             return response()->json(['message' => 'Credenciales incorrectas'], 401);
         }
 
-        $user = Auth::user();
+        // Verificar contraseña
+        $passwordMatches = Hash::check($credentials['password'], $user->password_hash);
+        if (!$passwordMatches) {
+            return response()->json(['message' => 'Credenciales incorrectas'], 401);
+        }
+
+        // Verificar si el usuario se encuentra desactivado o eliminado
+        if (!$user->activo || $user->deleted) {
+            return response()->json([
+                'message' => 'El usuario se encuentra desactivado. No tiene acceso al sistema.'
+            ], 403);
+        }
+
+        Auth::login($user);
+
         $user->ultimo_login = now();
         $user->save();
 

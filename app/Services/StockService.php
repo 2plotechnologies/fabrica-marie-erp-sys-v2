@@ -147,6 +147,7 @@ class StockService
                 'stock_anterior' => $stockAnterior,
                 'stock_post_mov' => $stock->cantidad,
                 'user_id' => $userId,
+                'estado' => 'REGISTRADO',
                 'created_at' => now()
             ]);
 
