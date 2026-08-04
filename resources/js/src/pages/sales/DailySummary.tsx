@@ -93,6 +93,13 @@ const DailySummaryPage = () => {
 
 
   const handleVehiculoChange = (vehiculoId: string) => {
+    if (vehiculoId === 'sin_vehiculo') {
+      setNewResumen(prev => ({
+        ...prev,
+        vehiculo_id: vehiculoId,
+      }));
+      return;
+    }
     const vehiculoSeleccionado = vehiculos.find(v => String(v.id) === vehiculoId);
     setNewResumen(prev => ({
       ...prev,
@@ -292,7 +299,13 @@ const DailySummaryPage = () => {
     if (!newResumen.vendedor_id) return;
 
     try {
-      await resumenDiarioService.createResumenDiario(newResumen);
+      const payload = {
+        ...newResumen,
+        ruta_id: newResumen.ruta_id === 'sin_ruta' ? null : newResumen.ruta_id,
+        vehiculo_id: newResumen.vehiculo_id === 'sin_vehiculo' ? null : newResumen.vehiculo_id,
+        salida_id: newResumen.salida_id === 'sin_salida' ? null : newResumen.salida_id,
+      };
+      await resumenDiarioService.createResumenDiario(payload);
       await getResumenesDiarios();
       setIsNewDialogOpen(false);
       setNewResumen({
@@ -462,13 +475,14 @@ const DailySummaryPage = () => {
                     <Label>Ruta</Label>
                     {/* Cargar Rutas de la base de datos */}
                     <Select
-                      value={newResumen.ruta_id}
+                      value={newResumen.ruta_id || undefined}
                       onValueChange={(v) => setNewResumen({ ...newResumen, ruta_id: v })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar ruta" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="sin_ruta">Sin Ruta</SelectItem>
                         {(Array.isArray(rutas) ? rutas : []).map(r => (
                           <SelectItem key={r.id} value={String(r.id)}>
                             {r.nombre}
@@ -481,16 +495,17 @@ const DailySummaryPage = () => {
                     <Label>Salida de Fábrica Asociada</Label>
                     {/* Cargar Salidas de Fábrica de la base de datos */}
                     <Select
-                      value={newResumen.salida_id}
+                      value={newResumen.salida_id || undefined}
                       onValueChange={(v) => setNewResumen({ ...newResumen, salida_id: v })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar salida de fábrica" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="sin_salida">Sin Salida</SelectItem>
                         {(Array.isArray(salidas) ? salidas : []).map(s => (
                           <SelectItem key={s.id} value={String(s.id)}>
-                            {s.fecha} - {s.vehiculo.placa} - {s.ruta.nombre}
+                            {s.fecha} - {s.vehiculo?.placa} - {s.ruta?.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -501,13 +516,14 @@ const DailySummaryPage = () => {
                     <Label>Vehículo</Label>
                     {/* Cargar Vehículos de la base de datos */}
                     <Select
-                      value={newResumen.vehiculo_id}
+                      value={newResumen.vehiculo_id || undefined}
                       onValueChange={handleVehiculoChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar vehículo" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="sin_vehiculo">Sin Vehículo</SelectItem>
                         {(Array.isArray(vehiculos) ? vehiculos : []).map(v => (
                           <SelectItem key={v.id} value={String(v.id)}>
                             {v.placa}
@@ -936,7 +952,7 @@ const DailySummaryPage = () => {
                     <TableCell className="font-medium">{resumen.vendedor?.usuario?.nombre || '-'}</TableCell>
                     <TableCell>{resumen.conductor || '-'}</TableCell>
                     <TableCell>{resumen.zona || '-'}</TableCell>
-                    <TableCell>{resumen.ruta.nombre || '-'}</TableCell>
+                    <TableCell>{resumen.ruta?.nombre || '-'}</TableCell>
                     <TableCell className="text-right text-emerald-600">S/ {Number(resumen.contado).toLocaleString()}</TableCell>
                     <TableCell className="text-right text-amber-600">S/ {Number(resumen.credito).toLocaleString()}</TableCell>
                     <TableCell className="text-right">S/ {Number(resumen.cobranza).toLocaleString()}</TableCell>

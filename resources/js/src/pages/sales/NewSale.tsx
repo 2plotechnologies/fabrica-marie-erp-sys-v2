@@ -189,6 +189,62 @@ const NewSale = () => {
     toast.success(`${product.nombre} agregado al carrito`);
   };
 
+  const addBonificacion = (product: Producto) => {
+    const bonificacionId = `${product.id}-bonif`;
+    const existingBonif = cart.find(i => i.productId === bonificacionId);
+
+    if (existingBonif) {
+      setCart(cart.map(item =>
+        item.productId === bonificacionId
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, {
+        productId: bonificacionId,
+        salida_id: product.salida_id ? Number(product.salida_id) : null,
+        name: product.nombre,
+        price: 0,
+        quantity: 1,
+        marca: product.marca,
+        presentacion: product.presentacion,
+        peso: product.peso,
+        esBonificacion: true,
+        esDegustacion: false,
+      }]);
+    }
+
+    toast.success(`Bonificación de ${product.nombre} agregada`);
+  };
+
+  const addDegustacion = (product: Producto) => {
+    const degustacionId = `${product.id}-degust`;
+    const existingDegust = cart.find(i => i.productId === degustacionId);
+
+    if (existingDegust) {
+      setCart(cart.map(item =>
+        item.productId === degustacionId
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+    } else {
+      setCart([...cart, {
+        productId: degustacionId,
+        salida_id: product.salida_id ? Number(product.salida_id) : null,
+        name: product.nombre,
+        price: 0,
+        quantity: 1,
+        marca: product.marca,
+        presentacion: product.presentacion,
+        peso: product.peso,
+        esBonificacion: false,
+        esDegustacion: true,
+      }]);
+    }
+
+    toast.success(`Degustación de ${product.nombre} agregada`);
+  };
+
   const updateQuantity = (productId: string, quantity: number) => {
     setCart(cart.map(item => {
       if (item.productId === productId) {
@@ -449,7 +505,12 @@ const NewSale = () => {
             </div>
           )}
 
-          <ProductSearch onAddProduct={addToCart} lista_productos={productos} />
+          <ProductSearch
+            onAddProduct={addToCart}
+            onAddBonificacion={addBonificacion}
+            onAddDegustacion={addDegustacion}
+            lista_productos={productos}
+          />
         </div>
 
         <div className="lg:col-span-1">

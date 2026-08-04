@@ -108,7 +108,7 @@ const SalesByVendor = () => {
     const aprobados = vendorResumenes.filter(r => r.estado === 'APROBADO').length;
     const pendientes = vendorResumenes.filter(r => r.estado === 'BORRADOR' || r.estado === 'PENDIENTE').length;
 
-    const zona = vendorResumenes.length > 0 ? vendorResumenes[0].zona : v.zona;
+    const zona = vendorResumenes.length > 0 ? vendorResumenes[0]?.zona || v.zona : v.zona;
 
     return {
       id: v.id,

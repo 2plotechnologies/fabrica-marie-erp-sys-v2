@@ -164,7 +164,7 @@ const CollectionsPage = () => {
   const filteredCuentas = cuentas.filter(c => {
     const matchesSearch =
       (c.cliente?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-      (c.venta?.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      (c.venta?.nota_pedido?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
     const matchesVendedor = filterVendedor === 'all' || c.venta.vendedor_id === filterVendedor;
     return matchesSearch && matchesVendedor;
   });
@@ -271,7 +271,7 @@ const CollectionsPage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Codigo de Venta</TableHead>
+                    <TableHead>Nota Pedido</TableHead>
                     <TableHead className="text-right">Monto Original</TableHead>
                     <TableHead className="text-right">Pagado</TableHead>
                     <TableHead className="text-right">Saldo</TableHead>
@@ -291,7 +291,7 @@ const CollectionsPage = () => {
                           <p className="text-xs text-muted-foreground">{cuenta.cliente?.codigo_cliente}</p>
                         </TableCell>
                         <TableCell>
-                          <p className="text-xs text-muted-foreground">{cuenta.venta.codigo}</p>
+                          <p className="text-xs text-muted-foreground">{cuenta.venta.nota_pedido ? cuenta.venta.nota_pedido : '-'}</p>
                         </TableCell>
                         <TableCell className="text-right">S/ {Number(cuenta.monto_total).toLocaleString()}</TableCell>
                         <TableCell className="text-right text-emerald-600 font-medium">S/ {Number(cuenta.monto_pagado).toLocaleString()}</TableCell>

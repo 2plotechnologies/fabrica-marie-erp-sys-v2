@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
-import { Search, Package, Plus, Filter, Loader2 } from 'lucide-react';
+import { Search, Package, Plus, Filter, Gift, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,10 +31,17 @@ interface Producto {
 
 interface ProductSearchProps {
   onAddProduct: (product: Producto) => void;
+  onAddBonificacion?: (product: Producto) => void;
+  onAddDegustacion?: (product: Producto) => void;
   lista_productos: any[];
 }
 
-export const ProductSearch = ({ onAddProduct, lista_productos }: ProductSearchProps) => {
+export const ProductSearch = ({
+  onAddProduct,
+  onAddBonificacion,
+  onAddDegustacion,
+  lista_productos,
+}: ProductSearchProps) => {
   const [searchProduct, setSearchProduct] = useState('');
   const [filterMarca, setFilterMarca] = useState<string>('all');
   const [filterPresentacion, setFilterPresentacion] = useState<string>('all');
@@ -131,11 +138,55 @@ export const ProductSearch = ({ onAddProduct, lista_productos }: ProductSearchPr
                 )}
               </div>
             </div>
-            <div className="text-right flex items-center gap-2">
-              <p className="font-semibold text-primary">S/ {Number(product.precio_base).toFixed(2)}</p>
-              <Button size="sm" variant="ghost" className="h-7 px-2">
-                <Plus className="h-4 w-4" />
-              </Button>
+            <div className="text-right flex items-center gap-1 sm:gap-2">
+              <p className="font-semibold text-primary mr-1 sm:mr-2 text-sm sm:text-base">
+                S/ {Number(product.precio_base).toFixed(2)}
+              </p>
+              <div className="flex items-center gap-1">
+                {onAddBonificacion && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0 text-emerald-600 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700"
+                    title="Agregar como Bonificación"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddBonificacion(product);
+                    }}
+                  >
+                    <Gift className="h-4 w-4" />
+                  </Button>
+                )}
+                {onAddDegustacion && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0 text-amber-600 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/50 hover:text-amber-700"
+                    title="Agregar como Degustación"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddDegustacion(product);
+                    }}
+                  >
+                    <Coffee className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
+                  title="Agregar Producto"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddProduct(product);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
