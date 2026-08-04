@@ -62,4 +62,9 @@ class Usuario extends Authenticatable
     {
         return $this->hasMany(Tarea::class, 'usuario_id', 'id');
     }
+
+    public function vendedor()
+    {
+        return $this->hasOne(Vendedor::class, 'usuario_id', 'id');
+    }
 }

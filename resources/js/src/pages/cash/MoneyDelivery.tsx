@@ -44,6 +44,7 @@ const MoneyDelivery = () => {
     const [confirmWarningDialog, setConfirmWarningDialog] = useState<{ id: number, estado: string, message: string } | null>(null);
 
     // Form state
+    const [nombreReceptor, setNombreReceptor] = useState('');
     const [observaciones, setObservaciones] = useState('');
     const [items, setItems] = useState<DeliveryItem[]>([{
         id: crypto.randomUUID(),
@@ -112,6 +113,7 @@ const MoneyDelivery = () => {
     });
 
     const resetForm = () => {
+        setNombreReceptor('');
         setObservaciones('');
         setItems([{
             id: crypto.randomUUID(),
@@ -160,6 +162,9 @@ const MoneyDelivery = () => {
 
         const formData = new FormData();
         formData.append('usuario_id', String(user.id));
+        if (nombreReceptor.trim()) {
+            formData.append('nombre_receptor', nombreReceptor.trim());
+        }
         formData.append('monto_total', String(totalMonto));
         if (observaciones) {
             formData.append('observaciones', observaciones);
@@ -234,6 +239,16 @@ const MoneyDelivery = () => {
                         <DialogHeader><DialogTitle>Registrar Nueva Entrega</DialogTitle></DialogHeader>
 
                         <div className="space-y-6 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="nombre_receptor">Nombre del receptor</Label>
+                                <Input
+                                    id="nombre_receptor"
+                                    placeholder="Nombre de la persona que recibe el dinero"
+                                    value={nombreReceptor}
+                                    onChange={(e) => setNombreReceptor(e.target.value)}
+                                />
+                            </div>
+
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-base font-semibold">Ítems de Entrega</Label>
@@ -361,6 +376,7 @@ const MoneyDelivery = () => {
                             <TableRow>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Usuario/Remitente</TableHead>
+                                <TableHead>Nombre del Receptor</TableHead>
                                 <TableHead>Monto Total</TableHead>
                                 <TableHead>Items</TableHead>
                                 <TableHead>Estado</TableHead>
@@ -370,13 +386,14 @@ const MoneyDelivery = () => {
                         <TableBody>
                             {entregas.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay entregas registradas</TableCell>
+                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay entregas registradas</TableCell>
                                 </TableRow>
                             ) : (
                                 paginatedEntregas.map((entrega) => (
                                     <TableRow key={entrega.id} className="hover:bg-muted/30">
                                         <TableCell>{format(new Date(entrega.created_at || new Date()), 'dd/MM/yyyy HH:mm', { locale: es })}</TableCell>
                                         <TableCell className="font-medium">{entrega.usuario?.nombre || 'Desconocido'}</TableCell>
+                                        <TableCell className="text-muted-foreground">{entrega.nombre_receptor || '—'}</TableCell>
                                         <TableCell className="font-bold text-foreground">S/ {Number(entrega.monto_total).toFixed(2)}</TableCell>
                                         <TableCell>
                                             <Badge variant="secondary"><FileText className="h-3 w-3 mr-1" /> {entrega.items?.length || 0} adjuntos</Badge>
@@ -412,6 +429,10 @@ const MoneyDelivery = () => {
                                 <div className="space-y-1">
                                     <p className="text-sm text-muted-foreground">Remitente</p>
                                     <p className="font-medium text-foreground">{selectedEntrega.usuario?.nombre}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-sm text-muted-foreground">Receptor</p>
+                                    <p className="font-medium text-foreground">{selectedEntrega.nombre_receptor || '—'}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-sm text-muted-foreground">Fecha / Hora</p>

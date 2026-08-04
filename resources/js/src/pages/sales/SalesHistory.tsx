@@ -318,6 +318,7 @@ const SalesHistory = () => {
                 <TableHead>Cliente</TableHead>
                 <TableHead className="text-center">Productos</TableHead>
                 <TableHead>Tipo Pago</TableHead>
+                <TableHead>Nota Pedido</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -341,6 +342,15 @@ const SalesHistory = () => {
                     <Badge variant="outline">{sale.items.length} items</Badge>
                   </TableCell>
                   <TableCell>{getPaymentBadge(sale.tipo_pago)}</TableCell>
+                  <TableCell>
+                    {sale.nota_pedido ? (
+                      <span className="font-mono text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-1 rounded border border-amber-200/50 dark:border-amber-800/30">
+                        {sale.nota_pedido}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>{getStatusBadge(sale.estado)}</TableCell>
                   <TableCell className="text-right font-bold">
                     S/ {Number(sale.total_neto).toFixed(2)}
@@ -364,6 +374,20 @@ const SalesHistory = () => {
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4 pb-4 border-b text-sm">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Tipo de Pago</p>
+                              <p className="font-semibold">{sale.tipo_pago === 'CONTADO' ? 'Contado' : 'Crédito'}</p>
+                            </div>
+                            {sale.tipo_pago === 'CREDITO' && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Nota de Pedido</p>
+                                <p className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                                  {sale.nota_pedido || '-'}
+                                </p>
+                              </div>
+                            )}
+                          </div>
                           <div className="border rounded-lg divide-y">
                             {sale.items.map((item) => (
                               <div key={item.id} className="p-3 flex justify-between items-center">

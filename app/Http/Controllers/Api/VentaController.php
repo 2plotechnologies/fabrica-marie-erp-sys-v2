@@ -134,6 +134,7 @@ class VentaController extends Controller
                 .'<Cell><Data ss:Type="String">'.$this->escapeXml($venta['vendedor']['usuario']['nombre'] ?? 'N/A').'</Data></Cell>'
                 .'<Cell><Data ss:Type="String">'.$this->escapeXml($productos).'</Data></Cell>'
                 .'<Cell><Data ss:Type="String">'.$this->escapeXml($venta['tipo_pago'] ?? '').'</Data></Cell>'
+                .'<Cell><Data ss:Type="String">'.$this->escapeXml($venta['nota_pedido'] ?? '').'</Data></Cell>'
                 .'<Cell><Data ss:Type="Number">'.number_format((float) ($venta['total_neto'] ?? 0), 2, '.', '').'</Data></Cell>'
                 .'</Row>';
         }
@@ -154,22 +155,23 @@ class VentaController extends Controller
             .'<Cell><Data ss:Type="String">Vendedor</Data></Cell>'
             .'<Cell><Data ss:Type="String">Productos</Data></Cell>'
             .'<Cell><Data ss:Type="String">Tipo de pago</Data></Cell>'
+            .'<Cell><Data ss:Type="String">Nota Pedido</Data></Cell>'
             .'<Cell><Data ss:Type="String">Total neto</Data></Cell>'
             .'</Row>'
             .$rows
             .'<Row>'
             .'<Cell><Data ss:Type="String">Totales</Data></Cell>'
-            .'<Cell/><Cell/><Cell/><Cell/>'
+            .'<Cell/><Cell/><Cell/><Cell/><Cell/>'
             .'<Cell><Data ss:Type="String">Total vendido</Data></Cell>'
             .'<Cell><Data ss:Type="Number">'.number_format($totalVendido, 2, '.', '').'</Data></Cell>'
             .'</Row>'
             .'<Row>'
-            .'<Cell/><Cell/><Cell/><Cell/><Cell/>'
+            .'<Cell/><Cell/><Cell/><Cell/><Cell/><Cell/>'
             .'<Cell><Data ss:Type="String">Contado</Data></Cell>'
             .'<Cell><Data ss:Type="Number">'.number_format($totalContado, 2, '.', '').'</Data></Cell>'
             .'</Row>'
             .'<Row>'
-            .'<Cell/><Cell/><Cell/><Cell/><Cell/>'
+            .'<Cell/><Cell/><Cell/><Cell/><Cell/><Cell/>'
             .'<Cell><Data ss:Type="String">Crédito</Data></Cell>'
             .'<Cell><Data ss:Type="Number">'.number_format($totalCredito, 2, '.', '').'</Data></Cell>'
             .'</Row>'
@@ -193,6 +195,7 @@ class VentaController extends Controller
             'adelanto' => ['nullable', 'numeric', 'min:0'],
             'descuento' => ['nullable', 'numeric', 'min:0'],
             'total_neto' => ['required', 'numeric', 'min:0'],
+            'nota_pedido' => ['required_if:tipo_pago,CREDITO', 'nullable', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.producto_id' => ['required', 'exists:productos,id'],
             'items.*.salida_id' => ['nullable', 'exists:salidas,id'],
@@ -209,6 +212,9 @@ class VentaController extends Controller
             if($cliente->codigo_cliente === '000000'){
                 throw new Exception('No se puede vender al credito a cliente varios. Por favor, seleccione un cliente registrado.');
             }
+            if ($validated['total_neto'] <= 0) {
+                throw new Exception('No se puede crear una venta al crédito con total cero.');
+            }
         }
 
         return DB::transaction(function () use ($validated) {
@@ -224,7 +230,8 @@ class VentaController extends Controller
                                 : 0,
                 'descuento' => $validated['descuento'] ?? 0,
                 'total_neto' => $validated['total_neto'],
-                'estado' => 'BORRADOR' // 🔥 Estado inicial automático
+                'estado' => 'BORRADOR', // 🔥 Estado inicial automático
+                'nota_pedido' => $validated['tipo_pago'] === 'CREDITO' ? ($validated['nota_pedido'] ?? null) : null,
             ]);
 
             // Generar código después de obtener ID
@@ -490,13 +497,37 @@ class VentaController extends Controller
     {
         return DB::transaction(function () use ($id, $ventaService) {
 
-            $venta = Venta::with('items')->lockForUpdate()->findOrFail($id);
+            $venta = Venta::with(['items', 'cuenta'])->lockForUpdate()->findOrFail($id);
 
             if ($venta->estado !== 'BORRADOR') {
                 throw new Exception('Solo se pueden eliminar ventas en borrador');
             }
 
             $ventaService->liberarReserva($venta);
+
+            if ($venta->cuenta) {
+                $tieneAbonos = $venta->cuenta
+                    ->abonos()
+                    ->where('estado', 'ACTIVO')
+                    ->exists();
+
+                if ($tieneAbonos) {
+                    throw new Exception('No se puede eliminar la venta porque tiene una cuenta por cobrar con abonos registrados.');
+                }
+
+                // Restar de la deuda actual del cliente
+                $cliente = Cliente::find($venta->cliente_id);
+                if ($cliente) {
+                    $montoRestar = $venta->total_neto - $venta->adelanto;
+                    $cliente->update([
+                        'deuda_actual' => $cliente->deuda_actual - $montoRestar
+                    ]);
+                }
+
+                // Eliminar abonos (si existieran inactivos) y la cuenta
+                $venta->cuenta->abonos()->delete();
+                $venta->cuenta->delete();
+            }
 
             // Eliminar items
             $venta->items()->delete();

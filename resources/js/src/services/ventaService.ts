@@ -14,6 +14,7 @@ export interface VentaPayload {
   descuento: number,
   total_neto: number,
   items: VentaItemPayload[];
+  nota_pedido?: string | null;
 }
 
 export interface VentaItemPayload {

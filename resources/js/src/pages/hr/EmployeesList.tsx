@@ -21,6 +21,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -137,7 +138,12 @@ const EmployeesList = () => {
     sueldo_base: '',
     horas_extra: '',
     afp: '',
+    venta_directa: false,
+    venta_en_ruta: true,
   });
+
+  const selectedRole = roles.find(r => r.id.toString() === form.rol);
+  const isVendedorSelected = selectedRole?.nombre === 'VENDEDOR';
 
   /* =========================
       OBTENER empleados
@@ -190,6 +196,8 @@ const EmployeesList = () => {
         sueldo_base: Number(form.sueldo_base),
         horas_extra: Number(form.horas_extra),
         afp: Number(form.afp),
+        venta_directa: form.venta_directa,
+        venta_en_ruta: form.venta_en_ruta,
       });
 
       await fetchEmployees();
@@ -203,6 +211,8 @@ const EmployeesList = () => {
         sueldo_base: '',
         horas_extra: '',
         afp: '',
+        venta_directa: false,
+        venta_en_ruta: true,
       });
 
       setIsAddDialogOpen(false);
@@ -232,6 +242,8 @@ const EmployeesList = () => {
         sueldo_base: data.informacion_salarial?.sueldo_base || '',
         horas_extra: data.informacion_salarial?.horas_extra || '',
         afp: data.informacion_salarial?.afp || '',
+        venta_directa: data.vendedor?.venta_directa ?? false,
+        venta_en_ruta: data.vendedor?.venta_en_ruta ?? true,
       });
       setIsEditDialogOpen(true);
     } catch (err: any) {
@@ -257,6 +269,8 @@ const EmployeesList = () => {
         sueldo_base: Number(form.sueldo_base),
         horas_extra: Number(form.horas_extra),
         afp: Number(form.afp),
+        venta_directa: form.venta_directa,
+        venta_en_ruta: form.venta_en_ruta,
       });
 
       await fetchEmployees();
@@ -270,6 +284,8 @@ const EmployeesList = () => {
         sueldo_base: '',
         horas_extra: '',
         afp: '',
+        venta_directa: false,
+        venta_en_ruta: true,
       });
       setEditId(null);
 
@@ -465,6 +481,31 @@ const EmployeesList = () => {
                   Salario del mes = Sueldo Base + (Horas Extras x Tarifa) - (Sueldo x AFP%)
                 </p>
               </div>
+
+              {/* Opciones Vendedor */}
+              {isVendedorSelected && (
+                <div className="border-t pt-4 mt-2">
+                  <h4 className="text-sm font-medium mb-3">Opciones de Venta</h4>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="venta_directa"
+                        checked={form.venta_directa}
+                        onCheckedChange={(checked) => setForm({ ...form, venta_directa: checked })}
+                      />
+                      <Label htmlFor="venta_directa">Permitir Venta Directa (Fábrica)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="venta_en_ruta"
+                        checked={form.venta_en_ruta}
+                        onCheckedChange={(checked) => setForm({ ...form, venta_en_ruta: checked })}
+                      />
+                      <Label htmlFor="venta_en_ruta">Permitir Venta en Ruta (Con Salida)</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -666,7 +707,7 @@ const EmployeesList = () => {
 
       <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
         if (!open) {
-          setForm({ username: '', email: '', password: '', nombre: '', rol: '', sueldo_base: '', horas_extra: '', afp: '' });
+          setForm({ username: '', email: '', password: '', nombre: '', rol: '', sueldo_base: '', horas_extra: '', afp: '', venta_directa: false, venta_en_ruta: true });
           setEditId(null);
         }
         setIsEditDialogOpen(open);
@@ -679,7 +720,7 @@ const EmployeesList = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={(e) => handleEditSubmit(e, editId!)} className="space-y-4">
+          <form onSubmit={(e) => handleEditSubmit(e, editId!)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
@@ -777,8 +818,33 @@ const EmployeesList = () => {
               </div>
             </div>
 
+            {/* Opciones Vendedor (Edición) */}
+            {isVendedorSelected && (
+              <div className="border-t pt-4 mt-2">
+                <h4 className="text-sm font-medium mb-3">Opciones de Venta</h4>
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="edit_venta_directa"
+                      checked={form.venta_directa}
+                      onCheckedChange={(checked) => setForm({ ...form, venta_directa: checked })}
+                    />
+                    <Label htmlFor="edit_venta_directa">Permitir Venta Directa (Fábrica)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="edit_venta_en_ruta"
+                      checked={form.venta_en_ruta}
+                      onCheckedChange={(checked) => setForm({ ...form, venta_en_ruta: checked })}
+                    />
+                    <Label htmlFor="edit_venta_en_ruta">Permitir Venta en Ruta (Con Salida)</Label>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditId(null); setForm({ username: '', email: '', password: '', nombre: '', rol: '', sueldo_base: '', horas_extra: '', afp: '' }); }}>
+              <Button type="button" variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditId(null); setForm({ username: '', email: '', password: '', nombre: '', rol: '', sueldo_base: '', horas_extra: '', afp: '', venta_directa: false, venta_en_ruta: true }); }}>
                 Cancelar
               </Button>
               <Button type="submit">Guardar Cambios</Button>

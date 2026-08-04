@@ -14,23 +14,9 @@ class ClienteController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
-        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
-        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
-
-        $query = Cliente::where('activo', true)->with('ruta');
-
-        if ($vendedor) {
-            $query->where(function ($q) use ($vendedor) {
-                $q->whereHas('rutas', function ($sub) use ($vendedor) {
-                    $sub->where('vendedor_id', $vendedor->id);
-                })->orWhereHas('ruta', function ($sub) use ($vendedor) {
-                    $sub->where('vendedor_id', $vendedor->id);
-                });
-            });
-        }
-
-        return response()->json($query->get());
+        return response()->json(
+            Cliente::where('activo', true)->with('ruta')->get()
+        );
     }
 
     public function store(Request $request)
@@ -73,26 +59,11 @@ class ClienteController extends Controller
 
     public function listaCRM()
     {
-        $user = auth()->user();
-        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
-        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
-
         //Excluir cliente varios (000000).
-        $query = Cliente::with('ruta','interacciones.usuario','tareas.usuario')
+        $clientes = Cliente::with('ruta','interacciones.usuario','tareas.usuario')
             ->where('activo', true)
-            ->where('codigo_cliente', '!=', '000000');
-
-        if ($vendedor) {
-            $query->where(function ($q) use ($vendedor) {
-                $q->whereHas('rutas', function ($sub) use ($vendedor) {
-                    $sub->where('vendedor_id', $vendedor->id);
-                })->orWhereHas('ruta', function ($sub) use ($vendedor) {
-                    $sub->where('vendedor_id', $vendedor->id);
-                });
-            });
-        }
-
-        $clientes = $query->get();
+            ->where('codigo_cliente', '!=', '000000')
+            ->get();
 
         $fechaActual = date('Y-m-d');
 
@@ -194,27 +165,12 @@ class ClienteController extends Controller
 
     public function indexMapa()
     {
-        $user = auth()->user();
-        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
-        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
-
-        $query = Cliente::join('cliente_ubicaciones', 'clientes.id', '=', 'cliente_ubicaciones.cliente_id')
+        $clientes = Cliente::join('cliente_ubicaciones', 'clientes.id', '=', 'cliente_ubicaciones.cliente_id')
         ->where('codigo_cliente', '!=', '000000')
         ->where('activo', true)
         ->whereNotNull('latitud')
-        ->whereNotNull('longitud');
-
-        if ($vendedor) {
-            $query->where(function ($q) use ($vendedor) {
-                $q->whereHas('rutas', function ($sub) use ($vendedor) {
-                    $sub->where('vendedor_id', $vendedor->id);
-                })->orWhereHas('ruta', function ($sub) use ($vendedor) {
-                    $sub->where('vendedor_id', $vendedor->id);
-                });
-            });
-        }
-
-        $clientes = $query->select('clientes.id', 'clientes.razon_social', 'cliente_ubicaciones.latitud', 'cliente_ubicaciones.longitud')
+        ->whereNotNull('longitud')
+        ->select('clientes.id', 'clientes.razon_social', 'cliente_ubicaciones.latitud', 'cliente_ubicaciones.longitud')
         ->get();
 
         return response()->json(
@@ -255,27 +211,10 @@ class ClienteController extends Controller
 
     public function morosos()
     {
-        $user = auth()->user();
-        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
-        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
-
-        $query = \App\Models\CuentaPorCobrar::with(['cliente.ruta'])
+        $cuentas = \App\Models\CuentaPorCobrar::with(['cliente.ruta'])
             ->where('saldo', '>', 0)
-            ->whereDate('fecha_vencimiento', '<=', Carbon::now()->toDateString());
-
-        if ($vendedor) {
-            $query->whereHas('cliente', function ($q) use ($vendedor) {
-                $q->where(function ($subQ) use ($vendedor) {
-                    $subQ->whereHas('rutas', function ($sub) use ($vendedor) {
-                        $sub->where('vendedor_id', $vendedor->id);
-                    })->orWhereHas('ruta', function ($sub) use ($vendedor) {
-                        $sub->where('vendedor_id', $vendedor->id);
-                    });
-                });
-            });
-        }
-
-        $cuentas = $query->get();
+            ->whereDate('fecha_vencimiento', '<=', Carbon::now()->toDateString())
+            ->get();
 
         $morosos = collect();
 

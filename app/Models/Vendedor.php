@@ -11,7 +11,9 @@ class Vendedor extends Model
 
     protected $fillable = [
         'usuario_id',
-        'activo'
+        'activo',
+        'venta_directa',
+        'venta_en_ruta'
     ];
 
     public function usuario()

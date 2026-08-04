@@ -23,6 +23,7 @@ class EntregaDineroController
     {
         $request->validate([
             'usuario_id' => 'required|exists:usuarios,id',
+            'nombre_receptor' => 'nullable|string|max:255',
             'monto_total' => 'required|numeric|min:0',
             'observaciones' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -37,6 +38,7 @@ class EntregaDineroController
             // 🔹 Crear la entrega principal
             $entrega = EntregaDinero::create([
                 'usuario_id' => $request->usuario_id,
+                'nombre_receptor' => $request->nombre_receptor,
                 'created_at' => now(),
                 'monto_total' => $request->monto_total,
                 'observaciones' => $request->observaciones,

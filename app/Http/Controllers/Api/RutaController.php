@@ -9,19 +9,10 @@ class RutaController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
-        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
-        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
-
-        $query = Ruta::where('activo', true)
+        $rutas = Ruta::where('activo', true)
             ->with('clientes')
-            ->withCount('clientes');
-
-        if ($vendedor) {
-            $query->where('vendedor_id', $vendedor->id);
-        }
-
-        $rutas = $query->get();
+            ->withCount('clientes')
+            ->get();
 
         return response()->json($rutas);
     }
@@ -35,16 +26,8 @@ class RutaController extends Controller
         $perPage = (int) $request->input('per_page', 6);
         $search  = $request->input('search', '');
 
-        $user = auth()->user();
-        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
-        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
-
         $query = Ruta::where('activo', true)
             ->withCount('clientes');
-
-        if ($vendedor) {
-            $query->where('vendedor_id', $vendedor->id);
-        }
 
         if ($search !== '') {
             $query->where('nombre', 'like', '%' . $search . '%');

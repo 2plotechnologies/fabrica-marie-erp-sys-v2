@@ -37,6 +37,8 @@ interface SaleCartProps {
   onSubmit: () => void;
   isClientSelected: boolean;
   isSubmitting?: boolean;
+  notaPedido: string;
+  onNotaPedidoChange: (notaPedido: string) => void;
 }
 
 export const SaleCart = ({
@@ -57,6 +59,8 @@ export const SaleCart = ({
   onSubmit,
   isClientSelected,
   isSubmitting,
+  notaPedido,
+  onNotaPedidoChange,
 }: SaleCartProps) => {
   const regularItems = cart.filter(item => !item.esBonificacion && !item.esDegustacion);
   const bonificaciones = cart.filter(item => item.esBonificacion);
@@ -187,6 +191,22 @@ export const SaleCart = ({
         </div>
       )}
 
+      {/* Nota Pedido (solo para crédito) */}
+      {paymentType === 'CREDITO' && (
+        <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-1.5">
+          <Label className="text-sm text-amber-700 dark:text-amber-400 block font-medium">
+            Nota Pedido <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="text"
+            placeholder="Ingrese Nota de Pedido"
+            value={notaPedido}
+            onChange={(e) => onNotaPedidoChange(e.target.value)}
+            className="bg-background border-input focus-visible:ring-amber-500"
+          />
+        </div>
+      )}
+
       {/* Discount */}
       <div className="mb-4">
         <Label className="text-sm text-muted-foreground mb-2 block">Descuento (S/)</Label>
@@ -229,7 +249,11 @@ export const SaleCart = ({
         className="w-full"
         size="lg"
         onClick={onSubmit}
-        disabled={(regularItems.length === 0 && !cart.some(item => item.esDegustacion)) || !isClientSelected}
+        disabled={
+          (regularItems.length === 0 && !cart.some(item => item.esDegustacion)) ||
+          !isClientSelected ||
+          (paymentType === 'CREDITO' && !notaPedido.trim())
+        }
       >
         <ShoppingCart className="h-4 w-4 mr-2" />
         {isSubmitting ? 'Registrando...' : 'Registrar Venta'}

@@ -75,7 +75,7 @@ class ReporteDetalleVentaController
                     "bonificacion" => (bool)$item->es_bonificacion,
                     "degustacion" => (bool)$item->es_degustacion,
                     "condicionVenta" => $venta->tipo_pago,
-                    "notaPedido" => $venta->codigo,
+                    "notaPedido" => $venta->nota_pedido,
                     "tipoCliente" => $venta->cliente->tipo_cliente ?? null
                 ];
             }
@@ -108,7 +108,7 @@ class ReporteDetalleVentaController
 
                 "condicionVenta" => $venta->tipo_pago,
 
-                "notaPedido" => $venta->codigo,
+                "notaPedido" => $venta->nota_pedido,
 
                 "tipoCliente" => $venta->cliente->tipo_cliente ?? null,
 

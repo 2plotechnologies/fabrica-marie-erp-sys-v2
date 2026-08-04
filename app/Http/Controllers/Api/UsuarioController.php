@@ -16,7 +16,7 @@ class UsuarioController extends Controller
     public function index()
     {
         return response()->json(
-            Usuario::with(['roles:id,nombre', 'informacionSalarial'])
+            Usuario::with(['roles:id,nombre', 'informacionSalarial', 'vendedor'])
                 ->where('deleted', false)
                 ->get()
         );
@@ -25,7 +25,7 @@ class UsuarioController extends Controller
     public function show($id)
     {
         return response()->json(
-            Usuario::with(['roles:id,nombre', 'informacionSalarial'])
+            Usuario::with(['roles:id,nombre', 'informacionSalarial', 'vendedor'])
                 ->where('id', $id)
                 ->where('deleted', false)
                 ->first()
@@ -52,6 +52,9 @@ class UsuarioController extends Controller
             'sueldo_base' => 'required|numeric|min:0',
             'horas_extra' => 'required|numeric|min:0',
             'afp' => 'required|numeric|min:0',
+            //Opciones Vendedor
+            'venta_directa' => 'nullable|boolean',
+            'venta_en_ruta' => 'nullable|boolean',
         ]);
 
         DB::transaction(function () use ($data, $request) {
@@ -81,6 +84,8 @@ class UsuarioController extends Controller
                 Vendedor::create([
                     'usuario_id' => $usuario->id,
                     'activo' => 1,
+                    'venta_directa' => $data['venta_directa'] ?? false,
+                    'venta_en_ruta' => $data['venta_en_ruta'] ?? true,
                 ]);
             }
         });
@@ -103,6 +108,9 @@ class UsuarioController extends Controller
             'sueldo_base' => 'required|numeric|min:0',
             'horas_extra' => 'required|numeric|min:0',
             'afp' => 'required|numeric|min:0',
+            //Opciones Vendedor
+            'venta_directa' => 'nullable|boolean',
+            'venta_en_ruta' => 'nullable|boolean',
         ];
 
         if ($request->filled('password')) {
@@ -138,6 +146,18 @@ class UsuarioController extends Controller
             'horas_extra' => $validated['horas_extra'],
             'afp' => $validated['afp'],
         ]);
+
+        $rolVendedor = Rol::where('nombre', 'VENDEDOR')->first();
+        if ($rolVendedor && $usuario->roles->contains('id', $rolVendedor->id)) {
+            Vendedor::updateOrCreate(
+                ['usuario_id' => $usuario->id],
+                [
+                    'activo' => $request->has('activo') ? $request->boolean('activo') : true,
+                    'venta_directa' => $request->input('venta_directa', false),
+                    'venta_en_ruta' => $request->input('venta_en_ruta', true),
+                ]
+            );
+        }
 
         return response()->json([
             'message' => 'Usuario actualizado correctamente'

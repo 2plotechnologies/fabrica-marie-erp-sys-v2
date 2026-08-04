@@ -12,6 +12,7 @@ class EntregaDinero extends Model
 
     protected $fillable = [
         'usuario_id',
+        'nombre_receptor',
         'created_at',
         'recibido_by',
         'aprobado_at',

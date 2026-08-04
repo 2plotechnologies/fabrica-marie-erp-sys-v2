@@ -10,6 +10,8 @@ export interface EmpleadoPayload {
   sueldo_base: number;
   horas_extra: number;
   afp: number;
+  venta_directa?: boolean;
+  venta_en_ruta?: boolean;
 }
 
 export interface Role {
@@ -34,6 +36,8 @@ export const empleadoService = {
       sueldo_base: data.sueldo_base,
       horas_extra: data.horas_extra,
       afp: data.afp,
+      venta_directa: data.venta_directa,
+      venta_en_ruta: data.venta_en_ruta,
     });
 
     return response.data;
@@ -59,6 +63,8 @@ export const empleadoService = {
       sueldo_base: data.sueldo_base,
       horas_extra: data.horas_extra,
       afp: data.afp,
+      venta_directa: data.venta_directa,
+      venta_en_ruta: data.venta_en_ruta,
     });
 
     return response.data;

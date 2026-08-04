@@ -19,7 +19,8 @@ class Venta extends Model
         'metodo_pago_detalle',
         'adelanto',
         'descuento',
-        'estado'
+        'estado',
+        'nota_pedido'
     ];
 
     public function vendedor()

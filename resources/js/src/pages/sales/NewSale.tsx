@@ -34,6 +34,7 @@ const NewSale = () => {
   const [discount, setDiscount] = useState(0);
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [adelanto, setAdelanto] = useState(0);
+  const [notaPedido, setNotaPedido] = useState('');
   const [isLoadingVendedores, setIsLoadingVendedores] = useState(true);
 
   interface Producto {
@@ -110,6 +111,12 @@ const NewSale = () => {
     v => v.usuario_id === user?.id
   );
 
+  const selectedVendedorObj = vendedores.find(v => String(v.id) === selectedVendedor);
+  const targetVendedor = isVendedor ? vendedorActual : selectedVendedorObj;
+
+  const allowRuta = targetVendedor ? (targetVendedor.venta_en_ruta ?? true) : true;
+  const allowFabrica = targetVendedor ? (targetVendedor.venta_directa ?? false) : true;
+
   useEffect(() => {
     fetchClientes();
     fetchVendedores();
@@ -130,6 +137,18 @@ const NewSale = () => {
       setSelectedVendedor(String(vendedorActual.id));
     }
   }, [isVendedor, vendedorActual]);
+
+  useEffect(() => {
+    if (targetVendedor) {
+      const canRuta = targetVendedor.venta_en_ruta ?? true;
+      const canFabrica = targetVendedor.venta_directa ?? false;
+      if (!canRuta && canFabrica && tipoOrigen === 'RUTA') {
+        setTipoOrigen('FABRICA');
+      } else if (!canFabrica && canRuta && tipoOrigen === 'FABRICA') {
+        setTipoOrigen('RUTA');
+      }
+    }
+  }, [targetVendedor, tipoOrigen]);
 
 
   // Credit limit warning
@@ -235,6 +254,10 @@ const NewSale = () => {
   const handleSubmit = async () => {
     if (!selectedClient) { toast.error('Selecciona un cliente'); return; }
     if (!selectedVendedor) { toast.error('Selecciona un vendedor'); return; }
+    if (paymentType === 'CREDITO' && !notaPedido.trim()) {
+      toast.error('La Nota de Pedido es requerida para ventas al crédito');
+      return;
+    }
 
     const hasDegustacion = cart.some(item => item.esDegustacion);
     if (cart.length === 0) {
@@ -244,6 +267,11 @@ const NewSale = () => {
 
     if (regularItems.length === 0 && !hasDegustacion) {
       toast.error('Agrega productos al carrito');
+      return;
+    }
+
+    if (paymentType === 'CREDITO' && total === 0) {
+      toast.error('No se puede crear una venta al crédito con total cero (por ejemplo, con solo degustaciones).');
       return;
     }
 
@@ -262,6 +290,7 @@ const NewSale = () => {
         subtotal: subtotal,
         descuento: discount,
         total_neto: total,
+        nota_pedido: paymentType === 'CREDITO' ? notaPedido.trim() : null,
         items: cart.map(item => ({
           producto_id: Number(String(item.productId).split('-')[0]),
           salida_id: item.salida_id ? Number(item.salida_id) : null,
@@ -277,6 +306,7 @@ const NewSale = () => {
       setSelectedClient('');
       setDiscount(0);
       setAdelanto(0);
+      setNotaPedido('');
       setMetodoPago('efectivo');
 
       // Actualizar el stock de productos y los clientes
@@ -333,33 +363,42 @@ const NewSale = () => {
           {/* Selector de Tipo de Venta: Ruta vs Fábrica */}
           <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up">
             <Label className="font-semibold block mb-3">Origen de la Venta</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant={tipoOrigen === 'RUTA' ? 'default' : 'outline'}
-                className="flex items-center justify-center gap-2 py-5"
-                onClick={() => {
-                  if (tipoOrigen !== 'RUTA') {
-                    setTipoOrigen('RUTA');
-                    setCart([]);
-                  }
-                }}
-              >
-                <span>🚚 Venta en Ruta (Vehículo)</span>
-              </Button>
-              <Button
-                type="button"
-                variant={tipoOrigen === 'FABRICA' ? 'default' : 'outline'}
-                className="flex items-center justify-center gap-2 py-5"
-                onClick={() => {
-                  if (tipoOrigen !== 'FABRICA') {
-                    setTipoOrigen('FABRICA');
-                    setCart([]);
-                  }
-                }}
-              >
-                <span>🏢 Venta Directa (Fábrica)</span>
-              </Button>
+            <div className={`grid ${allowRuta && allowFabrica ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+              {allowRuta && (
+                <Button
+                  type="button"
+                  variant={tipoOrigen === 'RUTA' ? 'default' : 'outline'}
+                  className="flex items-center justify-center gap-2 py-5"
+                  onClick={() => {
+                    if (tipoOrigen !== 'RUTA') {
+                      setTipoOrigen('RUTA');
+                      setCart([]);
+                    }
+                  }}
+                >
+                  <span>🚚 Venta en Ruta (Vehículo)</span>
+                </Button>
+              )}
+              {allowFabrica && (
+                <Button
+                  type="button"
+                  variant={tipoOrigen === 'FABRICA' ? 'default' : 'outline'}
+                  className="flex items-center justify-center gap-2 py-5"
+                  onClick={() => {
+                    if (tipoOrigen !== 'FABRICA') {
+                      setTipoOrigen('FABRICA');
+                      setCart([]);
+                    }
+                  }}
+                >
+                  <span>🏢 Venta Directa (Fábrica)</span>
+                </Button>
+              )}
+              {!allowRuta && !allowFabrica && (
+                <div className="text-center text-muted-foreground py-5 border rounded-lg border-dashed">
+                  No tienes opciones de venta habilitadas.
+                </div>
+              )}
             </div>
           </div>
 
@@ -420,9 +459,14 @@ const NewSale = () => {
             discount={discount}
             metodoPago={metodoPago}
             adelanto={adelanto}
+            notaPedido={notaPedido}
+            onNotaPedidoChange={setNotaPedido}
             onPaymentTypeChange={(type) => {
               setPaymentType(type);
-              if (type === 'CONTADO') setAdelanto(0);
+              if (type === 'CONTADO') {
+                setAdelanto(0);
+                setNotaPedido('');
+              }
             }}
             onDiscountChange={setDiscount}
             onMetodoPagoChange={setMetodoPago}
