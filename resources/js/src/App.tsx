@@ -227,12 +227,36 @@ const AppRoutes = () => {
         <Route path="/clientes/cobrar" element={<AccountsReceivable />} />
 
         {/* Caja */}
-        <Route path="/caja" element={<CurrentCash />} />
-        <Route path="/caja/actual" element={<CurrentCash />} />
-        <Route path="/caja/movimientos" element={<CashMovements />} />
-        <Route path="/caja/salidas" element={<CashDisbursements />} />
-        <Route path="/caja/cierres" element={<CashClosures />} />
-        <Route path="/caja/regularizacion" element={<CashRegularization />} />
+        <Route path="/caja" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <CurrentCash />
+        } />
+        <Route path="/caja/actual" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <CurrentCash />
+        } />
+        <Route path="/caja/movimientos" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <CashMovements />
+        } />
+        <Route path="/caja/salidas" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <CashDisbursements />
+        } />
+        <Route path="/caja/cierres" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <CashClosures />
+        } />
+        <Route path="/caja/regularizacion" element={
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <CashRegularization />
+        } />
         <Route path="/caja/entregas" element={
           <ErrorBoundary key={location.pathname}>
             <MoneyDelivery />
@@ -244,9 +268,9 @@ const AppRoutes = () => {
           </ErrorBoundary>
         } />
         <Route path="/caja/proyeccion" element={
-          <ErrorBoundary key={location.pathname}>
-            <SalesProjection />
-          </ErrorBoundary>
+          currentRole === 'VENDEDOR' 
+            ? <Navigate to="/caja/entregas" replace /> 
+            : <ErrorBoundary key={location.pathname}><SalesProjection /></ErrorBoundary>
         } />
 
         {/* Rutas */}

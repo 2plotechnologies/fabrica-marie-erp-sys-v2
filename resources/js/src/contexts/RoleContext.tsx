@@ -25,7 +25,7 @@ const rolePermissions: Record<UserRole, string[]> = {
   ADMIN: ['dashboard', 'almacen', 'ventas', 'clientes', 'caja', 'rutas', 'gps', 'vehiculos', 'mantenimiento', 'rrhh', 'fidelizacion', 'reportes', 'configuracion'],
   GERENTE: ['dashboard', 'almacen', 'ventas', 'clientes', 'caja', 'rutas', 'gps', 'vehiculos', 'mantenimiento', 'rrhh', 'fidelizacion', 'reportes'],
   SUPERVISOR: ['dashboard', 'almacen', 'ventas', 'clientes', 'rutas', 'gps', 'vehiculos', 'reportes'],
-  VENDEDOR: ['dashboard', 'almacen', 'ventas', 'clientes', 'rutas'],
+  VENDEDOR: ['dashboard', 'almacen', 'ventas', 'clientes', 'caja', 'rutas'],
   ALMACENERO: ['dashboard', 'almacen', 'ventas'],
   CAJERO: ['dashboard', 'caja', 'ventas'],
   RRHH: ['dashboard', 'rrhh', 'reportes'],

@@ -401,10 +401,11 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     Route::post('/zonas', [ZonaController::class, 'store']);
 
     // Entregas de Dinero
-        Route::prefix('entregas-dinero')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,CAJERO')
+    Route::prefix('entregas-dinero')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,CAJERO,VENDEDOR')
         ->group(function () {
             Route::get('/', [EntregaDineroController::class, 'index']);
+            Route::get('/resumen-vendedor', [EntregaDineroController::class, 'resumenVendedor']);
             Route::get('/reporte', [EntregaDineroController::class, 'reporte']);
             Route::post('/', [EntregaDineroController::class, 'store']);
             Route::get('/{id}', [EntregaDineroController::class, 'show']);

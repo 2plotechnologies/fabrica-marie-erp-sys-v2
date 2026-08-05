@@ -240,6 +240,12 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           )
         };
       }
+      if (item.module === 'caja' && currentRole === 'VENDEDOR') {
+        return {
+          ...item,
+          subItems: item.subItems?.filter(sub => sub.to === '/caja/entregas')
+        };
+      }
       return item;
     });
 

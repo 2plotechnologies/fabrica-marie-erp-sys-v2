@@ -211,7 +211,7 @@ class ResumenDiarioController extends Controller
             $gasto->resumen_diario_id = $resumenDiario->id;
             $gasto->save();
         }
-
+        /*
         // Si el resumen diario se crea con estado CONFIRMADO, completar salida y liberar vehículo.
         if ($resumenDiario->estado == 'CONFIRMADO') {
             if ($resumenDiario->salida_id) {
@@ -229,6 +229,7 @@ class ResumenDiarioController extends Controller
                 }
             }
         }
+        */
 
         return response()->json($resumenDiario, 201);
     }

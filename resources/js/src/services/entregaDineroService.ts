@@ -32,5 +32,10 @@ export const entregaDineroService = {
         
         const response = await api.get('/entregas-dinero/reporte', { params });
         return response.data;
+    },
+
+    async getResumenVendedor() {
+        const response = await api.get('/entregas-dinero/resumen-vendedor');
+        return response.data;
     }
 }

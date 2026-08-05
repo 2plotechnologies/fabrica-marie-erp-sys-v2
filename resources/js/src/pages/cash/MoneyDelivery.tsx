@@ -22,6 +22,7 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { formatErrorMessage } from '@/lib/axios-error';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/contexts/RoleContext';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production'
     ? ''
@@ -36,8 +37,10 @@ interface DeliveryItem {
 
 const MoneyDelivery = () => {
     const { user, hasRole, hasPermission } = useAuth();
+    const { currentRole } = useRole();
     const [entregas, setEntregas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [maxVentasConfirmadas, setMaxVentasConfirmadas] = useState<number | null>(null);
 
     const [isNewDialog, setIsNewDialog] = useState(false);
     const [isViewDialog, setIsViewDialog] = useState(false);
@@ -67,9 +70,36 @@ const MoneyDelivery = () => {
         }
     };
 
+    const [resumenVendedorData, setResumenVendedorData] = useState<{
+        total_recabado: number;
+        total_disponible: number;
+        cobranzas: number;
+        ventas_contado: number;
+        adelantos_credito: number;
+        gastos: number;
+        entregas_previas: number;
+    } | null>(null);
+
+    const fetchResumenVendedor = async () => {
+        try {
+            const data = await entregaDineroService.getResumenVendedor();
+            if (data) {
+                setResumenVendedorData(data);
+            }
+        } catch (error) {
+            console.error('Error al obtener datos del vendedor:', error);
+        }
+    };
+
     useEffect(() => {
         fetchEntregas();
     }, []);
+
+    useEffect(() => {
+        if (isNewDialog && (hasRole('VENDEDOR') || currentRole === 'VENDEDOR')) {
+            fetchResumenVendedor();
+        }
+    }, [isNewDialog, currentRole]);
 
     const createEntrega = useMutation({
         mutationFn: async (formData: FormData) => {
@@ -160,6 +190,13 @@ const MoneyDelivery = () => {
             totalMonto += Number(item.monto);
         }
 
+        if ((hasRole('VENDEDOR') || currentRole === 'VENDEDOR') && resumenVendedorData !== null) {
+            if (totalMonto > resumenVendedorData.total_disponible) {
+                toast.error(`El monto total a entregar (S/ ${totalMonto.toFixed(2)}) no puede superar el disponible de ventas y cobranzas (S/ ${resumenVendedorData.total_disponible.toFixed(2)}).`);
+                return;
+            }
+        }
+
         const formData = new FormData();
         formData.append('usuario_id', String(user.id));
         if (nombreReceptor.trim()) {
@@ -239,6 +276,36 @@ const MoneyDelivery = () => {
                         <DialogHeader><DialogTitle>Registrar Nueva Entrega</DialogTitle></DialogHeader>
 
                         <div className="space-y-6 py-4">
+                            {(hasRole('VENDEDOR') || currentRole === 'VENDEDOR') && resumenVendedorData !== null && (
+                                <div className="p-4 bg-muted/40 border border-border rounded-xl space-y-2 text-xs sm:text-sm">
+                                    <div className="flex justify-between items-center text-muted-foreground">
+                                        <span>Total Recabado (Ventas + Cobranzas):</span>
+                                        <span className="font-semibold text-foreground">S/ {resumenVendedorData.total_recabado.toFixed(2)}</span>
+                                    </div>
+                                    {resumenVendedorData.cobranzas > 0 && (
+                                        <div className="flex justify-between items-center text-muted-foreground text-xs pl-2">
+                                            <span>• De las cuales son Cobranzas (Abonos):</span>
+                                            <span>S/ {resumenVendedorData.cobranzas.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {resumenVendedorData.gastos > 0 && (
+                                        <div className="flex justify-between items-center text-muted-foreground text-xs pl-2">
+                                            <span>• Menos Gastos Registrados:</span>
+                                            <span className="text-destructive">- S/ {resumenVendedorData.gastos.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {resumenVendedorData.entregas_previas > 0 && (
+                                        <div className="flex justify-between items-center text-muted-foreground text-xs pl-2">
+                                            <span>• Menos Entregas Previas:</span>
+                                            <span className="text-amber-600">- S/ {resumenVendedorData.entregas_previas.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    <div className="border-t border-border pt-2 flex justify-between items-center font-bold">
+                                        <span className="text-foreground">Saldo Disponible para Entregar:</span>
+                                        <span className="text-emerald-600 dark:text-emerald-400 text-base">S/ {resumenVendedorData.total_disponible.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            )}
                             <div className="space-y-2">
                                 <Label htmlFor="nombre_receptor">Nombre del receptor</Label>
                                 <Input

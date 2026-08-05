@@ -11,6 +11,10 @@ class ReporteDetalleVentaController
      public function detalleVentas(Request $request)
     {
 
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
         $fechaInicio = $request->input('fechaInicio');
         $fechaFin = $request->input('fechaFin');
 
@@ -21,6 +25,10 @@ class ReporteDetalleVentaController
             'items.salida.vehiculo',
             'cuenta.abonos'
         ])->where('estado', 'CONFIRMADA');
+
+        if ($vendedor) {
+            $ventasQuery->where('vendedor_id', $vendedor->id);
+        }
 
         if ($fechaInicio && $fechaFin) {
             $ventasQuery->whereBetween('fecha', [$fechaInicio, $fechaFin]);
@@ -144,7 +152,7 @@ class ReporteDetalleVentaController
         ============================
         */
 
-        $itemsPromocion = VentaItem::where(function ($q) {
+        $itemsPromocionQuery = VentaItem::where(function ($q) {
             $q->where('es_bonificacion', true)
                 ->orWhere('es_degustacion', true);
         })
@@ -153,8 +161,15 @@ class ReporteDetalleVentaController
             'venta.vendedor.usuario',
             'producto',
             'salida.vehiculo'
-        ])
-        ->get();
+        ]);
+
+        if ($vendedor) {
+            $itemsPromocionQuery->whereHas('venta', function ($q) use ($vendedor) {
+                $q->where('vendedor_id', $vendedor->id);
+            });
+        }
+
+        $itemsPromocion = $itemsPromocionQuery->get();
 
         $promociones = [];
 
