@@ -10,7 +10,8 @@ export interface SalidaPayload {
   conductor: string,
   vehiculo_id: number,
   zona: string,
-  ruta_id: number,
+  ruta_id?: number,
+  ruta_ids: number[],
   estado: string,
   items: SalidaItemPayload[];
 }

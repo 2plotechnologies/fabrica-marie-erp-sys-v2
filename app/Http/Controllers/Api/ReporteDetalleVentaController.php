@@ -23,6 +23,7 @@ class ReporteDetalleVentaController
             'vendedor.usuario',
             'items.producto',
             'items.salida.vehiculo',
+            'pagos',
             'cuenta.abonos'
         ])->where('estado', 'CONFIRMADA');
 
@@ -105,6 +106,15 @@ class ReporteDetalleVentaController
                 "clienteId" => (string)($venta->cliente->id ?? null),
 
                 "metodoPago" => $venta->metodo_pago_detalle,
+                "pagos" => $venta->pagos->map(function ($pago) {
+                    return [
+                        "id" => (string)$pago->id,
+                        "metodoPago" => $pago->metodo_pago,
+                        "monto" => (float)$pago->monto,
+                        "banco" => $pago->banco,
+                        "numeroOperacion" => $pago->numero_operacion,
+                    ];
+                })->values()->toArray(),
 
                 "items" => $itemsVenta,
 

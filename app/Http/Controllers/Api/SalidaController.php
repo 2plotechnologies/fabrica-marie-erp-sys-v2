@@ -7,6 +7,7 @@ use App\Models\Salida;
 use App\Models\SalidaItem;
 use App\Models\StockVendedor;
 use App\Models\Vehiculo;
+use App\Models\Ruta;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +19,7 @@ class SalidaController
             'vendedor.usuario',
             'vehiculo',
             'ruta',
+            'rutas',
             'items.producto',
             'items.ruma'
         ])->orderBy('fecha', 'desc')->get();
@@ -31,6 +33,7 @@ class SalidaController
             'vendedor.usuario',
             'vehiculo',
             'ruta',
+            'rutas',
             'items.producto',
             'items.ruma'
         ])->findOrFail($id);
@@ -44,14 +47,31 @@ class SalidaController
             'fecha' => 'required|date',
             'vendedor_id' => 'required|exists:vendedores,id',
             'vehiculo_id' => 'required|exists:vehiculos,id',
-            'ruta_id' => 'required|exists:rutas,id',
             'zona' => 'required|string',
+            'ruta_ids' => 'required_without:ruta_id|array|min:1',
+            'ruta_ids.*' => 'exists:rutas,id',
+            'ruta_id' => 'nullable|exists:rutas,id',
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
             'items.*.ruma_id' => 'required|exists:rumas,id',
             'items.*.cantidad' => 'required|integer|min:1',
             'items.*.es_sobrante' => 'boolean|nullable',
         ]);
+
+        $rutaIds = $request->input('ruta_ids');
+        if (empty($rutaIds) && $request->filled('ruta_id')) {
+            $rutaIds = [(int)$request->ruta_id];
+        }
+
+        // Validar que todas las rutas pertenezcan a la zona seleccionada (por nombre de zona)
+        $rutasBD = Ruta::whereIn('id', $rutaIds)->get();
+        foreach ($rutasBD as $r) {
+            if ($r->zona !== $request->zona) {
+                return response()->json([
+                    'error' => 'Todas las rutas seleccionadas deben pertenecer a la zona especificada (' . $request->zona . ').'
+                ], 400);
+            }
+        }
 
         //Verificar que el vendedor no este en una salida con estado EN RUTA.
         $vendedorSalida = Salida::where('vendedor_id', $request->vendedor_id)
@@ -102,9 +122,11 @@ class SalidaController
                 'conductor' => $request->conductor,
                 'vehiculo_id' => $request->vehiculo_id,
                 'zona' => $request->zona,
-                'ruta_id' => $request->ruta_id,
+                'ruta_id' => $rutaIds[0],
                 'estado' => 'PENDIENTE'
             ]);
+
+            $salida->rutas()->sync($rutaIds);
 
             foreach ($request->items as $item) {
                 SalidaItem::create([
@@ -167,7 +189,7 @@ class SalidaController
 
             return response()->json([
                 'message' => 'Salida creada correctamente',
-                'salida' => $salida->load('items.producto', 'items.ruma')
+                'salida' => $salida->load('rutas', 'ruta', 'items.producto', 'items.ruma')
             ], 201);
 
         } catch (\Exception $e) {
@@ -315,8 +337,10 @@ class SalidaController
             'fecha' => 'required|date',
             'vendedor_id' => 'required|exists:vendedores,id',
             'vehiculo_id' => 'required|exists:vehiculos,id',
-            'ruta_id' => 'required|exists:rutas,id',
             'zona' => 'required|string',
+            'ruta_ids' => 'required_without:ruta_id|array|min:1',
+            'ruta_ids.*' => 'exists:rutas,id',
+            'ruta_id' => 'nullable|exists:rutas,id',
             'conductor' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
@@ -324,6 +348,21 @@ class SalidaController
             'items.*.cantidad' => 'required|integer|min:1',
             'items.*.es_sobrante' => 'boolean|nullable',
         ]);
+
+        $rutaIds = $request->input('ruta_ids');
+        if (empty($rutaIds) && $request->filled('ruta_id')) {
+            $rutaIds = [(int)$request->ruta_id];
+        }
+
+        // Validar que todas las rutas pertenezcan a la zona seleccionada (por nombre de zona)
+        $rutasBD = Ruta::whereIn('id', $rutaIds)->get();
+        foreach ($rutasBD as $r) {
+            if ($r->zona !== $request->zona) {
+                return response()->json([
+                    'error' => 'Todas las rutas seleccionadas deben pertenecer a la zona especificada (' . $request->zona . ').'
+                ], 400);
+            }
+        }
 
         // Verificar vendedor disponible en ruta (si cambió o es diferente a esta salida)
         $vendedorSalida = Salida::where('vendedor_id', $request->vendedor_id)
@@ -434,8 +473,10 @@ class SalidaController
                 'conductor' => $request->conductor,
                 'vehiculo_id' => $request->vehiculo_id,
                 'zona' => $request->zona,
-                'ruta_id' => $request->ruta_id,
+                'ruta_id' => $rutaIds[0],
             ]);
+
+            $salida->rutas()->sync($rutaIds);
 
             // 4. Registrar los nuevos ítems
             foreach ($request->items as $item) {
@@ -498,7 +539,7 @@ class SalidaController
 
             return response()->json([
                 'message' => 'Salida actualizada correctamente',
-                'salida' => $salida->load('items.producto', 'items.ruma')
+                'salida' => $salida->load('rutas', 'ruta', 'items.producto', 'items.ruma')
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

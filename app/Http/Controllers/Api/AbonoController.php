@@ -36,6 +36,81 @@ class AbonoController extends Controller
     {
         return DB::transaction(function () use ($request, $cuenta_id) {
 
+            if ($request->has('pagos') && is_array($request->pagos) && count($request->pagos) > 0) {
+                $request->validate([
+                    'pagos' => 'required|array|min:1',
+                    'pagos.*.monto' => 'required|numeric|min:0.01',
+                    'pagos.*.metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,YAPE,PLIN,DEPOSITO',
+                    'pagos.*.banco' => 'nullable|string',
+                    'pagos.*.numero_operacion' => 'nullable|string',
+                ]);
+
+                $cuenta = CuentaPorCobrar::findOrFail($cuenta_id);
+                $caja = Caja::where('estado', 'ABIERTA')
+                    ->where('fecha', now()->format('Y-m-d'))
+                    ->first();
+
+                $totalAbonado = 0;
+                $abonosCreados = [];
+
+                foreach ($request->pagos as $pagoItem) {
+                    $montoItem = (float)$pagoItem['monto'];
+                    if ($montoItem <= 0) continue;
+
+                    $metodo = strtoupper($pagoItem['metodo_pago']);
+                    $banco = $pagoItem['banco'] ?? null;
+                    $numOp = $pagoItem['numero_operacion'] ?? null;
+
+                    $referencia = null;
+                    if ($metodo === 'DEPOSITO' && $banco && $numOp) {
+                        $referencia = 'Depósito ' . $banco . ' - Op: ' . $numOp;
+                    } else {
+                        $referencia = 'Abono ' . strtolower($metodo);
+                    }
+
+                    $mov = MovimientoCaja::create([
+                        'caja_id' => $caja ? $caja->id : null,
+                        'tipo' => 'INGRESO',
+                        'estado' => 'APROBADO',
+                        'monto' => $montoItem,
+                        'usuario_id' => auth()->id(),
+                        'categoria' => 'ABONO',
+                        'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id . ' (' . $referencia . ')',
+                        'referencia_tipo' => 'ABONO',
+                        'referencia_id' => $cuenta->id,
+                        'created_at' => now()
+                    ]);
+
+                    $abono = Abono::create([
+                        'cuenta_id' => $cuenta->id,
+                        'usuario_id' => auth()->id(),
+                        'monto' => $montoItem,
+                        'metodo_pago' => $metodo,
+                        'banco' => $banco,
+                        'numero_operacion' => $numOp,
+                        'referencia' => $referencia,
+                        'fecha' => now(),
+                        'movimiento_caja_id' => $mov->id
+                    ]);
+
+                    $abonosCreados[] = $abono;
+                    $totalAbonado += $montoItem;
+                }
+
+                $cuenta->saldo -= $totalAbonado;
+                if ($cuenta->saldo < 0) $cuenta->saldo = 0;
+                $cuenta->estado = $cuenta->saldo == 0 ? 'PAGADO' : 'PARCIAL';
+                $cuenta->save();
+
+                // Actualizar deuda actual del cliente
+                $cliente = $cuenta->cliente;
+                $cliente->update([
+                    'deuda_actual' => max(0, $cliente->deuda_actual - $totalAbonado)
+                ]);
+
+                return response()->json($abonosCreados);
+            }
+
             $request->validate([
                 'monto' => 'required|numeric|min:0',
                 'metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,YAPE,PLIN,DEPOSITO',
@@ -59,7 +134,7 @@ class AbonoController extends Controller
             }
 
             $mov = MovimientoCaja::create([
-                'caja_id' => $caja->id,
+                'caja_id' => $caja ? $caja->id : null,
                 'tipo' => 'INGRESO',
                 'estado' => 'APROBADO',
                 'monto' => $request->monto,
@@ -84,13 +159,14 @@ class AbonoController extends Controller
             ]);
 
             $cuenta->saldo -= $request->monto;
+            if ($cuenta->saldo < 0) $cuenta->saldo = 0;
             $cuenta->estado = $cuenta->saldo == 0 ? 'PAGADO' : 'PARCIAL';
             $cuenta->save();
 
             //Actualizar deuda actual del cliente
             $cliente = $cuenta->cliente;
             $cliente->update([
-                'deuda_actual' => $cliente->deuda_actual - $request->monto
+                'deuda_actual' => max(0, $cliente->deuda_actual - $request->monto)
             ]);
 
             return $abono;

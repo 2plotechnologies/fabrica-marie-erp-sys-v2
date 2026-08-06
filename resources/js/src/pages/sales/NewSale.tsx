@@ -7,6 +7,7 @@ import { ProductSearch } from '@/components/sales/ProductSearch';
 import { SaleCart } from '@/components/sales/SaleCart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,14 @@ import { ventaService } from '@/services/ventaService';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatErrorMessage } from '@/lib/axios-error';
+
+const getTodayString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const NewSale = () => {
   const { currentRole } = useRole();
@@ -35,7 +44,10 @@ const NewSale = () => {
   const [metodoPago, setMetodoPago] = useState('efectivo');
   const [adelanto, setAdelanto] = useState(0);
   const [notaPedido, setNotaPedido] = useState('');
+  const [isSplitPayment, setIsSplitPayment] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<{ metodo_pago: string; monto: number; banco?: string; numero_operacion?: string }[]>([]);
   const [isLoadingVendedores, setIsLoadingVendedores] = useState(true);
+  const [fechaVenta, setFechaVenta] = useState(getTodayString());
 
   interface Producto {
     id: string;
@@ -308,6 +320,10 @@ const NewSale = () => {
   };
 
   const handleSubmit = async () => {
+    if (fechaVenta && fechaVenta > getTodayString()) {
+      toast.error('La fecha de venta no puede ser posterior a hoy');
+      return;
+    }
     if (!selectedClient) { toast.error('Selecciona un cliente'); return; }
     if (!selectedVendedor) { toast.error('Selecciona un vendedor'); return; }
     if (paymentType === 'CREDITO' && !notaPedido.trim()) {
@@ -341,12 +357,13 @@ const NewSale = () => {
         cliente_id: Number(selectedClient),
         vendedor_id: Number(selectedVendedor),
         tipo_pago: paymentType,
-        metodo_pago_detalle: metodoPago,
+        metodo_pago_detalle: isSplitPayment ? splitPayments.map(p => p.metodo_pago).join(', ') : metodoPago,
         adelanto: paymentType === 'CREDITO' ? adelanto : 0,
         subtotal: subtotal,
         descuento: discount,
         total_neto: total,
         nota_pedido: paymentType === 'CREDITO' ? notaPedido.trim() : null,
+        fecha: fechaVenta,
         items: cart.map(item => ({
           producto_id: Number(String(item.productId).split('-')[0]),
           salida_id: item.salida_id ? Number(item.salida_id) : null,
@@ -356,6 +373,7 @@ const NewSale = () => {
           es_bonificacion: item.esBonificacion || false,
           es_degustacion: item.esDegustacion || false,
         })),
+        pagos: isSplitPayment ? splitPayments : undefined,
       });
       toast.success('Venta creada exitosamente');
       setCart([]);
@@ -364,6 +382,9 @@ const NewSale = () => {
       setAdelanto(0);
       setNotaPedido('');
       setMetodoPago('efectivo');
+      setIsSplitPayment(false);
+      setSplitPayments([]);
+      setFechaVenta(getTodayString());
 
       // Actualizar el stock de productos y los clientes
       if (tipoOrigen === 'FABRICA') {
@@ -459,25 +480,38 @@ const NewSale = () => {
           </div>
 
           <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up">
-            <div className="space-y-2">
-              <Label className="font-semibold">Vendedor / Responsable</Label>
-              {isLoadingVendedores ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Cargando...</span>
-                </div>
-              ) : (
-                <Select value={selectedVendedor} onValueChange={setSelectedVendedor} disabled={isVendedor}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar vendedor / responsable..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendedores.map(v => (
-                      <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre} ({v.id})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="font-semibold">Fecha de Venta</Label>
+                <Input
+                  type="date"
+                  value={fechaVenta}
+                  max={getTodayString()}
+                  onChange={(e) => setFechaVenta(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold">Vendedor / Responsable</Label>
+                {isLoadingVendedores ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Cargando...</span>
+                  </div>
+                ) : (
+                  <Select value={selectedVendedor} onValueChange={setSelectedVendedor} disabled={isVendedor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar vendedor / responsable..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => (
+                        <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre} ({v.id})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
             </div>
           </div>
 
@@ -540,6 +574,10 @@ const NewSale = () => {
             onSubmit={handleSubmit}
             isClientSelected={!!selectedClient}
             isSubmitting={false}
+            isSplitPayment={isSplitPayment}
+            onIsSplitPaymentChange={setIsSplitPayment}
+            splitPayments={splitPayments}
+            onSplitPaymentsChange={setSplitPayments}
           />
         </div>
       </div>

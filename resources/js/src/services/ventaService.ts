@@ -4,6 +4,13 @@ import api from './api';
    TIPOS
 ============================ */
 
+export interface VentaPagoItem {
+  metodo_pago: string;
+  monto: number;
+  banco?: string | null;
+  numero_operacion?: string | null;
+}
+
 export interface VentaPayload {
   cliente_id: number,
   vendedor_id: number,
@@ -15,6 +22,8 @@ export interface VentaPayload {
   total_neto: number,
   items: VentaItemPayload[];
   nota_pedido?: string | null;
+  pagos?: VentaPagoItem[];
+  fecha?: string;
 }
 
 export interface VentaItemPayload {

@@ -19,6 +19,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { CartItem } from '@/types/sales';
 
+export interface SplitPaymentRow {
+  metodo_pago: string;
+  monto: number;
+  banco?: string;
+  numero_operacion?: string;
+}
+
 interface SaleCartProps {
   cart: CartItem[];
   paymentType: 'CONTADO' | 'CREDITO';
@@ -39,6 +46,10 @@ interface SaleCartProps {
   isSubmitting?: boolean;
   notaPedido: string;
   onNotaPedidoChange: (notaPedido: string) => void;
+  isSplitPayment: boolean;
+  onIsSplitPaymentChange: (isSplit: boolean) => void;
+  splitPayments: SplitPaymentRow[];
+  onSplitPaymentsChange: (payments: SplitPaymentRow[]) => void;
 }
 
 export const SaleCart = ({
@@ -61,6 +72,10 @@ export const SaleCart = ({
   isSubmitting,
   notaPedido,
   onNotaPedidoChange,
+  isSplitPayment,
+  onIsSplitPaymentChange,
+  splitPayments,
+  onSplitPaymentsChange,
 }: SaleCartProps) => {
   const regularItems = cart.filter(item => !item.esBonificacion && !item.esDegustacion);
   const bonificaciones = cart.filter(item => item.esBonificacion);
@@ -69,6 +84,29 @@ export const SaleCart = ({
   const subtotal = regularItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
   const total = Math.max(0, subtotal - discount);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const montoACubrir = paymentType === 'CONTADO' ? total : adelanto;
+  const sumaSplit = splitPayments.reduce((sum, p) => sum + (Number(p.monto) || 0), 0);
+  const diferenciaSplit = Math.abs(montoACubrir - sumaSplit);
+  const isSplitValid = !isSplitPayment || (montoACubrir > 0 && diferenciaSplit < 0.01);
+
+  const handleAddSplitRow = () => {
+    const restante = Math.max(0, montoACubrir - sumaSplit);
+    onSplitPaymentsChange([
+      ...splitPayments,
+      { metodo_pago: 'efectivo', monto: parseFloat(restante.toFixed(2)) }
+    ]);
+  };
+
+  const handleUpdateSplitRow = (index: number, field: keyof SplitPaymentRow, value: any) => {
+    const newPayments = [...splitPayments];
+    newPayments[index] = { ...newPayments[index], [field]: value };
+    onSplitPaymentsChange(newPayments);
+  };
+
+  const handleRemoveSplitRow = (index: number) => {
+    onSplitPaymentsChange(splitPayments.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="bg-card rounded-xl border shadow-card p-5 sticky top-20 animate-slide-up" style={{ animationDelay: '300ms' }}>
@@ -151,27 +189,6 @@ export const SaleCart = ({
         </div>
       </div>
 
-      {/* Método de Pago */}
-      <div className="mb-4">
-        <Label className="text-sm text-muted-foreground mb-2 block">
-          <Wallet className="h-3 w-3 inline mr-1" />
-          Método de Pago
-        </Label>
-        <Select value={metodoPago} onValueChange={onMetodoPagoChange}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="efectivo">Efectivo</SelectItem>
-            <SelectItem value="transferencia">Transferencia</SelectItem>
-            <SelectItem value="yape">Yape</SelectItem>
-            <SelectItem value="plin">Plin</SelectItem>
-            <SelectItem value="cheque">Cheque</SelectItem>
-            <SelectItem value="deposito">Depósito Bancario</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Adelanto (solo para crédito) */}
       {paymentType === 'CREDITO' && (
         <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
@@ -190,6 +207,139 @@ export const SaleCart = ({
           </p>
         </div>
       )}
+
+      {/* Selector Método Único vs Pago Dividido */}
+      <div className="mb-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-sm text-muted-foreground">
+            <Wallet className="h-3 w-3 inline mr-1" />
+            Método de Pago
+          </Label>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-primary font-medium hover:bg-primary/10"
+            onClick={() => {
+              const nextState = !isSplitPayment;
+              onIsSplitPaymentChange(nextState);
+              if (nextState && splitPayments.length === 0) {
+                const target = paymentType === 'CONTADO' ? total : adelanto;
+                onSplitPaymentsChange([
+                  { metodo_pago: metodoPago || 'efectivo', monto: parseFloat(target.toFixed(2)) }
+                ]);
+              }
+            }}
+          >
+            {isSplitPayment ? '← Usar pago único' : '🔀 Dividir pago'}
+          </Button>
+        </div>
+
+        {!isSplitPayment ? (
+          <Select value={metodoPago} onValueChange={onMetodoPagoChange}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="efectivo">Efectivo</SelectItem>
+              <SelectItem value="transferencia">Transferencia</SelectItem>
+              <SelectItem value="yape">Yape</SelectItem>
+              <SelectItem value="plin">Plin</SelectItem>
+              <SelectItem value="cheque">Cheque</SelectItem>
+              <SelectItem value="deposito">Depósito Bancario</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="p-3 rounded-lg border bg-muted/40 space-y-3">
+            <div className="flex justify-between items-center text-xs font-semibold">
+              <span>Desglose de Pagos (Múltiples)</span>
+              <span className={diferenciaSplit < 0.01 ? 'text-emerald-600' : 'text-amber-600'}>
+                Total: S/ {sumaSplit.toFixed(2)} / S/ {montoACubrir.toFixed(2)}
+              </span>
+            </div>
+
+            {splitPayments.map((row, idx) => (
+              <div key={idx} className="space-y-1.5 p-2 bg-background rounded-md border text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Select
+                    value={row.metodo_pago}
+                    onValueChange={(val) => handleUpdateSplitRow(idx, 'metodo_pago', val)}
+                  >
+                    <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="transferencia">Transferencia</SelectItem>
+                      <SelectItem value="yape">Yape</SelectItem>
+                      <SelectItem value="plin">Plin</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                      <SelectItem value="deposito">Depósito</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex items-center gap-1 w-24">
+                    <span>S/</span>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={row.monto || ''}
+                      onChange={(e) => handleUpdateSplitRow(idx, 'monto', parseFloat(e.target.value) || 0)}
+                      className="h-8 text-xs px-1"
+                    />
+                  </div>
+
+                  {splitPayments.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => handleRemoveSplitRow(idx)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+
+                {row.metodo_pago === 'deposito' && (
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <Input
+                      placeholder="Banco"
+                      value={row.banco || ''}
+                      onChange={(e) => handleUpdateSplitRow(idx, 'banco', e.target.value)}
+                      className="h-7 text-xs"
+                    />
+                    <Input
+                      placeholder="N° Operación"
+                      value={row.numero_operacion || ''}
+                      onChange={(e) => handleUpdateSplitRow(idx, 'numero_operacion', e.target.value)}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-8 gap-1"
+              onClick={handleAddSplitRow}
+            >
+              <Plus className="h-3 w-3" /> Agregar otro método
+            </Button>
+
+            {!isSplitValid && (
+              <p className="text-xs text-red-500 font-medium text-center">
+                La suma de los pagos (S/ {sumaSplit.toFixed(2)}) debe ser exactamente igual al monto a pagar (S/ {montoACubrir.toFixed(2)}).
+              </p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Nota Pedido (solo para crédito) */}
       {paymentType === 'CREDITO' && (
@@ -252,7 +402,8 @@ export const SaleCart = ({
         disabled={
           (regularItems.length === 0 && !cart.some(item => item.esDegustacion)) ||
           !isClientSelected ||
-          (paymentType === 'CREDITO' && !notaPedido.trim())
+          (paymentType === 'CREDITO' && !notaPedido.trim()) ||
+          !isSplitValid
         }
       >
         <ShoppingCart className="h-4 w-4 mr-2" />

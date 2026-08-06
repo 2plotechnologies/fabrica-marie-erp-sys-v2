@@ -36,7 +36,7 @@ const FactoryOutput = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState('all');
 
-  const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], vendedor_id: '', conductor: '', vehiculo_id: '', zona: '', ruta: '' });
+  const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], vendedor_id: '', conductor: '', vehiculo_id: '', zona: '', ruta_ids: [] as number[] });
   const [items, setItems] = useState<SalidaItemPayload[]>([]);
   const [tempItem, setTempItem] = useState({ producto_id: '', cantidad: '', ruma_id: '' });
   const [isLoading, setIsLoading] = useState(true);
@@ -63,13 +63,48 @@ const FactoryOutput = () => {
     }
   };
 
-  const handleRutaChange = (rutaId: string) => {
-    const rutaSeleccionada = rutas.find(r => String(r.id) === rutaId);
+  const handleZonaChange = (newZona: string) => {
+    const validRutas = rutas
+      .filter(r => r.zona === newZona && form.ruta_ids.includes(r.id))
+      .map(r => r.id);
     setForm(prev => ({
       ...prev,
-      ruta: rutaId,
-      zona: rutaSeleccionada?.zona || prev.zona,
+      zona: newZona,
+      ruta_ids: validRutas,
     }));
+  };
+
+  const handleAddRuta = (rutaIdStr: string) => {
+    const rutaId = Number(rutaIdStr);
+    if (!rutaId || form.ruta_ids.includes(rutaId)) return;
+
+    const selectedRuta = rutas.find(r => r.id === rutaId);
+    const newZona = selectedRuta?.zona || form.zona;
+
+    const existingValid = form.ruta_ids.filter(id => {
+      const r = rutas.find(x => x.id === id);
+      return !newZona || r?.zona === newZona;
+    });
+
+    setForm(prev => ({
+      ...prev,
+      zona: newZona,
+      ruta_ids: [...existingValid, rutaId]
+    }));
+  };
+
+  const handleRemoveRuta = (rutaId: number) => {
+    setForm(prev => ({
+      ...prev,
+      ruta_ids: prev.ruta_ids.filter(id => id !== rutaId)
+    }));
+  };
+
+  const renderRutasText = (salida: any) => {
+    if (salida.rutas && salida.rutas.length > 0) {
+      return salida.rutas.map((r: any) => r.nombre).join(', ');
+    }
+    return salida.ruta?.nombre || '-';
   };
 
   const filtered = salidas.filter(s => {
@@ -204,8 +239,8 @@ const FactoryOutput = () => {
   };
 
   const handleCreate = async () => {
-    if (!form.vendedor_id || items.length === 0) {
-      toast.error('Selecciona vendedor y agrega productos');
+    if (!form.vendedor_id || form.ruta_ids.length === 0 || items.length === 0) {
+      toast.error('Selecciona vendedor, al menos una ruta y agrega productos');
       return;
     }
 
@@ -216,7 +251,8 @@ const FactoryOutput = () => {
         vehiculo_id: Number(form.vehiculo_id),
         vendedor_id: Number(form.vendedor_id),
         zona: form.zona,
-        ruta_id: Number(form.ruta),
+        ruta_id: form.ruta_ids[0],
+        ruta_ids: form.ruta_ids,
         estado: "PENDIENTE",
         items: items
       });
@@ -229,7 +265,7 @@ const FactoryOutput = () => {
         conductor: '',
         vehiculo_id: '',
         zona: '',
-        ruta: ''
+        ruta_ids: []
       });
 
       // refrescar lista
@@ -248,13 +284,17 @@ const FactoryOutput = () => {
 
   const handleOpenEdit = (salida: any) => {
     setEditingSalidaId(salida.id);
+    const initialRutaIds = (salida.rutas && salida.rutas.length > 0)
+      ? salida.rutas.map((r: any) => Number(r.id))
+      : (salida.ruta_id ? [Number(salida.ruta_id)] : []);
+
     setForm({
       fecha: salida.fecha,
       vendedor_id: String(salida.vendedor_id),
       conductor: salida.conductor || '',
       vehiculo_id: String(salida.vehiculo_id),
       zona: salida.zona || '',
-      ruta: String(salida.ruta_id),
+      ruta_ids: initialRutaIds,
     });
     setItems(salida.items.map((item: any) => ({
       producto_id: item.producto_id,
@@ -267,8 +307,8 @@ const FactoryOutput = () => {
 
   const handleUpdate = async () => {
     if (!editingSalidaId) return;
-    if (!form.vendedor_id || items.length === 0) {
-      toast.error('Selecciona vendedor y agrega productos');
+    if (!form.vendedor_id || form.ruta_ids.length === 0 || items.length === 0) {
+      toast.error('Selecciona vendedor, al menos una ruta y agrega productos');
       return;
     }
 
@@ -279,7 +319,8 @@ const FactoryOutput = () => {
         vehiculo_id: Number(form.vehiculo_id),
         vendedor_id: Number(form.vendedor_id),
         zona: form.zona,
-        ruta_id: Number(form.ruta),
+        ruta_id: form.ruta_ids[0],
+        ruta_ids: form.ruta_ids,
         estado: "PENDIENTE",
         items: items
       });
@@ -292,7 +333,7 @@ const FactoryOutput = () => {
         conductor: '',
         vehiculo_id: '',
         zona: '',
-        ruta: ''
+        ruta_ids: []
       });
 
       await fetchSalidas();
@@ -364,7 +405,7 @@ const FactoryOutput = () => {
                 <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
                 <div className="space-y-2">
                   <Label>Zona</Label>
-                  <Select value={form.zona} onValueChange={v => setForm({ ...form, zona: v })}>
+                  <Select value={form.zona} onValueChange={handleZonaChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
@@ -375,8 +416,50 @@ const FactoryOutput = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={handleRutaChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2">
+                  <Label>Rutas *</Label>
+                  <Select value="" onValueChange={handleAddRuta}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={form.ruta_ids.length > 0 ? "Agregar otra ruta..." : "Seleccionar ruta(s)..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rutas
+                        .filter(r => !form.zona || r.zona === form.zona)
+                        .filter(r => !form.ruta_ids.includes(r.id))
+                        .map(r => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {r.nombre} {r.zona ? `(${r.zona})` : ''}
+                          </SelectItem>
+                        ))}
+                      {rutas.filter(r => (!form.zona || r.zona === form.zona) && !form.ruta_ids.includes(r.id)).length === 0 && (
+                        <SelectItem value="none" disabled>
+                          {form.zona ? "No hay más rutas en esta zona" : "No hay rutas disponibles"}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+              {form.ruta_ids.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-xs text-muted-foreground flex items-center mr-1">Rutas seleccionadas:</span>
+                  {form.ruta_ids.map(id => {
+                    const rObj = rutas.find(r => r.id === id);
+                    return (
+                      <Badge key={id} variant="secondary" className="px-2.5 py-1 text-xs font-medium flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20">
+                        {rObj?.nombre || `Ruta #${id}`}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRuta(id)}
+                          className="hover:text-red-500 font-bold ml-1"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
 
               <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-base">Agregar Productos</CardTitle></CardHeader>
@@ -463,7 +546,7 @@ const FactoryOutput = () => {
                   <TableCell className="font-medium">{s.vendedor?.usuario.nombre}</TableCell>
                   <TableCell>{s.conductor || '-'}</TableCell>
                   <TableCell>{s.vehiculo.placa || '-'}</TableCell>
-                  <TableCell className="text-sm">{s.zona || '-'} / {s.ruta.nombre || '-'}</TableCell>
+                  <TableCell className="text-sm">{s.zona || '-'} / {renderRutasText(s)}</TableCell>
                   <TableCell><Badge variant="secondary">{s.items?.length || 0} prod.</Badge></TableCell>
                   <TableCell>{getEstadoBadge(s.estado)}</TableCell>
                   <TableCell>
@@ -523,7 +606,7 @@ const FactoryOutput = () => {
               <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
               <div className="space-y-2">
                 <Label>Zona</Label>
-                <Select value={form.zona} onValueChange={v => setForm({ ...form, zona: v })}>
+                <Select value={form.zona} onValueChange={handleZonaChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
@@ -534,8 +617,50 @@ const FactoryOutput = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Ruta</Label><Select value={form.ruta} onValueChange={handleRutaChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{rutas.map(v => <SelectItem key={v.id} value={String(v.id)}>{v.nombre}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2">
+                <Label>Rutas *</Label>
+                <Select value="" onValueChange={handleAddRuta}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={form.ruta_ids.length > 0 ? "Agregar otra ruta..." : "Seleccionar ruta(s)..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rutas
+                      .filter(r => !form.zona || r.zona === form.zona)
+                      .filter(r => !form.ruta_ids.includes(r.id))
+                      .map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.nombre} {r.zona ? `(${r.zona})` : ''}
+                        </SelectItem>
+                      ))}
+                    {rutas.filter(r => (!form.zona || r.zona === form.zona) && !form.ruta_ids.includes(r.id)).length === 0 && (
+                      <SelectItem value="none" disabled>
+                        {form.zona ? "No hay más rutas en esta zona" : "No hay rutas disponibles"}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            {form.ruta_ids.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <span className="text-xs text-muted-foreground flex items-center mr-1">Rutas seleccionadas:</span>
+                {form.ruta_ids.map(id => {
+                  const rObj = rutas.find(r => r.id === id);
+                  return (
+                    <Badge key={id} variant="secondary" className="px-2.5 py-1 text-xs font-medium flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20">
+                      {rObj?.nombre || `Ruta #${id}`}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRuta(id)}
+                        className="hover:text-red-500 font-bold ml-1"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
 
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">Agregar Productos</CardTitle></CardHeader>
@@ -621,10 +746,11 @@ const FactoryOutput = () => {
             <>
               <DialogHeader><DialogTitle>Detalle de Salida - {format(new Date(selectedSalida.fecha + 'T00:00:00'), 'dd/MM/yyyy')}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-4 gap-4 text-sm">
                   <div><p className="text-muted-foreground">Vendedor</p><p className="font-medium">{selectedSalida.vendedor?.usuario.nombre}</p></div>
                   <div><p className="text-muted-foreground">Conductor</p><p className="font-medium">{selectedSalida.conductor || '-'}</p></div>
                   <div><p className="text-muted-foreground">Vehículo</p><p className="font-medium">{selectedSalida.vehiculo.placa || '-'}</p></div>
+                  <div><p className="text-muted-foreground">Zona / Ruta(s)</p><p className="font-medium">{selectedSalida.zona || '-'} / {renderRutasText(selectedSalida)}</p></div>
                 </div>
                 <Table>
                   <TableHeader><TableRow><TableHead>Producto</TableHead><TableHead>Marca</TableHead><TableHead>Ruma</TableHead><TableHead className="text-right">Cantidad</TableHead></TableRow></TableHeader>

@@ -95,15 +95,49 @@ class ResumenDiarioController extends Controller
 
         $depositos = Venta::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
-            ->whereIn('metodo_pago_detalle', ['deposito','transferencia'])
             ->where('estado', 'CONFIRMADA')
+            ->where(function($q) {
+                $q->whereIn('metodo_pago_detalle', ['deposito', 'transferencia'])
+                  ->orWhereHas('pagos', function($p) {
+                      $p->whereIn('metodo_pago', ['DEPOSITO', 'TRANSFERENCIA']);
+                  });
+            })
             ->get();
-        
+
         $monederoVirtual = Venta::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
-            ->whereIn('metodo_pago_detalle', ['yape','plin'])
             ->where('estado', 'CONFIRMADA')
+            ->where(function($q) {
+                $q->whereIn('metodo_pago_detalle', ['yape', 'plin'])
+                  ->orWhereHas('pagos', function($p) {
+                      $p->whereIn('metodo_pago', ['YAPE', 'PLIN']);
+                  });
+            })
             ->get();
+
+        $depositosVentas = 0;
+        $monederoVirtualVentas = 0;
+
+        foreach ($ventas as $v) {
+            if ($v->pagos->count() > 0) {
+                foreach ($v->pagos as $pago) {
+                    $metodo = strtoupper($pago->metodo_pago);
+                    if (in_array($metodo, ['DEPOSITO', 'TRANSFERENCIA'])) {
+                        $depositosVentas += (float)$pago->monto;
+                    } else if (in_array($metodo, ['YAPE', 'PLIN'])) {
+                        $monederoVirtualVentas += (float)$pago->monto;
+                    }
+                }
+            } else {
+                $mp = strtolower($v->metodo_pago_detalle ?? '');
+                $montoVentaPago = $v->tipo_pago === 'CONTADO' ? (float)$v->total_neto : (float)$v->adelanto;
+                if (in_array($mp, ['deposito', 'transferencia'])) {
+                    $depositosVentas += $montoVentaPago;
+                } else if (in_array($mp, ['yape', 'plin'])) {
+                    $monederoVirtualVentas += $montoVentaPago;
+                }
+            }
+        }
 
         $viaticos = Viatico::where('vendedor_id', $vendedor_id)
             ->whereDate('fecha', $fecha)
@@ -115,8 +149,8 @@ class ResumenDiarioController extends Controller
         $totalVentasContado = $ventasContado->sum('total_neto');
         $totalCredito = $credito->sum('total_neto');
         $totalAdelantos = $adelantos->sum('adelanto');
-        $totalDepositos = $depositos->sum('total_neto') + $depositos->sum('adelanto') + $cobranzas_deposito->sum('monto');
-        $totalMonederoVirtual = $monederoVirtual->sum('total_neto') + $monederoVirtual->sum('adelanto') + $cobranzas_monedero_virtual->sum('monto');
+        $totalDepositos = $depositosVentas + $cobranzas_deposito->sum('monto');
+        $totalMonederoVirtual = $monederoVirtualVentas + $cobranzas_monedero_virtual->sum('monto');
         $totalViaticos = $viaticos->sum('monto');
 
         $saldoEntregar = $totalVentasContado + $totalCobranzas + $totalAdelantos + $totalViaticos - $totalGastos - $totalDepositos - $totalMonederoVirtual;
@@ -151,11 +185,11 @@ class ResumenDiarioController extends Controller
         //fecha	vendedor_id	vehiculo_id	ruta_id	salida_id	conductor	zona	contado	credito	cobranza	depositos	viaticos	total_gastos	saldo_a_entregar	saldo_entregado	diferencia	estado	firma	created_at	
         $request->validate([
             'vendedor_id' => 'required',
-            'vehiculo_id' => 'required',
-            'ruta_id' => 'required',
-            'salida_id' => 'required',
-            'conductor' => 'required',
-            'zona' => 'required',
+            'vehiculo_id' => 'nullable',
+            'ruta_id' => 'nullable',
+            'salida_id' => 'nullable',
+            'conductor' => 'nullable',
+            'zona' => 'nullable',
             'contado' => 'required',
             'credito' => 'required',
             'cobranza' => 'required',

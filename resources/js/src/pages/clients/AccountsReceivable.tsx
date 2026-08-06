@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle, Loader2, Eye } from 'lucide-react';
+import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle, Loader2, Eye, Plus, Trash2 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cobranzasService } from '@/services/cobranzasService';
@@ -48,6 +48,9 @@ const AccountsReceivable = () => {
   const [bank, setBank] = useState('');
   const [operationNumber, setOperationNumber] = useState('');
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
+
+  const [isSplitPay, setIsSplitPay] = useState(false);
+  const [splitPayRows, setSplitPayRows] = useState<{ metodo_pago: string; monto: number; banco?: string; numero_operacion?: string }[]>([]);
 
   const [pagosDialog, setPagosDialog] = useState<any>(null);
   const [cuentaPagos, setCuentaPagos] = useState<any[]>([]);
@@ -153,6 +156,33 @@ const AccountsReceivable = () => {
   };
 
   const handlePayment = async (id: string) => {
+    if (isSplitPay) {
+      const totalSplit = splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
+      if (totalSplit <= 0) {
+        toast.error('Ingrese al menos un monto mayor a cero.');
+        return;
+      }
+      if (selectedAccount && totalSplit > selectedAccount.saldo) {
+        toast.error(`El monto total (S/ ${totalSplit.toFixed(2)}) supera el saldo pendiente (S/ ${Number(selectedAccount.saldo).toFixed(2)}).`);
+        return;
+      }
+      try {
+        await cobranzasService.registrarAbono(id, {
+          pagos: splitPayRows
+        });
+        toast.success('Pagos registrados exitosamente');
+        fetchCuentas();
+        setIsDialogOpen(false);
+        setIsSplitPay(false);
+        setSplitPayRows([]);
+      } catch (error: any) {
+        console.log("ERROR COMPLETO:", error);
+        console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
+        toast.error(formatErrorMessage('Error al crear abonos', error, 'No se pudieron crear los abonos.'));
+      }
+      return;
+    }
+
     if (payMethod === 'DEPOSITO') {
       if (!bank.trim() || !operationNumber.trim()) {
         toast.error('Por favor ingresa el banco y el número de operación para depósitos.');
@@ -384,7 +414,7 @@ const AccountsReceivable = () => {
                               Cobrar
                             </Button>
                           </DialogTrigger>
-                          <DialogContent>
+                          <DialogContent className="max-w-md">
                             <DialogHeader>
                               <DialogTitle>Registrar Pago / Cobranza</DialogTitle>
                               <DialogDescription>
@@ -397,67 +427,194 @@ const AccountsReceivable = () => {
                                 })()}
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="amount">Monto a pagar (S/)</Label>
-                                <Input
-                                  id="amount"
-                                  type="number"
-                                  placeholder="0.00"
-                                  value={paymentAmount}
-                                  onChange={(e) => setPaymentAmount(e.target.value)}
-                                  max={Number(selectedAccount?.saldo)}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Método de Pago</Label>
-                                <Select value={payMethod} onValueChange={setPayMethod}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                                    <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                                    <SelectItem value="YAPE">Yape</SelectItem>
-                                    <SelectItem value="PLIN">Plin</SelectItem>
-                                    <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              {payMethod === 'DEPOSITO' && (
-                                <div className="space-y-4 pt-2 border-t border-border/50">
-                                  <div className="space-y-2">
-                                    <Label>Banco donde se paga <span className="text-red-500">*</span></Label>
-                                    <Select value={bank} onValueChange={setBank}>
-                                      <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="BCP">BCP (Banco de Crédito)</SelectItem>
-                                        <SelectItem value="BBVA">BBVA</SelectItem>
-                                        <SelectItem value="Interbank">Interbank</SelectItem>
-                                        <SelectItem value="Scotiabank">Scotiabank</SelectItem>
-                                        <SelectItem value="Banco de la Nacion">Banco de la Nación</SelectItem>
-                                        <SelectItem value="BanBif">BanBif</SelectItem>
-                                        <SelectItem value="Otro">Otro Banco</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label>Número de Operación <span className="text-red-500">*</span></Label>
-                                    <Input
-                                      placeholder="Ej: 00482910"
-                                      value={operationNumber}
-                                      onChange={(e) => setOperationNumber(e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                              )}
+
+                            <div className="flex justify-end pt-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-primary font-medium hover:bg-primary/10 h-7"
+                                onClick={() => {
+                                  const nextState = !isSplitPay;
+                                  setIsSplitPay(nextState);
+                                  if (nextState && splitPayRows.length === 0) {
+                                    const initialMonto = parseFloat(paymentAmount) || (selectedAccount ? Number(selectedAccount.saldo) : 0);
+                                    setSplitPayRows([
+                                      { metodo_pago: payMethod || 'EFECTIVO', monto: initialMonto }
+                                    ]);
+                                  }
+                                }}
+                              >
+                                {isSplitPay ? '← Usar pago único' : '🔀 Dividir pago (Múltiples Métodos)'}
+                              </Button>
                             </div>
+
+                            {!isSplitPay ? (
+                              <div className="space-y-4 py-2">
+                                <div className="space-y-2">
+                                  <Label htmlFor="amount">Monto a pagar (S/)</Label>
+                                  <Input
+                                    id="amount"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    max={Number(selectedAccount?.saldo)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Método de Pago</Label>
+                                  <Select value={payMethod} onValueChange={setPayMethod}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                                      <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                                      <SelectItem value="YAPE">Yape</SelectItem>
+                                      <SelectItem value="PLIN">Plin</SelectItem>
+                                      <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                {payMethod === 'DEPOSITO' && (
+                                  <div className="space-y-4 pt-2 border-t border-border/50">
+                                    <div className="space-y-2">
+                                      <Label>Banco donde se paga <span className="text-red-500">*</span></Label>
+                                      <Select value={bank} onValueChange={setBank}>
+                                        <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="BCP">BCP (Banco de Crédito)</SelectItem>
+                                          <SelectItem value="BBVA">BBVA</SelectItem>
+                                          <SelectItem value="Interbank">Interbank</SelectItem>
+                                          <SelectItem value="Scotiabank">Scotiabank</SelectItem>
+                                          <SelectItem value="Banco de la Nacion">Banco de la Nación</SelectItem>
+                                          <SelectItem value="BanBif">BanBif</SelectItem>
+                                          <SelectItem value="Otro">Otro Banco</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Número de Operación <span className="text-red-500">*</span></Label>
+                                      <Input
+                                        placeholder="Ej: 00482910"
+                                        value={operationNumber}
+                                        onChange={(e) => setOperationNumber(e.target.value)}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="space-y-3 py-2">
+                                <div className="flex justify-between items-center text-xs font-semibold">
+                                  <span>Desglose de Pagos</span>
+                                  <span className="text-primary">
+                                    Suma: S/ {splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0).toFixed(2)}
+                                  </span>
+                                </div>
+
+                                {splitPayRows.map((row, idx) => (
+                                  <div key={idx} className="p-2.5 bg-muted/40 rounded-lg border space-y-2 text-xs">
+                                    <div className="flex items-center gap-2">
+                                      <Select
+                                        value={row.metodo_pago}
+                                        onValueChange={(val) => {
+                                          const newRows = [...splitPayRows];
+                                          newRows[idx].metodo_pago = val;
+                                          setSplitPayRows(newRows);
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs flex-1">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                                          <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                                          <SelectItem value="YAPE">Yape</SelectItem>
+                                          <SelectItem value="PLIN">Plin</SelectItem>
+                                          <SelectItem value="DEPOSITO">Depósito</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+
+                                      <div className="flex items-center gap-1 w-28">
+                                        <span>S/</span>
+                                        <Input
+                                          type="number"
+                                          step="0.5"
+                                          min="0"
+                                          value={row.monto || ''}
+                                          onChange={(e) => {
+                                            const newRows = [...splitPayRows];
+                                            newRows[idx].monto = parseFloat(e.target.value) || 0;
+                                            setSplitPayRows(newRows);
+                                          }}
+                                          className="h-8 text-xs"
+                                        />
+                                      </div>
+
+                                      {splitPayRows.length > 1 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-destructive"
+                                          onClick={() => setSplitPayRows(splitPayRows.filter((_, i) => i !== idx))}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+
+                                    {row.metodo_pago === 'DEPOSITO' && (
+                                      <div className="grid grid-cols-2 gap-2 pt-1">
+                                        <Input
+                                          placeholder="Banco"
+                                          value={row.banco || ''}
+                                          onChange={(e) => {
+                                            const newRows = [...splitPayRows];
+                                            newRows[idx].banco = e.target.value;
+                                            setSplitPayRows(newRows);
+                                          }}
+                                          className="h-7 text-xs"
+                                        />
+                                        <Input
+                                          placeholder="N° Operación"
+                                          value={row.numero_operacion || ''}
+                                          onChange={(e) => {
+                                            const newRows = [...splitPayRows];
+                                            newRows[idx].numero_operacion = e.target.value;
+                                            setSplitPayRows(newRows);
+                                          }}
+                                          className="h-7 text-xs"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-xs h-8 gap-1"
+                                  onClick={() => setSplitPayRows([...splitPayRows, { metodo_pago: 'EFECTIVO', monto: 0 }])}
+                                >
+                                  <Plus className="h-3 w-3" /> Agregar otro pago
+                                </Button>
+                              </div>
+                            )}
+
                             <DialogFooter>
                               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
                               <Button
                                 className="bg-gradient-warm hover:opacity-90"
                                 onClick={() => handlePayment(selectedAccount.id)}
-                                disabled={!paymentAmount || (payMethod === 'DEPOSITO' && (!bank || !operationNumber))}
+                                disabled={
+                                  isSplitPay
+                                    ? splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0) <= 0
+                                    : !paymentAmount || (payMethod === 'DEPOSITO' && (!bank || !operationNumber))
+                                }
                               >
                                 Confirmar Pago
                               </Button>

@@ -190,6 +190,7 @@ class VentaController extends Controller
         $validated = $request->validate([
             'cliente_id' => ['required', 'exists:clientes,id'],
             'vendedor_id' => ['required', 'exists:vendedores,id'],
+            'fecha' => ['nullable', 'date', 'before_or_equal:today'],
             'tipo_pago' => ['required', Rule::in(['CONTADO','CREDITO'])],
             'metodo_pago_detalle' => ['nullable', 'string', 'max:100'],
             'adelanto' => ['nullable', 'numeric', 'min:0'],
@@ -204,6 +205,11 @@ class VentaController extends Controller
             'items.*.subtotal' => ['required', 'numeric', 'min:0'],
             'items.*.es_bonificacion' => ['boolean'],
             'items.*.es_degustacion' => ['boolean'],
+            'pagos' => ['nullable', 'array'],
+            'pagos.*.metodo_pago' => ['required_with:pagos', 'string'],
+            'pagos.*.monto' => ['required_with:pagos', 'numeric', 'min:0'],
+            'pagos.*.banco' => ['nullable', 'string'],
+            'pagos.*.numero_operacion' => ['nullable', 'string'],
         ]);
 
         //Si la venta es al credito, NO permitir vende a cliente con documento 000000 (Cliente Varios)
@@ -217,14 +223,31 @@ class VentaController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $request) {
+
+            $metodoPagoDetalle = $validated['metodo_pago_detalle'] ?? null;
+
+            // Determinar metodo_pago_detalle si vienen múltiples pagos
+            if (!empty($validated['pagos']) && count($validated['pagos']) > 0) {
+                $metodosUnicos = array_unique(array_map(function($p) {
+                    return strtoupper($p['metodo_pago']);
+                }, $validated['pagos']));
+
+                $metodoPagoDetalle = implode(', ', $metodosUnicos);
+            }
+
+            $fechaVenta = !empty($validated['fecha'])
+                ? (strlen($validated['fecha']) === 10
+                    ? Carbon::parse($validated['fecha'])->setTimeFrom(Carbon::now())
+                    : Carbon::parse($validated['fecha']))
+                : Carbon::now();
 
             $venta = Venta::create([
                 'cliente_id' => $validated['cliente_id'],
                 'vendedor_id' => $validated['vendedor_id'],
-                'fecha' => Carbon::now(), // 🔥 Fecha automática
+                'fecha' => $fechaVenta,
                 'tipo_pago' => $validated['tipo_pago'],
-                'metodo_pago_detalle' => $validated['metodo_pago_detalle'] ?? null,
+                'metodo_pago_detalle' => $metodoPagoDetalle,
                 'adelanto' => $validated['tipo_pago'] === 'CREDITO'
                                 ? ($validated['adelanto'] ?? 0)
                                 : 0,
@@ -249,6 +272,29 @@ class VentaController extends Controller
                     'es_bonificacion' => $item['es_bonificacion'] ?? false,
                     'es_degustacion' => $item['es_degustacion'] ?? false,
                 ]);
+            }
+
+            // Crear desgloses de pago en venta_pagos
+            if (!empty($validated['pagos']) && count($validated['pagos']) > 0) {
+                foreach ($validated['pagos'] as $pagoItem) {
+                    if ($pagoItem['monto'] > 0) {
+                        $venta->pagos()->create([
+                            'metodo_pago' => strtoupper($pagoItem['metodo_pago']),
+                            'monto' => $pagoItem['monto'],
+                            'banco' => $pagoItem['banco'] ?? null,
+                            'numero_operacion' => $pagoItem['numero_operacion'] ?? null,
+                        ]);
+                    }
+                }
+            } else if (!empty($metodoPagoDetalle)) {
+                // Si solo vino un metodo_pago_detalle simple
+                $montoPago = $venta->tipo_pago === 'CONTADO' ? $venta->total_neto : $venta->adelanto;
+                if ($montoPago > 0) {
+                    $venta->pagos()->create([
+                        'metodo_pago' => strtoupper($metodoPagoDetalle),
+                        'monto' => $montoPago,
+                    ]);
+                }
             }
 
             // Crear cuenta si es crédito
@@ -281,7 +327,7 @@ class VentaController extends Controller
             //Reservar Stock.
             $this->reservarStock($venta);
 
-            return $venta->load('items');
+            return $venta->load('items', 'pagos');
         });
     }
 
@@ -291,6 +337,7 @@ class VentaController extends Controller
             'cliente',
             'vendedor.usuario',
             'items.producto',
+            'pagos',
             'movimientosStock',
             'movimientosCaja',
             'cuenta.abonos'

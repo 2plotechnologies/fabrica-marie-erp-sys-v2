@@ -36,6 +36,11 @@ class Salida extends Model
         return $this->belongsTo(Ruta::class, 'ruta_id');
     }
 
+    public function rutas()
+    {
+        return $this->belongsToMany(Ruta::class, 'salida_rutas', 'salida_id', 'ruta_id');
+    }
+
     public function items()
     {
         return $this->hasMany(SalidaItem::class);

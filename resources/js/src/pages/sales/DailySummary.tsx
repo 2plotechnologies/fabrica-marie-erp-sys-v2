@@ -301,9 +301,11 @@ const DailySummaryPage = () => {
     try {
       const payload = {
         ...newResumen,
-        ruta_id: newResumen.ruta_id === 'sin_ruta' ? null : newResumen.ruta_id,
-        vehiculo_id: newResumen.vehiculo_id === 'sin_vehiculo' ? null : newResumen.vehiculo_id,
-        salida_id: newResumen.salida_id === 'sin_salida' ? null : newResumen.salida_id,
+        ruta_id: (!newResumen.ruta_id || newResumen.ruta_id === 'sin_ruta') ? null : newResumen.ruta_id,
+        vehiculo_id: (!newResumen.vehiculo_id || newResumen.vehiculo_id === 'sin_vehiculo') ? null : newResumen.vehiculo_id,
+        salida_id: (!newResumen.salida_id || newResumen.salida_id === 'sin_salida') ? null : newResumen.salida_id,
+        conductor: !newResumen.conductor ? null : newResumen.conductor,
+        zona: !newResumen.zona ? null : newResumen.zona,
       };
       await resumenDiarioService.createResumenDiario(payload);
       await getResumenesDiarios();
