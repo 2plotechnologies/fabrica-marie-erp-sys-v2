@@ -7,9 +7,12 @@ use App\Models\MovimientoStock;
 use App\Models\StockActual;
 use App\Models\MovimientoCaja;
 use App\Models\Salida;
+use App\Models\SalidaItem;
 use App\Models\StockVendedor;
+use App\Models\ResumenDiario;
 use Illuminate\Support\Facades\DB;
 use Exception;
+use Carbon\Carbon;
 
 class VentaService
 {
@@ -18,7 +21,7 @@ class VentaService
         return DB::transaction(function () use ($ventaId, $userId) {
 
             // 🔒 Bloqueo de fila para evitar colisiones
-            $venta = Venta::with(['cuenta'])
+            $venta = Venta::with(['cuenta', 'items'])
                 ->lockForUpdate()
                 ->findOrFail($ventaId);
 
@@ -31,6 +34,33 @@ class VentaService
                 throw new Exception('Solo se pueden anular ventas confirmadas');
             }
 
+            // 🔒 Validar si existe un Resumen Diario aprobado
+            $resumenAprobado = ResumenDiario::where('vendedor_id', $venta->vendedor_id)
+                ->whereIn('estado', ['CONFIRMADO', 'APROBADO'])
+                ->where(function ($query) use ($venta) {
+                    $query->whereDate('fecha', Carbon::parse($venta->fecha)->toDateString());
+                    $salidaIds = $venta->items->pluck('salida_id')->filter()->unique();
+                    if ($salidaIds->isNotEmpty()) {
+                        $query->orWhereIn('salida_id', $salidaIds);
+                    }
+                })
+                ->exists();
+
+            if ($resumenAprobado) {
+                throw new Exception('No se puede anular la venta porque ya se registró un resumen diario aprobado para este vendedor.');
+            }
+
+            // 🔒 Validar si el vendedor tiene una salida en ruta activa
+            $salidaEnRuta = Salida::where('vendedor_id', $venta->vendedor_id)
+                ->where('estado', 'EN_RUTA')
+                ->first();
+
+            $tieneItemsSalida = $venta->items->pluck('salida_id')->filter()->isNotEmpty();
+
+            if (!$salidaEnRuta && $tieneItemsSalida) {
+                throw new Exception('No se puede anular la venta porque el vendedor ya no tiene una salida en ruta activa.');
+            }
+
             /*
             ======================================================
             🔁 1️⃣ ROLLBACK PROFESIONAL DE STOCK (POR STOCK VENDEDOR)
@@ -38,8 +68,8 @@ class VentaService
             */
 
             foreach ($venta->items as $item) {
-                if (empty($item->salida_id)) {
-                    // Venta directa fábrica: devolver a StockActual
+                if (empty($item->salida_id) && !$salidaEnRuta) {
+                    // Venta directa fábrica sin salida en ruta: devolver a StockActual
                     $stockActual = StockActual::where('producto_id', $item->producto_id)->orderBy('cantidad', 'asc')->first();
                     if (!$stockActual) {
                         $stockActual = StockActual::firstOrCreate(
@@ -69,13 +99,36 @@ class VentaService
                     continue;
                 }
 
+                $targetSalidaId = $item->salida_id ?? $salidaEnRuta?->id;
+
                 $stockVendedor = StockVendedor::where('producto_id', $item->producto_id)
                     ->where('vendedor_id', $venta->vendedor_id)
+                    ->when($targetSalidaId, function ($q) use ($targetSalidaId) {
+                        $q->where('salida_id', $targetSalidaId);
+                    })
+                    ->lockForUpdate()
                     ->first();
 
                 if ($stockVendedor) {
                     $stockVendedor->cantidad += $item->cantidad;
+                    if ($stockVendedor->vendido >= $item->cantidad) {
+                        $stockVendedor->vendido -= $item->cantidad;
+                    } else {
+                        $stockVendedor->vendido = 0;
+                    }
+                    $stockVendedor->fecha_ultimo_mov = now();
                     $stockVendedor->save();
+                }
+
+                if ($targetSalidaId) {
+                    $salidaItem = SalidaItem::where('salida_id', $targetSalidaId)
+                        ->where('producto_id', $item->producto_id)
+                        ->first();
+
+                    if ($salidaItem) {
+                        $salidaItem->cantidad += $item->cantidad;
+                        $salidaItem->save();
+                    }
                 }
             }
 

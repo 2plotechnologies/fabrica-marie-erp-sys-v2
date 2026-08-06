@@ -128,10 +128,11 @@ export const SaleCart = ({
           {regularItems.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-muted-foreground uppercase">Productos</h4>
-              {regularItems.map((item) => (
+              {regularItems.map((item, index) => (
                 <CartItemRow
                   key={item.productId}
                   item={item}
+                  index={index}
                   onUpdateQuantity={onUpdateQuantity}
                   onUpdatePrice={onUpdatePrice}
                   onRemove={onRemoveItem}
@@ -146,8 +147,18 @@ export const SaleCart = ({
               <h4 className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">
                 <Gift className="h-3 w-3" /> Bonificaciones
               </h4>
-              {bonificaciones.map((item) => (
-                <CartItemRow key={item.productId} item={item} onUpdateQuantity={onUpdateQuantity} onUpdatePrice={onUpdatePrice} onRemove={onRemoveItem} onToggleBonificacion={onToggleBonificacion} onToggleDegustacion={onToggleDegustacion} isFree />
+              {bonificaciones.map((item, index) => (
+                <CartItemRow
+                  key={item.productId}
+                  item={item}
+                  index={regularItems.length + index}
+                  onUpdateQuantity={onUpdateQuantity}
+                  onUpdatePrice={onUpdatePrice}
+                  onRemove={onRemoveItem}
+                  onToggleBonificacion={onToggleBonificacion}
+                  onToggleDegustacion={onToggleDegustacion}
+                  isFree
+                />
               ))}
             </div>
           )}
@@ -156,8 +167,18 @@ export const SaleCart = ({
               <h4 className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1">
                 <Coffee className="h-3 w-3" /> Degustaciones
               </h4>
-              {degustaciones.map((item) => (
-                <CartItemRow key={item.productId} item={item} onUpdateQuantity={onUpdateQuantity} onUpdatePrice={onUpdatePrice} onRemove={onRemoveItem} onToggleBonificacion={onToggleBonificacion} onToggleDegustacion={onToggleDegustacion} isFree />
+              {degustaciones.map((item, index) => (
+                <CartItemRow
+                  key={item.productId}
+                  item={item}
+                  index={regularItems.length + bonificaciones.length + index}
+                  onUpdateQuantity={onUpdateQuantity}
+                  onUpdatePrice={onUpdatePrice}
+                  onRemove={onRemoveItem}
+                  onToggleBonificacion={onToggleBonificacion}
+                  onToggleDegustacion={onToggleDegustacion}
+                  isFree
+                />
               ))}
             </div>
           )}
@@ -415,6 +436,7 @@ export const SaleCart = ({
 
 interface CartItemRowProps {
   item: CartItem;
+  index?: number;
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onUpdatePrice: (productId: string, price: number) => void;
   onRemove: (productId: string) => void;
@@ -423,7 +445,7 @@ interface CartItemRowProps {
   isFree?: boolean;
 }
 
-const CartItemRow = ({ item, onUpdateQuantity, onUpdatePrice, onRemove, onToggleBonificacion, onToggleDegustacion, isFree }: CartItemRowProps) => {
+const CartItemRow = ({ item, index = 0, onUpdateQuantity, onUpdatePrice, onRemove, onToggleBonificacion, onToggleDegustacion, isFree }: CartItemRowProps) => {
   const [inputValue, setInputValue] = useState(item.quantity.toString());
   const [inputPrice, setInputPrice] = useState(Number(item.price).toFixed(2));
 
@@ -435,17 +457,71 @@ const CartItemRow = ({ item, onUpdateQuantity, onUpdatePrice, onRemove, onToggle
     setInputPrice(Number(item.price).toFixed(2));
   }, [item.price]);
 
+  const themeIndex = Math.abs(index) % 3;
+
+  const themes = [
+    // 0: Amarillo suave
+    {
+      container: "p-3 rounded-lg bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 space-y-2 shadow-sm transition-colors",
+      title: "font-medium text-sm truncate text-amber-950 dark:text-amber-100",
+      badge: "text-xs h-5 border-amber-300 dark:border-amber-700 bg-amber-100/50 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200",
+      subtext: "text-xs text-amber-800/80 dark:text-amber-300/70",
+      priceContainer: "flex items-center gap-1 text-xs text-amber-900/80 dark:text-amber-300/80 mt-1",
+      priceInput: "w-16 h-6 px-1 text-xs py-0 focus-visible:ring-1 focus-visible:ring-amber-500 bg-background/80 border-amber-300 dark:border-amber-700",
+      removeBtn: "h-7 w-7 text-destructive hover:text-destructive hover:bg-amber-100 dark:hover:bg-amber-900/50 shrink-0",
+      qtyBtn: "h-7 w-7 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50",
+      qtyInput: "w-14 text-center h-7 px-1 focus-visible:ring-1 focus-visible:ring-amber-500 border-amber-300 dark:border-amber-700 bg-background/80 rounded-md text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+      checkbox: "h-3.5 w-3.5 border-amber-400"
+    },
+    // 1: Celeste suave
+    {
+      container: "p-3 rounded-lg bg-sky-50/90 dark:bg-sky-950/30 border border-sky-200/80 dark:border-sky-800/50 space-y-2 shadow-sm transition-colors",
+      title: "font-medium text-sm truncate text-sky-950 dark:text-sky-100",
+      badge: "text-xs h-5 border-sky-300 dark:border-sky-700 bg-sky-100/50 dark:bg-sky-900/40 text-sky-900 dark:text-sky-200",
+      subtext: "text-xs text-sky-800/80 dark:text-sky-300/70",
+      priceContainer: "flex items-center gap-1 text-xs text-sky-900/80 dark:text-sky-300/80 mt-1",
+      priceInput: "w-16 h-6 px-1 text-xs py-0 focus-visible:ring-1 focus-visible:ring-sky-500 bg-background/80 border-sky-300 dark:border-sky-700",
+      removeBtn: "h-7 w-7 text-destructive hover:text-destructive hover:bg-sky-100 dark:hover:bg-sky-900/50 shrink-0",
+      qtyBtn: "h-7 w-7 border-sky-300 dark:border-sky-700 hover:bg-sky-100 dark:hover:bg-sky-900/50",
+      qtyInput: "w-14 text-center h-7 px-1 focus-visible:ring-1 focus-visible:ring-sky-500 border-sky-300 dark:border-sky-700 bg-background/80 rounded-md text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+      checkbox: "h-3.5 w-3.5 border-sky-400"
+    },
+    // 2: Verde suave
+    {
+      container: "p-3 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 space-y-2 shadow-sm transition-colors",
+      title: "font-medium text-sm truncate text-emerald-950 dark:text-emerald-100",
+      badge: "text-xs h-5 border-emerald-300 dark:border-emerald-700 bg-emerald-100/50 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200",
+      subtext: "text-xs text-emerald-800/80 dark:text-emerald-300/70",
+      priceContainer: "flex items-center gap-1 text-xs text-emerald-900/80 dark:text-emerald-300/80 mt-1",
+      priceInput: "w-16 h-6 px-1 text-xs py-0 focus-visible:ring-1 focus-visible:ring-emerald-500 bg-background/80 border-emerald-300 dark:border-emerald-700",
+      removeBtn: "h-7 w-7 text-destructive hover:text-destructive hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shrink-0",
+      qtyBtn: "h-7 w-7 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/50",
+      qtyInput: "w-14 text-center h-7 px-1 focus-visible:ring-1 focus-visible:ring-emerald-500 border-emerald-300 dark:border-emerald-700 bg-background/80 rounded-md text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+      checkbox: "h-3.5 w-3.5 border-emerald-400"
+    }
+  ];
+
+  const t = themes[themeIndex];
+
   return (
-    <div className="p-3 rounded-lg bg-secondary/30 space-y-2">
+    <div className={t.container}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{item.name}</p>
+          <p className={t.title}>{item.name}</p>
           <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-            {item.marca && <Badge variant="outline" className="text-xs h-5">{item.marca}</Badge>}
-            {item.presentacion && <span className="text-xs text-muted-foreground">{item.presentacion}</span>}
+            {item.marca && (
+              <Badge variant="outline" className={t.badge}>
+                {item.marca}
+              </Badge>
+            )}
+            {item.presentacion && (
+              <span className={t.subtext}>
+                {item.presentacion}
+              </span>
+            )}
           </div>
           {!isFree && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <div className={t.priceContainer}>
               <span>S/</span>
               <Input
                 type="number"
@@ -468,23 +544,32 @@ const CartItemRow = ({ item, onUpdateQuantity, onUpdatePrice, onRemove, onToggle
                     setInputPrice(val.toFixed(2));
                   }
                 }}
-                className="w-16 h-6 px-1 text-xs py-0 focus-visible:ring-1 bg-background border-input"
+                className={t.priceInput}
               />
               <span>x {item.quantity} = S/ {(Number(item.price) * item.quantity).toFixed(2)}</span>
             </div>
           )}
-          {isFree && <p className="text-xs text-muted-foreground mt-1">Cantidad: {item.quantity}</p>}
+          {isFree && (
+            <p className={`${t.subtext} mt-1`}>
+              Cantidad: {item.quantity}
+            </p>
+          )}
         </div>
-        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive shrink-0" onClick={() => onRemove(item.productId)}>
-          <Trash2 className="h-3 w-3" />
+        <Button
+          size="icon"
+          variant="ghost"
+          className={t.removeBtn}
+          onClick={() => onRemove(item.productId)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
-          <Button 
-            size="icon" 
-            variant="outline" 
-            className="h-7 w-7" 
+          <Button
+            size="icon"
+            variant="outline"
+            className={t.qtyBtn}
             onClick={() => onUpdateQuantity(item.productId, item.quantity - 1)}
           >
             <Minus className="h-3 w-3" />
@@ -510,12 +595,12 @@ const CartItemRow = ({ item, onUpdateQuantity, onUpdatePrice, onRemove, onToggle
                 setInputValue(val.toString());
               }
             }}
-            className="w-14 text-center h-7 px-1 focus-visible:ring-1 border-input bg-background rounded-md text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className={t.qtyInput}
           />
-          <Button 
-            size="icon" 
-            variant="outline" 
-            className="h-7 w-7" 
+          <Button
+            size="icon"
+            variant="outline"
+            className={t.qtyBtn}
             onClick={() => onUpdateQuantity(item.productId, item.quantity + 1)}
           >
             <Plus className="h-3 w-3" />
@@ -524,11 +609,19 @@ const CartItemRow = ({ item, onUpdateQuantity, onUpdatePrice, onRemove, onToggle
         {!isFree && (
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-1 text-xs cursor-pointer">
-              <Checkbox checked={false} onCheckedChange={() => onToggleBonificacion(item.productId)} className="h-3.5 w-3.5" />
+              <Checkbox
+                checked={false}
+                onCheckedChange={() => onToggleBonificacion(item.productId)}
+                className={t.checkbox}
+              />
               <Gift className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
             </label>
             <label className="flex items-center gap-1 text-xs cursor-pointer">
-              <Checkbox checked={false} onCheckedChange={() => onToggleDegustacion(item.productId)} className="h-3.5 w-3.5" />
+              <Checkbox
+                checked={false}
+                onCheckedChange={() => onToggleDegustacion(item.productId)}
+                className={t.checkbox}
+              />
               <Coffee className="h-3 w-3 text-amber-600 dark:text-amber-400" />
             </label>
           </div>

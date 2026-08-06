@@ -229,42 +229,48 @@ const Dashboard = () => {
           </div>
         );
 
-      case 'VENDEDOR':
-        // Vista de vendedor: sus ventas, su ruta, sus clientes
+      case 'VENDEDOR': {
+        const resumen = kpis?.resumen_dinero || {};
+        const creditos = kpis?.creditos_pendientes || { total_saldo: 0, cuentas: [] };
+        const stockRuta = kpis?.stock_en_ruta || [];
+
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Mis Ventas Hoy"
-              value={`S/ ${(Number(kpis.ventas_hoy) * 0.3).toLocaleString('es-PE')}`}
-              subtitle="Meta diaria: S/ 2,000"
+              value={`S/ ${(Number(resumen.total_ventas ?? kpis?.ventas_hoy ?? 0)).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
+              subtitle={`Contado: S/ ${Number(resumen.ventas_contado || 0).toLocaleString()} | Crédito: S/ ${Number(resumen.ventas_credito || 0).toLocaleString()}`}
               icon={DollarSign}
               variant="primary"
               delay={0}
             />
             <KPICard
-              title="Clientes Visitados"
-              value={kpis.clientes_visitados ? kpis.clientes_visitados : 0}
-              subtitle={`de ${kpis.total_clientes.total} programados`}
-              icon={Users}
+              title="Efectivo y Cobros"
+              value={`S/ ${Number(resumen.efectivo_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
+              subtitle={`Cobranzas totales: S/ ${Number(resumen.total_cobranzas || 0).toLocaleString()}`}
+              icon={Wallet}
+              variant="success"
               delay={50}
             />
             <KPICard
-              title="Cobros del Día"
-              value={`S/ ${(Number(kpis.cobros_hoy) * 0.25).toLocaleString('es-PE')}`}
-              subtitle="En efectivo"
-              icon={Wallet}
-              variant="success"
+              title="Créditos Pend. Ruta"
+              value={`S/ ${Number(creditos.total_saldo || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
+              subtitle={`${creditos.cuentas?.length || 0} cuentas en ruta`}
+              icon={Clock}
+              variant="warning"
               delay={100}
             />
             <KPICard
-              title="Mi Ruta"
-              value={`${kpis.rutas_hoy}%`}
-              subtitle={`${kpis.total_clientes.total - kpis.clientes_visitados} pendientes`}
-              icon={MapPin}
+              title="Productos Disponibles"
+              value={stockRuta.length}
+              subtitle="En la ruta actual"
+              icon={Package}
+              variant="default"
               delay={150}
             />
           </div>
         );
+      }
 
       case 'ALMACENERO':
         // Vista de almacén: stock, movimientos, alertas
@@ -517,11 +523,263 @@ const Dashboard = () => {
           </>
         );
 
-      case 'VENDEDOR':
+      case 'VENDEDOR': {
+        const resumen = kpis?.resumen_dinero || {};
+        const creditosPendientes = kpis?.creditos_pendientes?.cuentas || [];
+        const stockEnRuta = kpis?.stock_en_ruta || [];
+
         return (
-          <>
-            {kpis.tareas_hoy.length > 0 && (
-              <Card className="shadow-card animate-fade-in lg:col-span-2">
+          <div className="space-y-6 col-span-full">
+            {/* TARJETA 1: Resumen de Ventas y Dinero Acumulado (Por Método de Pago Separados) */}
+            <Card className="shadow-card animate-fade-in border-l-4 border-l-primary">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-xl font-bold flex items-center gap-2">
+                    <Wallet className="h-6 w-6 text-primary" />
+                    Tarjeta 1: Ventas y Dinero Acumulado por Métodos de Pago
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Acumulado de ventas, cobranzas y crédito registrado hoy por tipo de dinero
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-sm font-bold border-primary text-primary px-3 py-1">
+                  Ventas Hoy: S/ {Number(resumen.total_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-2">
+                  {/* EFECTIVO */}
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">💵 Efectivo</span>
+                    </div>
+                    <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400">
+                      S/ {Number(resumen.efectivo_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground space-y-0.5 border-t border-emerald-200/60 dark:border-emerald-800/60 pt-2">
+                      <div className="flex justify-between">
+                        <span>Ventas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.efectivo_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cobranzas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.efectivo_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* YAPE */}
+                  <div className="p-4 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider">📱 Yape</span>
+                    </div>
+                    <p className="text-2xl font-extrabold text-purple-700 dark:text-purple-400">
+                      S/ {Number(resumen.yape_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground space-y-0.5 border-t border-purple-200/60 dark:border-purple-800/60 pt-2">
+                      <div className="flex justify-between">
+                        <span>Ventas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.yape_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cobranzas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.yape_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PLIN */}
+                  <div className="p-4 bg-cyan-50 dark:bg-cyan-950/40 rounded-xl border border-cyan-200 dark:border-cyan-800">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-cyan-800 dark:text-cyan-300 uppercase tracking-wider">📱 Plin</span>
+                    </div>
+                    <p className="text-2xl font-extrabold text-cyan-700 dark:text-cyan-400">
+                      S/ {Number(resumen.plin_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground space-y-0.5 border-t border-cyan-200/60 dark:border-cyan-800/60 pt-2">
+                      <div className="flex justify-between">
+                        <span>Ventas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.plin_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cobranzas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.plin_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DEPOSITO / TRANSFERENCIA */}
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">🏦 Depósito / Trans.</span>
+                    </div>
+                    <p className="text-2xl font-extrabold text-blue-700 dark:text-blue-400">
+                      S/ {Number(resumen.deposito_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground space-y-0.5 border-t border-blue-200/60 dark:border-blue-800/60 pt-2">
+                      <div className="flex justify-between">
+                        <span>Ventas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.deposito_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cobranzas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.deposito_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CRÉDITOS Y COBRANZAS SUMMARY */}
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">💳 Créditos y Cobros</span>
+                    </div>
+                    <div className="space-y-1 mt-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Total Cobranzas:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">S/ {Number(resumen.total_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Ventas Crédito:</span>
+                        <span className="font-bold text-amber-600 dark:text-amber-400">S/ {Number(resumen.ventas_credito || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Adelantos Créd.:</span>
+                        <span className="font-bold text-indigo-600 dark:text-indigo-400">S/ {Number(resumen.adelantos_credito || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* TARJETA 2: Créditos Pendientes de Rutas Actuales (Del más antiguo al más reciente) */}
+              <Card className="shadow-card animate-fade-in border-l-4 border-l-amber-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-amber-500" />
+                      Tarjeta 2: Créditos Pendientes en Rutas Actuales
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Ordenados del más antiguo al más reciente (por vencimiento)
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold px-3 py-1">
+                    Total: S/ {Number(kpis?.creditos_pendientes?.total_saldo || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {creditosPendientes.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500 opacity-60" />
+                      No hay créditos pendientes en las rutas actuales.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground sticky top-0">
+                          <tr>
+                            <th className="p-2.5">Cliente</th>
+                            <th className="p-2.5">Ruta / Venta</th>
+                            <th className="p-2.5">Vencimiento</th>
+                            <th className="p-2.5 text-right">Saldo</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {creditosPendientes.map((item: any) => (
+                            <tr key={item.id} className="hover:bg-muted/50 transition-colors">
+                              <td className="p-2.5 font-medium">
+                                <div className="font-semibold">{item.cliente_nombre}</div>
+                                <span className="text-[10px] text-muted-foreground font-mono">{item.codigo_cliente}</span>
+                              </td>
+                              <td className="p-2.5">
+                                <div className="text-xs font-bold text-primary">{item.ruta_nombre || 'Ruta'}</div>
+                                <div className="text-[11px] text-muted-foreground">{item.venta_codigo || `Venta #${item.venta_id}`}</div>
+                              </td>
+                              <td className="p-2.5 whitespace-nowrap">
+                                <Badge variant="outline" className="text-xs font-mono">
+                                  {item.fecha_vencimiento}
+                                </Badge>
+                              </td>
+                              <td className="p-2.5 text-right font-bold text-amber-600 dark:text-amber-400">
+                                S/ {Number(item.saldo).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* TARJETA 3: Stock de Productos Asignados Disponibles en Ruta */}
+              <Card className="shadow-card animate-fade-in border-l-4 border-l-emerald-500">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2">
+                      <Package className="h-5 w-5 text-emerald-500" />
+                      Tarjeta 3: Stock Disponible en Ruta
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Solo productos con stock disponible en el vehículo/salida actual
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 font-bold px-3 py-1">
+                    {stockEnRuta.length} Productos
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  {stockEnRuta.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-amber-500 opacity-60" />
+                      No hay productos con stock disponible en la ruta activa.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-muted/50 text-xs uppercase text-muted-foreground sticky top-0">
+                          <tr>
+                            <th className="p-2.5">Producto</th>
+                            <th className="p-2.5 text-center">Asignado</th>
+                            <th className="p-2.5 text-center">Vendido</th>
+                            <th className="p-2.5 text-right">Disponible</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {stockEnRuta.map((prod: any) => (
+                            <tr key={prod.id} className="hover:bg-muted/50 transition-colors">
+                              <td className="p-2.5 font-medium">
+                                <div className="font-semibold">{prod.producto_nombre}</div>
+                                {prod.unidad_medida && (
+                                  <span className="text-[10px] text-muted-foreground">({prod.unidad_medida})</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 text-center font-mono text-xs">
+                                {prod.stock_asignado ?? 0}
+                              </td>
+                              <td className="p-2.5 text-center font-mono text-xs text-muted-foreground">
+                                {prod.vendido ?? 0}
+                              </td>
+                              <td className="p-2.5 text-right">
+                                <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-0.5">
+                                  {prod.stock_disponible} und
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Mis Tareas de Hoy */}
+            {kpis?.tareas_hoy && kpis.tareas_hoy.length > 0 && (
+              <Card className="shadow-card animate-fade-in">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Clock className="h-5 w-5 text-primary" />
@@ -529,7 +787,7 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {kpis.tareas_hoy.map((task) => (
+                  {kpis.tareas_hoy.map((task: any) => (
                     <div key={task.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="h-2 w-2 rounded-full bg-primary" />
@@ -544,45 +802,11 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             )}
-            <div className="space-y-6">
-              {/*
-            <Card className="shadow-card animate-fade-in">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-primary" />
-                    Mi Ruta: {kpis.rutas_hoy.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Progreso</span>
-                      <span className="font-bold">{todayRoute.progress}%</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all"
-                        style={{ width: `${todayRoute.progress}%` }}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                        <p className="text-2xl font-bold text-emerald-600">{todayRoute.visited}</p>
-                        <p className="text-xs text-muted-foreground">Visitados</p>
-                      </div>
-                      <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                        <p className="text-2xl font-bold text-amber-600">{todayRoute.pending}</p>
-                        <p className="text-xs text-muted-foreground">Pendientes</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              */}
-              <QuickActions />
-            </div>
-          </>
+
+            <QuickActions />
+          </div>
         );
+      }
 
       case 'ALMACENERO':
         return (

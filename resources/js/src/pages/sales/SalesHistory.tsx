@@ -71,6 +71,7 @@ const SalesHistory = () => {
         )
       );
 
+      toast.success('Venta anulada correctamente');
     } catch (error) {
       console.error("ERROR COMPLETO:", error);
       console.error("RESPUESTA DEL SERVIDOR:", error.response?.data);

@@ -31,15 +31,43 @@ class DashboardService
 
     public function getDashboardKPIsVendedor()
     {
-        return Cache::remember('dashboard_kpis_vendedor', 60, function () {
+        $usuario_id = auth()->user()->id;
+
+        return Cache::remember("dashboard_kpis_vendedor_{$usuario_id}", 30, function () use ($usuario_id) {
+            $vendedor = DB::table('vendedores')
+                ->where('usuario_id', $usuario_id)
+                ->first();
+
+            $vendedorId = $vendedor ? $vendedor->id : null;
 
             return [
-                'ventas_hoy' => $this->getVentasPorVendedor(),
-                'cobros_hoy' => $this->getCobrosPorVendedor(),
-                'rutas_hoy' => $this->getRutasPorVendedor(),
-                'clientes_visitados' => $this->getClientesVisitadosPorVendedor(),
-                'total_clientes' => $this->getClientesStats(),
-                'tareas_hoy' => $this->getTareasPorVendedor(),
+                'resumen_dinero'      => $vendedorId ? $this->getResumenDineroVendedor($vendedorId, $usuario_id) : [
+                    'total_ventas'       => 0,
+                    'ventas_contado'     => 0,
+                    'ventas_credito'     => 0,
+                    'adelantos_credito'  => 0,
+                    'total_cobranzas'    => 0,
+                    'efectivo_total'     => 0,
+                    'efectivo_ventas'    => 0,
+                    'efectivo_cobranzas' => 0,
+                    'yape_total'         => 0,
+                    'yape_ventas'        => 0,
+                    'yape_cobranzas'     => 0,
+                    'plin_total'         => 0,
+                    'plin_ventas'        => 0,
+                    'plin_cobranzas'     => 0,
+                    'deposito_total'     => 0,
+                    'deposito_ventas'    => 0,
+                    'deposito_cobranzas' => 0,
+                ],
+                'creditos_pendientes' => $vendedorId ? $this->getCreditosPendientesRutasVendedor($vendedorId) : ['total_saldo' => 0, 'cuentas' => []],
+                'stock_en_ruta'       => $vendedorId ? $this->getStockEnRutaVendedor($vendedorId) : [],
+                'ventas_hoy'          => $this->getVentasPorVendedor(),
+                'cobros_hoy'          => $this->getCobrosPorVendedor(),
+                'rutas_hoy'           => $this->getRutasPorVendedor(),
+                'clientes_visitados'  => $this->getClientesVisitadosPorVendedor(),
+                'total_clientes'      => $this->getClientesStats(),
+                'tareas_hoy'          => $this->getTareasPorVendedor(),
             ];
         });
     }
@@ -409,6 +437,228 @@ class DashboardService
             ->get();
 
         return $tareas;
+    }
+
+    // Resumen de dinero por métodos separados (Ventas + Cobranzas + Créditos)
+    public function getResumenDineroVendedor($vendedorId, $usuarioId)
+    {
+        $today = Carbon::today();
+
+        $ventas = \App\Models\Venta::with(['pagos'])
+            ->where('vendedor_id', $vendedorId)
+            ->where('estado', 'CONFIRMADA')
+            ->whereDate('fecha', $today)
+            ->get();
+
+        $abonos = DB::table('abonos')
+            ->where('usuario_id', $usuarioId)
+            ->where('estado', 'ACTIVO')
+            ->whereDate('fecha', $today)
+            ->get();
+
+        $efectivoVentas = 0;
+        $yapeVentas = 0;
+        $plinVentas = 0;
+        $depositoVentas = 0;
+
+        foreach ($ventas as $v) {
+            if ($v->pagos && $v->pagos->count() > 0) {
+                foreach ($v->pagos as $pago) {
+                    $metodo = strtoupper(trim($pago->metodo_pago));
+                    $monto = (float) $pago->monto;
+
+                    if ($metodo === 'YAPE') {
+                        $yapeVentas += $monto;
+                    } elseif ($metodo === 'PLIN') {
+                        $plinVentas += $monto;
+                    } elseif (in_array($metodo, ['DEPOSITO', 'TRANSFERENCIA'])) {
+                        $depositoVentas += $monto;
+                    } else {
+                        $efectivoVentas += $monto;
+                    }
+                }
+            } else {
+                $mp = strtoupper(trim($v->metodo_pago_detalle ?? ''));
+                $montoVenta = $v->tipo_pago === 'CONTADO' ? (float)$v->total_neto : (float)$v->adelanto;
+
+                if ($mp === 'YAPE') {
+                    $yapeVentas += $montoVenta;
+                } elseif ($mp === 'PLIN') {
+                    $plinVentas += $montoVenta;
+                } elseif (in_array($mp, ['DEPOSITO', 'TRANSFERENCIA'])) {
+                    $depositoVentas += $montoVenta;
+                } else {
+                    $efectivoVentas += $montoVenta;
+                }
+            }
+        }
+
+        $efectivoCobranzas = 0;
+        $yapeCobranzas = 0;
+        $plinCobranzas = 0;
+        $depositoCobranzas = 0;
+
+        foreach ($abonos as $abono) {
+            $metodo = strtoupper(trim($abono->metodo_pago));
+            $monto = (float) $abono->monto;
+
+            if ($metodo === 'YAPE') {
+                $yapeCobranzas += $monto;
+            } elseif ($metodo === 'PLIN') {
+                $plinCobranzas += $monto;
+            } elseif (in_array($metodo, ['DEPOSITO', 'TRANSFERENCIA'])) {
+                $depositoCobranzas += $monto;
+            } else {
+                $efectivoCobranzas += $monto;
+            }
+        }
+
+        $totalVentas = (float) $ventas->sum('total_neto');
+        $totalVentasContado = (float) $ventas->where('tipo_pago', 'CONTADO')->sum('total_neto');
+        $totalVentasCredito = (float) $ventas->where('tipo_pago', 'CREDITO')->sum('total_neto');
+        $totalAdelantos = (float) $ventas->where('tipo_pago', 'CREDITO')->sum('adelanto');
+        $totalCobranzas = (float) $abonos->sum('monto');
+
+        return [
+            'total_ventas'       => $totalVentas,
+            'ventas_contado'     => $totalVentasContado,
+            'ventas_credito'     => $totalVentasCredito,
+            'adelantos_credito'  => $totalAdelantos,
+            'total_cobranzas'    => $totalCobranzas,
+
+            'efectivo_total'     => $efectivoVentas + $efectivoCobranzas,
+            'efectivo_ventas'    => $efectivoVentas,
+            'efectivo_cobranzas' => $efectivoCobranzas,
+
+            'yape_total'         => $yapeVentas + $yapeCobranzas,
+            'yape_ventas'        => $yapeVentas,
+            'yape_cobranzas'     => $yapeCobranzas,
+
+            'plin_total'         => $plinVentas + $plinCobranzas,
+            'plin_ventas'        => $plinVentas,
+            'plin_cobranzas'     => $plinCobranzas,
+
+            'deposito_total'     => $depositoVentas + $depositoCobranzas,
+            'deposito_ventas'    => $depositoVentas,
+            'deposito_cobranzas' => $depositoCobranzas,
+        ];
+    }
+
+    // Créditos pendientes de las rutas de la salida activa del vendedor (ordenados del más antiguo al más reciente)
+    public function getCreditosPendientesRutasVendedor($vendedorId)
+    {
+        $activeSalidas = \App\Models\Salida::with(['rutas'])
+            ->where('vendedor_id', $vendedorId)
+            ->where('estado', 'EN_RUTA')
+            ->get();
+
+        $rutaIds = collect();
+        foreach ($activeSalidas as $salida) {
+            if ($salida->ruta_id) {
+                $rutaIds->push($salida->ruta_id);
+            }
+            if ($salida->rutas) {
+                foreach ($salida->rutas as $r) {
+                    $rutaIds->push($r->id);
+                }
+            }
+        }
+
+        $rutaIds = $rutaIds->filter()->unique()->values();
+
+        if ($rutaIds->isEmpty()) {
+            $rutaIds = DB::table('rutas')
+                ->where('vendedor_id', $vendedorId)
+                ->where('activo', true)
+                ->pluck('id');
+        }
+
+        if ($rutaIds->isEmpty()) {
+            return [
+                'total_saldo' => 0,
+                'cuentas'     => [],
+            ];
+        }
+
+        $clientIds = DB::table('clientes')
+            ->whereIn('ruta_id', $rutaIds)
+            ->pluck('id')
+            ->merge(
+                DB::table('ruta_cliente')
+                    ->whereIn('ruta_id', $rutaIds)
+                    ->pluck('cliente_id')
+            )
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($clientIds)) {
+            return [
+                'total_saldo' => 0,
+                'cuentas'     => [],
+            ];
+        }
+
+        $cuentas = DB::table('cuentas_por_cobrar')
+            ->join('clientes', 'cuentas_por_cobrar.cliente_id', '=', 'clientes.id')
+            ->leftJoin('rutas', 'clientes.ruta_id', '=', 'rutas.id')
+            ->leftJoin('ventas', 'cuentas_por_cobrar.venta_id', '=', 'ventas.id')
+            ->whereIn('cuentas_por_cobrar.cliente_id', $clientIds)
+            ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
+            ->where('cuentas_por_cobrar.saldo', '>', 0)
+            ->select(
+                'cuentas_por_cobrar.id',
+                'cuentas_por_cobrar.cliente_id',
+                'cuentas_por_cobrar.venta_id',
+                'cuentas_por_cobrar.fecha_vencimiento',
+                'cuentas_por_cobrar.monto_total',
+                'cuentas_por_cobrar.saldo',
+                'cuentas_por_cobrar.estado',
+                'clientes.razon_social as cliente_nombre',
+                'clientes.codigo_cliente',
+                'rutas.nombre as ruta_nombre',
+                'ventas.codigo as venta_codigo',
+                'ventas.fecha as venta_fecha'
+            )
+            ->orderBy('cuentas_por_cobrar.fecha_vencimiento', 'asc')
+            ->get();
+
+        return [
+            'total_saldo' => (float) $cuentas->sum('saldo'),
+            'cuentas'     => $cuentas,
+        ];
+    }
+
+    // Stock de productos disponibles en ruta (cantidad > 0)
+    public function getStockEnRutaVendedor($vendedorId)
+    {
+        $salidaIds = DB::table('salidas')
+            ->where('vendedor_id', $vendedorId)
+            ->where('estado', 'EN_RUTA')
+            ->pluck('id');
+
+        if ($salidaIds->isEmpty()) {
+            return [];
+        }
+
+        return DB::table('stock_vendedores')
+            ->join('productos', 'stock_vendedores.producto_id', '=', 'productos.id')
+            ->whereIn('stock_vendedores.salida_id', $salidaIds)
+            ->where('stock_vendedores.cantidad', '>', 0)
+            ->select(
+                'stock_vendedores.id',
+                'stock_vendedores.producto_id',
+                'stock_vendedores.salida_id',
+                'stock_vendedores.cantidad as stock_disponible',
+                'stock_vendedores.cantidad_entregada as stock_asignado',
+                'stock_vendedores.vendido',
+                'stock_vendedores.devuelto',
+                'productos.nombre as producto_nombre',
+                'productos.sku as producto_codigo',
+                'productos.unidad_medida'
+            )
+            ->orderBy('productos.nombre', 'asc')
+            ->get();
     }
 
     /**
