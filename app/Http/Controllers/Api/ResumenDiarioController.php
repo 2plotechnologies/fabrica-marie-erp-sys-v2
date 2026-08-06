@@ -245,25 +245,7 @@ class ResumenDiarioController extends Controller
             $gasto->resumen_diario_id = $resumenDiario->id;
             $gasto->save();
         }
-        /*
-        // Si el resumen diario se crea con estado CONFIRMADO, completar salida y liberar vehículo.
-        if ($resumenDiario->estado == 'CONFIRMADO') {
-            if ($resumenDiario->salida_id) {
-                $salida = Salida::find($resumenDiario->salida_id);
-                if ($salida) {
-                    $salida->estado = 'COMPLETADO';
-                    $salida->save();
-                }
-            }
-            if ($resumenDiario->vehiculo_id) {
-                $vehiculo = Vehiculo::find($resumenDiario->vehiculo_id);
-                if ($vehiculo) {
-                    $vehiculo->estado = 'DISPONIBLE';
-                    $vehiculo->save();
-                }
-            }
-        }
-        */
+
 
         return response()->json($resumenDiario, 201);
     }
@@ -278,22 +260,6 @@ class ResumenDiarioController extends Controller
             foreach ($gastos as $gasto) {
                 $gasto->estado = 'CONFIRMADO';
                 $gasto->save();
-            }
-
-            // Completar salida y liberar vehículo al confirmar el resumen diario
-            if ($resumenDiario->salida_id) {
-                $salida = Salida::find($resumenDiario->salida_id);
-                if ($salida) {
-                    $salida->estado = 'COMPLETADO';
-                    $salida->save();
-                }
-            }
-            if ($resumenDiario->vehiculo_id) {
-                $vehiculo = Vehiculo::find($resumenDiario->vehiculo_id);
-                if ($vehiculo) {
-                    $vehiculo->estado = 'DISPONIBLE';
-                    $vehiculo->save();
-                }
             }
         }
         //Rechazar gastos automaticamente si es estado es RECHAZADO (Usar resumen_diario_id)
