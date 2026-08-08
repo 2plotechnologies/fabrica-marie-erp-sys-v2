@@ -230,24 +230,39 @@ const Dashboard = () => {
         );
 
       case 'VENDEDOR': {
+        const tieneSalida = kpis?.tiene_salida_activa ?? false;
         const resumen = kpis?.resumen_dinero || {};
         const creditos = kpis?.creditos_pendientes || { total_saldo: 0, cuentas: [] };
         const stockRuta = kpis?.stock_en_ruta || [];
 
+        if (!tieneSalida) {
+          return (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-l-4 border-l-amber-500 rounded-lg flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div>
+                <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">No hay salida en ruta vigente</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Actualmente no posees una salida despachada en estado "EN RUTA". Tus KPIs y acumulados figurarán automáticamente cuando se active tu salida.
+                </p>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
-              title="Mis Ventas Hoy"
-              value={`S/ ${(Number(resumen.total_ventas ?? kpis?.ventas_hoy ?? 0)).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
+              title="Ventas (Salida Vigente)"
+              value={`S/ ${(Number(resumen.total_ventas ?? 0)).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
               subtitle={`Contado: S/ ${Number(resumen.ventas_contado || 0).toLocaleString()} | Crédito: S/ ${Number(resumen.ventas_credito || 0).toLocaleString()}`}
               icon={DollarSign}
               variant="primary"
               delay={0}
             />
             <KPICard
-              title="Efectivo y Cobros"
+              title="Efectivo y Cobros (Salida)"
               value={`S/ ${Number(resumen.efectivo_total || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
-              subtitle={`Cobranzas totales: S/ ${Number(resumen.total_cobranzas || 0).toLocaleString()}`}
+              subtitle={`Cobranzas: S/ ${Number(resumen.total_cobranzas || 0).toLocaleString()}`}
               icon={Wallet}
               variant="success"
               delay={50}
@@ -255,15 +270,15 @@ const Dashboard = () => {
             <KPICard
               title="Créditos Pend. Ruta"
               value={`S/ ${Number(creditos.total_saldo || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`}
-              subtitle={`${creditos.cuentas?.length || 0} cuentas en ruta`}
+              subtitle={`${creditos.cuentas?.length || 0} cuentas en rutas`}
               icon={Clock}
               variant="warning"
               delay={100}
             />
             <KPICard
-              title="Productos Disponibles"
+              title="Productos en Vehículo"
               value={stockRuta.length}
-              subtitle="En la ruta actual"
+              subtitle="Con stock disponible"
               icon={Package}
               variant="default"
               delay={150}
@@ -524,26 +539,101 @@ const Dashboard = () => {
         );
 
       case 'VENDEDOR': {
+        const tieneSalida = kpis?.tiene_salida_activa ?? false;
+        const salida = kpis?.salida_activa || null;
         const resumen = kpis?.resumen_dinero || {};
         const creditosPendientes = kpis?.creditos_pendientes?.cuentas || [];
         const stockEnRuta = kpis?.stock_en_ruta || [];
 
+        if (!tieneSalida) {
+          return (
+            <div className="space-y-6 col-span-full">
+              <Card className="shadow-card border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20">
+                <CardContent className="p-8 text-center space-y-3">
+                  <div className="h-14 w-14 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
+                    <Truck className="h-7 w-7" />
+                  </div>
+                  <h3 className="text-xl font-bold text-amber-900 dark:text-amber-200">No hay salida en ruta vigente</h3>
+                  <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+                    Actualmente no cuentas con una salida despachada en estado <strong>EN RUTA</strong>.
+                    Los acumulados de dinero, ventas, cobranzas y stock disponible de tus productos se mostrarán automáticamente en este panel en cuanto tu salida sea despachada a ruta.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {kpis?.tareas_hoy && kpis.tareas_hoy.length > 0 && (
+                <Card className="shadow-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-primary" />
+                      Mis Tareas de Hoy
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {kpis.tareas_hoy.map((task: any) => (
+                      <div key={task.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                          <div>
+                            <p className="font-medium">{task.titulo}</p>
+                            <p className="text-xs text-muted-foreground">{task.descripcion}</p>
+                          </div>
+                        </div>
+                        <Badge variant="outline">{task.fecha_limite}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              <QuickActions />
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6 col-span-full">
+            {/* Cabecera Informativa de la Salida Vigente */}
+            {salida && (
+              <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-primary text-primary-foreground rounded-lg">
+                    <Truck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-base flex items-center gap-2">
+                      Salida Vigente #{salida.id}
+                      <Badge className="bg-emerald-600 text-white font-bold">EN RUTA</Badge>
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <strong>Vehículo:</strong> {salida.vehiculo} &nbsp;|&nbsp; <strong>Conductor:</strong> {salida.conductor || 'N/A'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <strong>Ruta(s):</strong> {salida.rutas}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <p className="font-semibold text-foreground">Fecha Salida</p>
+                  <p className="font-mono">{salida.fecha}</p>
+                </div>
+              </div>
+            )}
+
             {/* TARJETA 1: Resumen de Ventas y Dinero Acumulado (Por Método de Pago Separados) */}
             <Card className="shadow-card animate-fade-in border-l-4 border-l-primary">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle className="text-xl font-bold flex items-center gap-2">
                     <Wallet className="h-6 w-6 text-primary" />
-                    Tarjeta 1: Ventas y Dinero Acumulado por Métodos de Pago
+                    Tarjeta 1: Ventas y Dinero Acumulado en Salida Vigente
                   </CardTitle>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Acumulado de ventas, cobranzas y crédito registrado hoy por tipo de dinero
+                    Acumulado total de la salida en ruta por método de pago
                   </p>
                 </div>
                 <Badge variant="outline" className="text-sm font-bold border-primary text-primary px-3 py-1">
-                  Ventas Hoy: S/ {Number(resumen.total_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  Ventas Salida: S/ {Number(resumen.total_ventas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                 </Badge>
               </CardHeader>
               <CardContent>

@@ -12,8 +12,13 @@ export const resumenDiarioService = {
         return response.data;
     },
 
-    async getSalidas() {
-        const response = await api.get('/resumen-diario/salidas');
+    async getSalidas(vendedor_id?: string, fecha?: string) {
+        const response = await api.get('/resumen-diario/salidas', {
+            params: {
+                ...(vendedor_id ? { vendedor_id } : {}),
+                ...(fecha ? { fecha } : {}),
+            }
+        });
         return response.data;
     },
 

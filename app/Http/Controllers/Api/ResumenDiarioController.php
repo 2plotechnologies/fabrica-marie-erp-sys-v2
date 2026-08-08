@@ -11,6 +11,7 @@ use App\Models\Viatico;
 use App\Models\Vendedor;
 use App\Models\Salida;
 use App\Models\Vehiculo;
+use App\Models\EntregaDinero;
 use Carbon\Carbon;
 
 class ResumenDiarioController extends Controller
@@ -37,14 +38,26 @@ class ResumenDiarioController extends Controller
         return response()->json($resumenes);
     }
 
-    public function getSalidas()
+    public function getSalidas(Request $request)
     {
-        //Solo salidas de la ultima semana.
-        $salidas = Salida::with('vendedor.usuario', 'vehiculo', 'ruta')
-        ->whereDate('fecha', '>=', Carbon::today()->subWeek(1))
-        ->where('estado', '!=', 'PENDIENTE')
-        ->orderBy('fecha', 'desc')
-        ->get();
+        $query = Salida::with('vendedor.usuario', 'vehiculo', 'ruta')
+            ->where('estado', '!=', 'PENDIENTE');
+
+        if ($request->filled('vendedor_id')) {
+            $query->where('vendedor_id', $request->vendedor_id);
+        }
+
+        if ($request->filled('fecha')) {
+            $fecha = $request->fecha;
+            $query->where(function($q) use ($fecha) {
+                $q->whereIn('estado', ['EN RUTA', 'EN_RUTA'])
+                  ->orWhereDate('fecha', $fecha);
+            });
+        } else {
+            $query->whereDate('fecha', '>=', Carbon::today()->subWeek(1));
+        }
+
+        $salidas = $query->orderBy('fecha', 'desc')->get();
         return response()->json($salidas);
     }
 
@@ -144,31 +157,47 @@ class ResumenDiarioController extends Controller
             }
         }
 
-        $salidaId = $request->get('salida_id');
-        if (!$salidaId) {
-            $salidaActiva = Salida::where('vendedor_id', $vendedor_id)
+        // Prioridad 1: Salida vigente EN RUTA del vendedor (para viajes largos / multidía)
+        $salidaActiva = Salida::with('vehiculo', 'ruta')
+            ->where('vendedor_id', $vendedor_id)
+            ->whereIn('estado', ['EN RUTA', 'EN_RUTA'])
+            ->orderBy('id', 'desc')
+            ->first();
+
+        // Prioridad 2: Si no hay salida EN RUTA, buscar salidas asociadas a la fecha especificada
+        if (!$salidaActiva) {
+            $salidaActiva = Salida::with('vehiculo', 'ruta')
+                ->where('vendedor_id', $vendedor_id)
+                ->whereDate('fecha', $fecha)
+                ->whereIn('estado', ['FINALIZADO', 'COMPLETADO', 'EN RUTA', 'EN_RUTA', 'PENDIENTE'])
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
+        // Prioridad 3: Fallback a salida previa a la fecha
+        if (!$salidaActiva) {
+            $salidaActiva = Salida::with('vehiculo', 'ruta')
+                ->where('vendedor_id', $vendedor_id)
                 ->whereDate('fecha', '<=', $fecha)
-                ->whereIn('estado', ['EN RUTA', 'EN_RUTA', 'PENDIENTE', 'FINALIZADO', 'COMPLETADO'])
+                ->whereIn('estado', ['FINALIZADO', 'COMPLETADO', 'EN RUTA', 'EN_RUTA', 'PENDIENTE'])
                 ->orderBy('fecha', 'desc')
                 ->first();
-            if ($salidaActiva) {
-                $salidaId = $salidaActiva->id;
-            }
         }
 
-        $viaticosQuery = Viatico::where('vendedor_id', $vendedor_id)
-            ->whereIn('estado', ['APROBADO', 'LIQUIDADO']);
+        $salidaId = $request->get('salida_id') ?: ($salidaActiva ? $salidaActiva->id : null);
 
-        if ($salidaId) {
-            $viaticosQuery->where(function($q) use ($fecha, $salidaId) {
-                $q->where('salida_id', $salidaId)
-                  ->orWhereDate('fecha', $fecha);
-            });
-        } else {
-            $viaticosQuery->whereDate('fecha', $fecha);
-        }
+        // Entregas de dinero aprobadas desde MoneyDelivery (estado ACEPTADA estrictamente)
+        $entregasDinero = EntregaDinero::with('items')
+            ->where('usuario_id', $vendedor->usuario_id)
+            ->where('estado', 'ACEPTADA')
+            ->whereDate('created_at', $fecha)
+            ->get();
+        $totalEntregasDinero = (float) $entregasDinero->sum('monto_total');
 
-        $viaticos = $viaticosQuery->get();
+        $viaticos = Viatico::where('vendedor_id', $vendedor_id)
+            ->whereDate('fecha', $fecha)
+            ->whereIn('estado', ['APROBADO', 'LIQUIDADO'])
+            ->get();
         $totalVentas = $ventas->sum('total_neto');
         $totalGastos = $gastos->sum('monto');
         $totalCobranzas = $cobranzas->sum('monto');
@@ -179,7 +208,7 @@ class ResumenDiarioController extends Controller
         $totalMonederoVirtual = $monederoVirtualVentas + $cobranzas_monedero_virtual->sum('monto');
         $totalViaticos = $viaticos->sum('monto');
 
-        $saldoEntregar = $totalVentasContado + $totalCobranzas + $totalAdelantos + $totalViaticos - $totalGastos - $totalDepositos - $totalMonederoVirtual;
+        $saldoEntregar = $totalVentasContado + $totalCobranzas + $totalAdelantos + $totalViaticos - $totalGastos - $totalDepositos - $totalMonederoVirtual - $totalEntregasDinero;
         if ($saldoEntregar < 0) {
             $saldoEntregar = 0;
         }
@@ -195,6 +224,7 @@ class ResumenDiarioController extends Controller
             'depositos' => $depositos,
             'monederoVirtual' => $monederoVirtual,
             'viaticos' => $viaticos,
+            'entregasDinero' => $entregasDinero,
             'stockAudit' => $stockAudit,
             'totalVentas' => $totalVentas,
             'totalVentasContado' => $totalVentasContado,
@@ -205,7 +235,10 @@ class ResumenDiarioController extends Controller
             'totalDepositos' => $totalDepositos,
             'totalMonederoVirtual' => $totalMonederoVirtual,
             'totalViaticos' => $totalViaticos,
+            'totalEntregasDinero' => $totalEntregasDinero,
             'saldoEntregar' => $saldoEntregar,
+            'salida_id' => $salidaId,
+            'salida' => $salidaActiva,
         ]);
     }
 
@@ -432,13 +465,22 @@ class ResumenDiarioController extends Controller
                         ->get();
                 }
 
-                // Viáticos de la salida
-                $viaticosSalida = Viatico::where('salida_id', $salida->id)
-                    ->orWhere(function($q) use ($salida) {
-                        $q->where('vendedor_id', $salida->vendedor_id)
-                          ->whereDate('fecha', $salida->fecha);
-                    })
+                // Obtener fechas de los resúmenes de la salida
+                $fechasResumenes = $resumenes->pluck('fecha')->map(function($f) {
+                    return \Carbon\Carbon::parse($f)->toDateString();
+                })->filter()->unique()->toArray();
+
+                if (empty($fechasResumenes)) {
+                    $fechasResumenes = [\Carbon\Carbon::parse($salida->fecha)->toDateString()];
+                }
+
+                // Viáticos de la salida (por salida_id o fechas del viaje del vendedor)
+                $viaticosSalida = Viatico::where('vendedor_id', $salida->vendedor_id)
                     ->whereIn('estado', ['APROBADO', 'LIQUIDADO'])
+                    ->where(function($q) use ($salida, $fechasResumenes) {
+                        $q->where('salida_id', $salida->id)
+                          ->orWhereIn(\Illuminate\Support\Facades\DB::raw('DATE(fecha)'), $fechasResumenes);
+                    })
                     ->get();
 
                 $totalContado = (float)$resumenes->sum('contado');
@@ -447,7 +489,10 @@ class ResumenDiarioController extends Controller
                 $totalAdelanto = (float)$resumenes->sum('adelanto');
                 $totalDepositos = (float)$resumenes->sum('depositos');
                 $totalGastos = (float)$resumenes->sum('total_gastos');
-                $totalViaticos = (float)$viaticosSalida->sum('monto');
+                $totalViaticos = (float)$resumenes->sum('viaticos');
+                if ($totalViaticos == 0 && $viaticosSalida->isNotEmpty()) {
+                    $totalViaticos = (float)$viaticosSalida->sum('monto');
+                }
                 $totalEntregado = (float)$resumenes->sum('saldo_entregado');
 
                 $saldoAcumuladoEntregar = $totalContado + $totalCobranza + $totalAdelanto + $totalViaticos - $totalGastos - $totalDepositos;
@@ -577,53 +622,131 @@ class ResumenDiarioController extends Controller
         }
 
         if (!$salidaId) {
-            return [];
+            return [
+                'dias' => [],
+                'items' => [],
+            ];
+        }
+
+        $salidaModel = Salida::find($salidaId);
+        $fechaSalida = $salidaModel ? Carbon::parse($salidaModel->fecha)->toDateString() : null;
+
+        // Obtener todas las fechas únicas de ventas o resúmenes de esta salida
+        $fechasVentas = \App\Models\VentaItem::where('salida_id', $salidaId)
+            ->whereHas('venta', function($q) {
+                $q->where('estado', 'CONFIRMADA');
+            })
+            ->join('ventas', 'venta_items.venta_id', '=', 'ventas.id')
+            ->selectRaw('DATE(ventas.fecha) as fecha_dia')
+            ->pluck('fecha_dia')
+            ->toArray();
+
+        $fechasResumenes = \App\Models\ResumenDiario::where('salida_id', $salidaId)
+            ->selectRaw('DATE(fecha) as fecha_dia')
+            ->pluck('fecha_dia')
+            ->toArray();
+
+        $todasFechas = array_values(array_unique(array_filter(array_merge(
+            $fechaSalida ? [$fechaSalida] : [],
+            $fechasVentas,
+            $fechasResumenes
+        ))));
+
+        sort($todasFechas);
+
+        if (empty($todasFechas)) {
+            $todasFechas = [$fecha ? Carbon::parse($fecha)->toDateString() : date('Y-m-d')];
+        }
+
+        $dias = [];
+        foreach ($todasFechas as $index => $fechaDia) {
+            $dias[] = [
+                'numero' => $index + 1,
+                'etiqueta' => 'Día ' . ($index + 1),
+                'fecha' => $fechaDia,
+                'fecha_formateada' => Carbon::parse($fechaDia)->format('d/m'),
+            ];
         }
 
         $stocks = \App\Models\StockVendedor::with('producto')
             ->where('salida_id', $salidaId)
             ->get();
 
-        if ($stocks->isNotEmpty()) {
-            return $stocks->map(function ($stock) {
-                $asignado = (float) ($stock->cantidad_entregada ?? ($stock->cantidad + $stock->vendido));
-                $vendido = (float) ($stock->vendido ?? 0);
-                $sobrante = (float) ($stock->cantidad ?? 0);
-
-                return [
-                    'producto_id' => $stock->producto_id,
-                    'producto' => $stock->producto ? $stock->producto->nombre : 'Producto #' . $stock->producto_id,
-                    'codigo' => $stock->producto ? $stock->producto->codigo : '',
-                    'stock_asignado' => $asignado,
-                    'stock_vendido' => $vendido,
-                    'sobrante' => $sobrante,
-                ];
-            })->values()->toArray();
-        }
-
-        // Fallback to SalidaItem if StockVendedor has no records for this salida
         $salidaItems = \App\Models\SalidaItem::with('producto')
             ->where('salida_id', $salidaId)
             ->get();
 
-        return $salidaItems->map(function ($item) use ($salidaId) {
-            $vendido = (float) \App\Models\VentaItem::where('salida_id', $salidaId)
-                ->where('producto_id', $item->producto_id)
-                ->whereHas('venta', function ($q) {
-                    $q->where('estado', 'CONFIRMADA');
-                })->sum('cantidad');
-            
-            $asignado = (float) $item->cantidad;
-            $sobrante = max(0, $asignado - $vendido);
+        // Agrupar productos únicos de StockVendedor o SalidaItem
+        $productosList = collect();
+        foreach ($stocks as $s) {
+            if (!$productosList->contains('id', $s->producto_id)) {
+                $productosList->push([
+                    'id' => $s->producto_id,
+                    'producto' => $s->producto,
+                    'asignado' => (float) ($s->cantidad_entregada ?? ($s->cantidad + $s->vendido)),
+                    'sobrante_actual' => (float) ($s->cantidad ?? 0),
+                ]);
+            }
+        }
 
-            return [
-                'producto_id' => $item->producto_id,
-                'producto' => $item->producto ? $item->producto->nombre : 'Producto #' . $item->producto_id,
-                'codigo' => $item->producto ? $item->producto->codigo : '',
-                'stock_asignado' => $asignado,
-                'stock_vendido' => $vendido,
+        foreach ($salidaItems as $item) {
+            if (!$productosList->contains('id', $item->producto_id)) {
+                $productosList->push([
+                    'id' => $item->producto_id,
+                    'producto' => $item->producto,
+                    'asignado' => (float) $item->cantidad,
+                    'sobrante_actual' => null,
+                ]);
+            }
+        }
+
+        $itemsAudit = [];
+
+        foreach ($productosList as $pInfo) {
+            $productoId = $pInfo['id'];
+            $productoObj = $pInfo['producto'];
+            $stockAsignado = $pInfo['asignado'];
+
+            $ventasPorDia = [];
+            $totalVendido = 0;
+
+            foreach ($dias as $d) {
+                $fDia = $d['fecha'];
+                $etiquetaDia = $d['etiqueta'];
+
+                $cantVendidoDia = (float) \App\Models\VentaItem::where('producto_id', $productoId)
+                    ->where(function($q) use ($salidaId) {
+                        $q->where('salida_id', $salidaId)
+                          ->orWhereHas('venta', function($vq) use ($salidaId) {
+                              $vq->where('salida_id', $salidaId);
+                          });
+                    })
+                    ->whereHas('venta', function($q) use ($fDia) {
+                        $q->where('estado', 'CONFIRMADA')
+                          ->whereDate('fecha', $fDia);
+                    })
+                    ->sum('cantidad');
+
+                $ventasPorDia[$etiquetaDia] = $cantVendidoDia;
+                $totalVendido += $cantVendidoDia;
+            }
+
+            $sobrante = max(0, $stockAsignado - $totalVendido);
+
+            $itemsAudit[] = [
+                'producto_id' => $productoId,
+                'producto' => $productoObj ? $productoObj->nombre : 'Producto #' . $productoId,
+                'codigo' => $productoObj ? $productoObj->codigo : '',
+                'stock_asignado' => $stockAsignado,
+                'ventas_dias' => $ventasPorDia,
+                'total_vendido' => $totalVendido,
                 'sobrante' => $sobrante,
             ];
-        })->values()->toArray();
+        }
+
+        return [
+            'dias' => $dias,
+            'items' => $itemsAudit,
+        ];
     }
 }

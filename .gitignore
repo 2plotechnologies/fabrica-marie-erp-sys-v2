@@ -29,3 +29,5 @@ app.zip
 database/migrations/sql_crudo
 fabrica-marie-v2.zip
 inspect_vendedores.php
+execute_update_resumenes.php
+actualizar_resumenes_diarios.sql

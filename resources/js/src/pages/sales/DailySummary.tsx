@@ -27,6 +27,99 @@ import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatErrorMessage } from '@/lib/axios-error';
 
+const renderStockAuditTable = (stockAuditData: any) => {
+  if (!stockAuditData) return null;
+
+  const diasList: any[] = Array.isArray(stockAuditData?.dias) ? stockAuditData.dias : [];
+  const itemsList: any[] = Array.isArray(stockAuditData?.items)
+    ? stockAuditData.items
+    : (Array.isArray(stockAuditData) ? stockAuditData : []);
+
+  if (itemsList.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground italic py-1">
+        No hay información de stock de salida registrada para esta fecha/vendedor.
+      </p>
+    );
+  }
+
+  const hasMultipleDays = diasList.length > 1;
+
+  return (
+    <div className="w-full min-w-0 max-w-full overflow-x-auto border rounded-lg">
+      <Table className="w-full min-w-[500px]">
+        <TableHeader>
+          <TableRow className="bg-muted/50 text-xs">
+            <TableHead className="min-w-[120px] whitespace-nowrap">Producto</TableHead>
+            <TableHead className="text-right whitespace-nowrap">Stock Asignado</TableHead>
+            {diasList.length > 0 ? (
+              diasList.map((d: any) => (
+                <TableHead key={d.numero} className="text-right whitespace-nowrap">
+                  Vendido {d.etiqueta} {d.fecha_formateada ? `(${d.fecha_formateada})` : ''}
+                </TableHead>
+              ))
+            ) : (
+              <TableHead className="text-right whitespace-nowrap">Stock Vendido</TableHead>
+            )}
+            {hasMultipleDays && (
+              <TableHead className="text-right whitespace-nowrap font-bold">Total Vendido</TableHead>
+            )}
+            <TableHead className="text-right whitespace-nowrap font-bold">Sobrantes / Disponible</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {itemsList.map((stItem: any, i: number) => {
+            const ventasDias = stItem.ventas_dias || {};
+            const stockAsignado = Number(stItem.stock_asignado || 0);
+            const totalVendido = Number(stItem.total_vendido ?? stItem.stock_vendido ?? 0);
+            const sobrante = Number(stItem.sobrante || 0);
+
+            return (
+              <TableRow key={stItem.producto_id || i} className="text-xs">
+                <TableCell className="font-medium max-w-[160px] truncate">
+                  {stItem.producto}
+                  {stItem.codigo && <span className="text-muted-foreground text-[10px] block truncate">{stItem.codigo}</span>}
+                </TableCell>
+                <TableCell className="text-right font-semibold text-blue-600 whitespace-nowrap">
+                  {stockAsignado}
+                </TableCell>
+                {diasList.length > 0 ? (
+                  diasList.map((d: any) => {
+                    const cantDia = Number(ventasDias[d.etiqueta] || 0);
+                    return (
+                      <TableCell key={d.numero} className={`text-right font-semibold whitespace-nowrap ${cantDia > 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                        {cantDia}
+                      </TableCell>
+                    );
+                  })
+                ) : (
+                  <TableCell className="text-right font-semibold text-emerald-600 whitespace-nowrap">
+                    {totalVendido}
+                  </TableCell>
+                )}
+                {hasMultipleDays && (
+                  <TableCell className="text-right font-bold text-emerald-700 whitespace-nowrap">
+                    {totalVendido}
+                  </TableCell>
+                )}
+                <TableCell className="text-right font-bold whitespace-nowrap">
+                  {sobrante > 0 ? (
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 whitespace-nowrap">
+                      {sobrante} disponible(s)
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
 const DailySummaryPage = () => {
   const { currentRole } = useRole();
   const { user } = useAuth();
@@ -135,6 +228,24 @@ const DailySummaryPage = () => {
     try {
       const response = await resumenDiarioService.getAutoResumenDiario(vendedor_id, fecha);
       setResumenVendedor(response);
+
+      if (response?.salida_id) {
+        setNewResumen(prev => ({
+          ...prev,
+          salida_id: String(response.salida_id),
+          ruta_id: response.salida?.ruta_id ? String(response.salida.ruta_id) : prev.ruta_id,
+          vehiculo_id: response.salida?.vehiculo_id ? String(response.salida.vehiculo_id) : prev.vehiculo_id,
+          conductor: response.salida?.conductor || prev.conductor,
+          zona: response.salida?.zona || prev.zona,
+        }));
+      } else {
+        setNewResumen(prev => ({
+          ...prev,
+          salida_id: 'sin_salida'
+        }));
+      }
+
+      getSalidas(vendedor_id, fecha);
     } catch (error) {
       toast.error('Error al obtener el resumen diario');
     }
@@ -167,10 +278,9 @@ const DailySummaryPage = () => {
     }
   }
 
-  const getSalidas = async () => {
+  const getSalidas = async (vendedor_id?: string, fecha?: string) => {
     try {
-      const response = await resumenDiarioService.getSalidas();
-      console.log(response);
+      const response = await resumenDiarioService.getSalidas(vendedor_id, fecha);
       setSalidas(response);
     } catch (error) {
       toast.error('Error al obtener las salidas');
@@ -212,6 +322,7 @@ const DailySummaryPage = () => {
     if (!resumenVendedor) return;
 
     const totalGastosForm = totalGastosBackend || 0;
+    const totalEntregasMoneyDelivery = resumenVendedor.totalEntregasDinero || 0;
 
     let saldo =
       (resumenVendedor.totalVentasContado || 0) +
@@ -220,7 +331,8 @@ const DailySummaryPage = () => {
       (resumenVendedor.totalViaticos || 0) -
       totalGastosForm -
       (resumenVendedor.totalDepositos || 0) -
-      (resumenVendedor.totalMonederoVirtual || 0);
+      (resumenVendedor.totalMonederoVirtual || 0) -
+      totalEntregasMoneyDelivery;
 
     if (saldo < 0) saldo = 0;
 
@@ -232,7 +344,7 @@ const DailySummaryPage = () => {
       credito: resumenVendedor.totalCredito || 0,
       cobranza: resumenVendedor.totalCobranzas || 0,
       viaticos: resumenVendedor.totalViaticos || 0,
-      depositos: resumenVendedor.totalDepositos || 0,
+      depositos: (resumenVendedor.totalDepositos || 0) + totalEntregasMoneyDelivery,
       monederoVirtual: resumenVendedor.totalMonederoVirtual || 0,
       adelantos: resumenVendedor.totalAdelantos || 0,
       saldo_entregado: resumenVendedor.saldoEntregar || 0,
@@ -419,12 +531,12 @@ const DailySummaryPage = () => {
                 Nuevo Resumen Diario
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <DialogHeader>
                 <DialogTitle>Crear Resumen Diario</DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
+              <div className="space-y-4 sm:space-y-6 py-2 sm:py-4 min-w-0 w-full max-w-full overflow-x-hidden">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Fecha</Label>
@@ -641,57 +753,22 @@ const DailySummaryPage = () => {
 
                 <Separator />
 
-                {/* Auditoría de Stock de la Salida */}
-                <div>
-                  <h4 className="font-semibold text-sm mb-2 flex items-center gap-1.5">
-                    <Layers className="h-4 w-4 text-primary" />
-                    Auditoría de Stock de la Salida
-                  </h4>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Desglose del stock asignado en fábrica, stock vendido y sobrantes para auditoría
-                  </p>
-                  {resumenVendedor?.stockAudit && resumenVendedor.stockAudit.length > 0 ? (
-                    <div className="overflow-x-auto border rounded-lg">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50 text-xs">
-                            <TableHead>Producto</TableHead>
-                            <TableHead className="text-right">Stock Asignado</TableHead>
-                            <TableHead className="text-right">Stock Vendido</TableHead>
-                            <TableHead className="text-right">Sobrantes</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {resumenVendedor.stockAudit.map((stItem: any, i: number) => (
-                            <TableRow key={stItem.producto_id || i} className="text-xs">
-                              <TableCell className="font-medium">
-                                {stItem.producto}
-                                {stItem.codigo && <span className="text-muted-foreground text-[10px] block">{stItem.codigo}</span>}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-blue-600">{Number(stItem.stock_asignado || 0)}</TableCell>
-                              <TableCell className="text-right font-semibold text-emerald-600">{Number(stItem.stock_vendido || 0)}</TableCell>
-                              <TableCell className="text-right font-bold">
-                                {Number(stItem.sobrante || 0) > 0 ? (
-                                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                                    {Number(stItem.sobrante)} sobrante(s)
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">0</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                {/* Auditoría de Stock de la Salida (Oculto si es Sin Salida) */}
+                {Boolean(newResumen.salida_id && newResumen.salida_id !== 'sin_salida' && newResumen.salida_id !== '0') && (
+                  <>
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2 flex items-center gap-1.5">
+                        <Layers className="h-4 w-4 text-primary" />
+                        Auditoría de Stock de la Salida
+                      </h4>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Desglose del stock asignado en fábrica, stock vendido por día y sobrantes
+                      </p>
+                      {renderStockAuditTable(resumenVendedor?.stockAudit)}
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic py-1">
-                      No hay información de stock de salida registrada para esta fecha/vendedor.
-                    </p>
-                  )}
-                </div>
-
-                <Separator />
+                    <Separator />
+                  </>
+                )}
 
                 <div>
                   <h4 className="font-medium mb-3">Gastos</h4>
@@ -756,6 +833,35 @@ const DailySummaryPage = () => {
                   </div>
                 </div>
 
+                {/* Entregas de Dinero Aprobadas desde MoneyDelivery */}
+                {Boolean(resumenVendedor?.totalEntregasDinero && resumenVendedor.totalEntregasDinero > 0) && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-medium text-sm mb-2 text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                        Entregas de Dinero Aprobadas (MoneyDelivery)
+                      </h4>
+                      <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs space-y-2">
+                        <div className="flex justify-between items-center font-semibold text-emerald-800 dark:text-emerald-300">
+                          <span>Total Entregado / Depositado (Aprobado):</span>
+                          <span className="text-sm font-bold text-emerald-600">
+                            - S/ {Number(resumenVendedor.totalEntregasDinero).toFixed(2)}
+                          </span>
+                        </div>
+                        {Array.isArray(resumenVendedor.entregasDinero) && resumenVendedor.entregasDinero.map((e: any) => (
+                          <div key={e.id} className="flex justify-between items-center text-muted-foreground pt-1 border-t border-emerald-500/10">
+                            <span>Entrega #{e.id} {e.nombre_receptor ? `(Receptor: ${e.nombre_receptor})` : ''}</span>
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                              S/ {Number(e.monto_total).toFixed(2)}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <Separator />
 
                 {/* Saldo Entregado Calculado */}
@@ -763,10 +869,11 @@ const DailySummaryPage = () => {
                   <CardContent className="pt-4 space-y-2">
                     <h4 className="font-semibold text-sm">Saldo Entregado (Cálculo Automático)</h4>
                     <p className="text-xs text-muted-foreground">
-                      = Venta Contado + Cobranzas + Adelantos + Caja Chica − Gastos − Depósito − Yape/Plin
+                      = Venta Contado + Cobranzas + Adelantos + Caja Chica − Gastos − Depósitos − Yape/Plin {resumenVendedor?.totalEntregasDinero > 0 ? `− MoneyDelivery Aprobado (S/ ${Number(resumenVendedor.totalEntregasDinero).toFixed(2)})` : ''}
                     </p>
                     {(() => {
                       const totalGastosForm = totalGastosBackend;
+                      const totalEntregasMoneyDelivery = resumenVendedor?.totalEntregasDinero || 0;
                       let saldoEntregadoCalculado =
                         (newResumen.contado || 0) +
                         (newResumen.cobranza || 0) +
@@ -774,7 +881,8 @@ const DailySummaryPage = () => {
                         (newResumen.viaticos || 0) -
                         totalGastosForm -
                         (newResumen.depositos || 0) -
-                        (newResumen.monederoVirtual || 0);
+                        (newResumen.monederoVirtual || 0) -
+                        totalEntregasMoneyDelivery;
 
                       if (saldoEntregadoCalculado < 0) saldoEntregadoCalculado = 0;
 
@@ -1412,45 +1520,7 @@ const DailySummaryPage = () => {
                                         <Layers className="h-3.5 w-3.5 text-primary" />
                                         Auditoría de Stock de la Salida (#{s.id})
                                       </h4>
-                                      {item.stockAudit.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground italic py-1">
-                                          No hay datos de stock registrados para esta salida.
-                                        </p>
-                                      ) : (
-                                        <div className="overflow-x-auto border rounded-lg">
-                                          <Table>
-                                            <TableHeader>
-                                              <TableRow className="bg-muted/50 text-xs">
-                                                <TableHead>Producto</TableHead>
-                                                <TableHead className="text-right">Stock Asignado</TableHead>
-                                                <TableHead className="text-right">Stock Vendido</TableHead>
-                                                <TableHead className="text-right">Sobrantes</TableHead>
-                                              </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                              {item.stockAudit.map((st: any, idx: number) => (
-                                                <TableRow key={st.producto_id || idx} className="text-xs">
-                                                  <TableCell className="font-medium">
-                                                    {st.producto}
-                                                    {st.codigo && <span className="text-muted-foreground text-[10px] block">{st.codigo}</span>}
-                                                  </TableCell>
-                                                  <TableCell className="text-right font-semibold text-blue-600">{Number(st.stock_asignado || 0)}</TableCell>
-                                                  <TableCell className="text-right font-semibold text-emerald-600">{Number(st.stock_vendido || 0)}</TableCell>
-                                                  <TableCell className="text-right font-bold">
-                                                    {Number(st.sobrante || 0) > 0 ? (
-                                                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                                                        {Number(st.sobrante)} sobrante(s)
-                                                      </Badge>
-                                                    ) : (
-                                                      <span className="text-muted-foreground">0</span>
-                                                    )}
-                                                  </TableCell>
-                                                </TableRow>
-                                              ))}
-                                            </TableBody>
-                                          </Table>
-                                        </div>
-                                      )}
+                                      {renderStockAuditTable(item.stockAudit)}
                                     </div>
                                   )}
 
@@ -1492,13 +1562,13 @@ const DailySummaryPage = () => {
 
       {/* Modal de detalle */}
       <Dialog open={!!selectedResumen} onOpenChange={() => setSelectedResumen(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Resumen de Ventas y Egresos</DialogTitle>
           </DialogHeader>
 
           {selectedResumen && (
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-4 min-w-0 w-full max-w-full overflow-x-hidden">
               {/* Header del resumen */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 sm:p-4 bg-muted/50 rounded-lg text-xs sm:text-sm">
                 <div>
@@ -1722,55 +1792,19 @@ const DailySummaryPage = () => {
               </Card>
 
               {/* Auditoría de Stock de Salida */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-primary" />
-                    Auditoría de Stock de la Salida
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {selectedResumen.stock_audit && selectedResumen.stock_audit.length > 0 ? (
-                    <div className="overflow-x-auto border rounded-lg">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50 text-xs">
-                            <TableHead>Producto</TableHead>
-                            <TableHead className="text-right">Stock Asignado (Salida)</TableHead>
-                            <TableHead className="text-right">Stock Vendido</TableHead>
-                            <TableHead className="text-right">Sobrantes</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {selectedResumen.stock_audit.map((st: any, idx: number) => (
-                            <TableRow key={st.producto_id || idx} className="text-xs">
-                              <TableCell className="font-medium">
-                                {st.producto}
-                                {st.codigo && <span className="text-muted-foreground text-[10px] block">{st.codigo}</span>}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold text-blue-600">{Number(st.stock_asignado || 0)}</TableCell>
-                              <TableCell className="text-right font-semibold text-emerald-600">{Number(st.stock_vendido || 0)}</TableCell>
-                              <TableCell className="text-right font-bold">
-                                {Number(st.sobrante || 0) > 0 ? (
-                                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                                    {Number(st.sobrante)} sobrante(s)
-                                  </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">0</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic text-center py-2">
-                      No se registran datos de auditoría de stock para este resumen diario.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              {selectedResumen.stock_audit && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      Auditoría de Stock de la Salida
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {renderStockAuditTable(selectedResumen.stock_audit)}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Resumen final */}
               <Card className="bg-muted/50">
