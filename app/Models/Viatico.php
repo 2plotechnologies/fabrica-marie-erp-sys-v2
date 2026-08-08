@@ -20,6 +20,7 @@ class Viatico extends Model
         'comprobante',
         'zona',
         'ruta_id',
+        'salida_id',
         'descripcion',
         'estado',
         'liquidado_by'
@@ -33,6 +34,11 @@ class Viatico extends Model
     public function ruta()
     {
         return $this->belongsTo(Ruta::class);
+    }
+
+    public function salida()
+    {
+        return $this->belongsTo(Salida::class, 'salida_id');
     }
 
     public function usuario_liquido(){

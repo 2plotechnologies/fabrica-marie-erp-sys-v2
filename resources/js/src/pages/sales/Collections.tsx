@@ -241,28 +241,28 @@ const CollectionsPage = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <Card className="shadow-card">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center"><DollarSign className="h-6 w-6 text-primary" /></div>
-              <div><p className="text-sm text-muted-foreground">Total Cobrado</p><p className="text-2xl font-bold text-foreground">S/ {totalCobrado.toLocaleString()}</p></div>
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-primary" /></div>
+              <div className="min-w-0"><p className="text-xs sm:text-sm text-muted-foreground">Total Cobrado</p><p className="text-xl sm:text-2xl font-bold text-foreground truncate">S/ {totalCobrado.toLocaleString()}</p></div>
             </div>
           </CardContent>
         </Card>
         <Card className="shadow-card">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center"><Clock className="h-6 w-6 text-amber-600" /></div>
-              <div><p className="text-sm text-muted-foreground">Pendiente</p><p className="text-2xl font-bold text-foreground">S/ {totalDeuda.toLocaleString()}</p></div>
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0"><Clock className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" /></div>
+              <div className="min-w-0"><p className="text-xs sm:text-sm text-muted-foreground">Pendiente</p><p className="text-xl sm:text-2xl font-bold text-foreground truncate">S/ {totalDeuda.toLocaleString()}</p></div>
             </div>
           </CardContent>
         </Card>
-        <Card className="shadow-card">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"><Users className="h-6 w-6 text-blue-600" /></div>
-              <div><p className="text-sm text-muted-foreground">Cuentas Activas</p><p className="text-2xl font-bold text-foreground">{cuentasActivas}</p></div>
+        <Card className="shadow-card sm:col-span-2 md:col-span-1">
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0"><Users className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" /></div>
+              <div className="min-w-0"><p className="text-xs sm:text-sm text-muted-foreground">Cuentas Activas</p><p className="text-xl sm:text-2xl font-bold text-foreground truncate">{cuentasActivas}</p></div>
             </div>
           </CardContent>
         </Card>
@@ -360,7 +360,7 @@ const CollectionsPage = () => {
                           <div className="flex gap-1 justify-end flex-wrap">
                             <Button
                               size="sm"
-                              className="bg-gradient-warm hover:opacity-90"
+                              className="bg-gradient-warm hover:opacity-90 h-8 px-2 text-xs"
                               disabled={cuenta.estado === 'PAGADO'}
                               onClick={() => {
                                 const { diasPlazo } = calculateAmortizationDays(cuenta);
@@ -372,6 +372,7 @@ const CollectionsPage = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              className="h-8 px-2 text-xs"
                               disabled={cuenta.estado === 'PAGADO'}
                               onClick={() => {
                                 const { diasPlazo } = calculateAmortizationDays(cuenta);
@@ -383,12 +384,13 @@ const CollectionsPage = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              className="h-8 px-2 text-xs"
                               disabled={cuenta.estado === 'PAGADO'}
                               onClick={() => setExtendDialog({ cuentaId: cuenta.id, currentDate: cuenta.fecha_vencimiento ? cuenta.fecha_vencimiento.substring(0, 10) : format(new Date(), "yyyy-MM-dd") })}
                             >
                               <CalendarPlus className="h-3 w-3 mr-1" />Extender
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setSelectedCuentaId(selectedCuentaId === cuenta.id ? null : cuenta.id)}>
+                            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setSelectedCuentaId(selectedCuentaId === cuenta.id ? null : cuenta.id)}>
                               Ver Pagos
                             </Button>
                           </div>
@@ -560,7 +562,7 @@ const CollectionsPage = () => {
 
               {splitPayRows.map((row, idx) => (
                 <div key={idx} className="p-2.5 bg-muted/40 rounded-lg border space-y-2 text-xs">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                     <Select
                       value={row.metodo_pago}
                       onValueChange={(val) => {
@@ -569,7 +571,7 @@ const CollectionsPage = () => {
                         setSplitPayRows(newRows);
                       }}
                     >
-                      <SelectTrigger className="h-8 text-xs flex-1">
+                      <SelectTrigger className="h-8 text-xs flex-1 min-w-[120px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -581,7 +583,7 @@ const CollectionsPage = () => {
                       </SelectContent>
                     </Select>
 
-                    <div className="flex items-center gap-1 w-28">
+                    <div className="flex items-center gap-1 w-full sm:w-28 shrink-0">
                       <span>S/</span>
                       <Input
                         type="number"
@@ -593,21 +595,20 @@ const CollectionsPage = () => {
                           newRows[idx].monto = parseFloat(e.target.value) || 0;
                           setSplitPayRows(newRows);
                         }}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs flex-1"
                       />
+                      {splitPayRows.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive shrink-0"
+                          onClick={() => setSplitPayRows(splitPayRows.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
-
-                    {splitPayRows.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => setSplitPayRows(splitPayRows.filter((_, i) => i !== idx))}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
                   </div>
 
                   {row.metodo_pago === 'DEPOSITO' && (

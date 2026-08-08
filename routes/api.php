@@ -367,6 +367,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             Route::get('/gastos/all', [ResumenDiarioController::class, 'getGastos']);
             Route::post('/gastos', [ResumenDiarioController::class, 'storeGasto']);
             Route::get('/resumen-general', [ResumenDiarioController::class, 'getResumenGeneral']);
+            Route::get('/acumulado-salidas', [ResumenDiarioController::class, 'getResumenAcumuladoSalidas']);
             Route::get('/{vendedor_id}', [ResumenDiarioController::class, 'autoResumenDiario']);
             Route::post('/', [ResumenDiarioController::class, 'store']);
             Route::put('/{id}/estado', [ResumenDiarioController::class, 'updateEstado'])

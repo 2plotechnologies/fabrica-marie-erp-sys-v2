@@ -19,6 +19,15 @@ class Salida extends Model
         'estado'
     ];
 
+    protected $appends = ['tiene_ventas'];
+
+    public function getTieneVentasAttribute()
+    {
+        return \App\Models\StockVendedor::where('salida_id', $this->id)
+            ->whereRaw('cantidad < cantidad_entregada')
+            ->exists();
+    }
+
     public $timestamps = false;
 
     public function vendedor()
@@ -49,5 +58,15 @@ class Salida extends Model
     public function stockVendedor()
     {
         return $this->hasOne(StockVendedor::class, 'salida_id');
+    }
+
+    public function viaticos()
+    {
+        return $this->hasMany(Viatico::class, 'salida_id');
+    }
+
+    public function resumenesDiarios()
+    {
+        return $this->hasMany(ResumenDiario::class, 'salida_id');
     }
 }

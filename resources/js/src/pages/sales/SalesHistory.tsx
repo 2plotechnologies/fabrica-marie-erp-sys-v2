@@ -108,7 +108,7 @@ const SalesHistory = () => {
       .includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
     const matchesPayment = paymentFilter === 'all' || sale.tipo_pago === paymentFilter;
-    
+
     let matchesDate = true;
     if (startDate || endDate) {
       try {
@@ -124,7 +124,7 @@ const SalesHistory = () => {
         console.error("Error matching date for sale:", sale, error);
       }
     }
-    
+
     return matchesSearch && matchesStatus && matchesPayment && matchesDate;
   });
 

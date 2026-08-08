@@ -5,9 +5,10 @@ export interface ViaticoPayload {
     tipo: string;
     fecha: string;
     monto: number;
-    zona: string;
-    ruta_id: number;
-    descripcion: string;
+    zona?: string;
+    ruta_id?: number;
+    salida_id?: number;
+    descripcion?: string;
 }
 
 export const cajaChicaService = {
@@ -23,6 +24,11 @@ export const cajaChicaService = {
 
     async getRutas() {
         const response = await api.get('/rutas');
+        return response.data;
+    },
+
+    async getSalidas() {
+        const response = await api.get('/resumen-diario/salidas');
         return response.data;
     },
 

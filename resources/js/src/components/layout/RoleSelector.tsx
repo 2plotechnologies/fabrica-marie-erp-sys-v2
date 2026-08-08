@@ -19,10 +19,10 @@ export const RoleSelector = () => {
   const currentStyle = roleStyles[currentRole];
 
   return (
-    <div className="flex items-center gap-3 bg-card/50 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-border/50">
-      <Shield className="h-4 w-4 text-muted-foreground" />
+    <div className="flex items-center gap-1.5 sm:gap-3 bg-card/50 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1 sm:py-1.5 border border-border/50">
+      <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground hidden xs:block" />
       <div
-        className={`inline-flex items-center px-3 py-1 rounded-md text-xs font-semibold border-2 ${currentStyle.bg} ${currentStyle.text} ${currentStyle.border}`}
+        className={`inline-flex items-center px-2 py-0.5 sm:px-3 sm:py-1 rounded-md text-[11px] sm:text-xs font-semibold border ${currentStyle.bg} ${currentStyle.text} ${currentStyle.border}`}
       >
         {roleLabels[currentRole]}
       </div>

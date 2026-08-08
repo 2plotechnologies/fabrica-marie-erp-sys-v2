@@ -27,9 +27,12 @@ export const resumenDiarioService = {
         return response.data;
     },
 
-    async getAutoResumenDiario(vendedor_id: string, fecha?: string) {
+    async getAutoResumenDiario(vendedor_id: string, fecha?: string, salida_id?: string) {
         const response = await api.get(`/resumen-diario/${vendedor_id}`, {
-            params: fecha ? { fecha } : undefined,
+            params: {
+                ...(fecha ? { fecha } : {}),
+                ...(salida_id ? { salida_id } : {})
+            },
         });
         return response.data;
     },
@@ -54,4 +57,8 @@ export const resumenDiarioService = {
         return response.data;
     },
 
+    async getResumenAcumuladoSalidas(params?: { vendedor_id?: string; salida_id?: string }) {
+        const response = await api.get('/resumen-diario/acumulado-salidas', { params });
+        return response.data;
+    },
 }

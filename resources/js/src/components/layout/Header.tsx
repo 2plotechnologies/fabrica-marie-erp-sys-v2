@@ -43,7 +43,7 @@ export const Header = ({ onMenuClick }: HeaderProps) => {
 
       <div className="flex items-center gap-2 sm:gap-4">
         {/* Role Selector */}
-        <div className="hidden md:block">
+        <div className="block">
           <RoleSelector />
         </div>
 

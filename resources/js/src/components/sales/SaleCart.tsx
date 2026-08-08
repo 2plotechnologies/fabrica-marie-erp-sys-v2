@@ -281,12 +281,12 @@ export const SaleCart = ({
 
             {splitPayments.map((row, idx) => (
               <div key={idx} className="space-y-1.5 p-2 bg-background rounded-md border text-xs">
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5">
                   <Select
                     value={row.metodo_pago}
                     onValueChange={(val) => handleUpdateSplitRow(idx, 'metodo_pago', val)}
                   >
-                    <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectTrigger className="h-8 text-xs flex-1 min-w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -299,7 +299,7 @@ export const SaleCart = ({
                     </SelectContent>
                   </Select>
 
-                  <div className="flex items-center gap-1 w-24">
+                  <div className="flex items-center gap-1 w-full sm:w-28 shrink-0">
                     <span>S/</span>
                     <Input
                       type="number"
@@ -307,21 +307,20 @@ export const SaleCart = ({
                       min="0"
                       value={row.monto || ''}
                       onChange={(e) => handleUpdateSplitRow(idx, 'monto', parseFloat(e.target.value) || 0)}
-                      className="h-8 text-xs px-1"
+                      className="h-8 text-xs px-1 flex-1"
                     />
+                    {splitPayments.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive shrink-0"
+                        onClick={() => handleRemoveSplitRow(idx)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
-
-                  {splitPayments.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleRemoveSplitRow(idx)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
                 </div>
 
                 {row.metodo_pago === 'deposito' && (

@@ -116,29 +116,29 @@ const ExpenseValidation = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="shadow-card">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total Egresos</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Egresos</p>
+            <p className="text-xl sm:text-2xl font-bold truncate">{stats.total}</p>
           </CardContent>
         </Card>
         <Card className="shadow-card border-amber-200 dark:border-amber-900/30">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">No Verificados</p>
-            <p className="text-2xl font-bold text-amber-600">{stats.noVerificado}</p>
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-xs sm:text-sm text-muted-foreground">No Verificados</p>
+            <p className="text-xl sm:text-2xl font-bold text-amber-600 truncate">{stats.noVerificado}</p>
           </CardContent>
         </Card>
         <Card className="shadow-card border-emerald-200 dark:border-emerald-900/30">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Verificados</p>
-            <p className="text-2xl font-bold text-emerald-600">{stats.verificado}</p>
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-xs sm:text-sm text-muted-foreground">Verificados</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-600 truncate">{stats.verificado}</p>
           </CardContent>
         </Card>
         <Card className="shadow-card border-red-200 dark:border-red-900/30">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">No Aceptados</p>
-            <p className="text-2xl font-bold text-red-600">{stats.noAceptado}</p>
+          <CardContent className="pt-4 sm:pt-6">
+            <p className="text-xs sm:text-sm text-muted-foreground">No Aceptados</p>
+            <p className="text-xl sm:text-2xl font-bold text-red-600 truncate">{stats.noAceptado}</p>
           </CardContent>
         </Card>
       </div>

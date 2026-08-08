@@ -275,33 +275,33 @@ export const ClientSelector = ({
       </Select>
 
       {selectedClientData && (
-        <div className="mt-3 p-3 rounded-lg bg-secondary/50 space-y-1">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Código:</span>
-            <span className="font-medium">{selectedClientData.codigo_cliente || selectedClientData.codigo}</span>
+        <div className="mt-3 p-3 rounded-lg bg-secondary/50 space-y-1.5 text-xs sm:text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground shrink-0">Código:</span>
+            <span className="font-medium truncate ml-2">{selectedClientData.codigo_cliente || selectedClientData.codigo}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Zona / Ruta:</span>
-            <span className="font-medium text-right max-w-[200px] truncate">
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground shrink-0">Zona / Ruta:</span>
+            <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">
               {selectedClientData.ruta?.zona ? `${selectedClientData.ruta.zona} / ` : ''}
               {selectedClientData.ruta?.nombre || '-'}
             </span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Dirección:</span>
-            <span className="font-medium text-right max-w-[200px] truncate">{selectedClientData.direccion || '-'}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground shrink-0">Dirección:</span>
+            <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">{selectedClientData.direccion || '-'}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Teléfono:</span>
-            <span className="font-medium">{selectedClientData.telefono || '-'}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground shrink-0">Teléfono:</span>
+            <span className="font-medium truncate ml-2">{selectedClientData.telefono || '-'}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Deuda actual:</span>
-            <span className="font-medium">S/ {Number(selectedClientData.deuda_actual || 0).toLocaleString()}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground shrink-0">Deuda actual:</span>
+            <span className="font-medium ml-2">S/ {Number(selectedClientData.deuda_actual || 0).toLocaleString()}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Límite de crédito:</span>
-            <span className="font-medium">S/ {Number(selectedClientData.limite_credito || 0).toLocaleString()}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground shrink-0">Límite de crédito:</span>
+            <span className="font-medium ml-2">S/ {Number(selectedClientData.limite_credito || 0).toLocaleString()}</span>
           </div>
         </div>
       )}

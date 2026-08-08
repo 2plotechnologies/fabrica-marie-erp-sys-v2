@@ -112,7 +112,7 @@ export const ProductSearch = ({
         {filteredProducts.map((product, index) => (
           <div
             key={product.id}
-            className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-secondary/50 transition-colors animate-fade-in cursor-pointer"
+            className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border bg-background hover:bg-secondary/50 gap-2 transition-colors animate-fade-in cursor-pointer"
             style={{ animationDelay: `${300 + index * 50}ms` }}
             onClick={() => onAddProduct(product)}
           >
@@ -123,7 +123,7 @@ export const ProductSearch = ({
                   <Badge variant="outline" className="text-xs">{product.marca}</Badge>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-x-2 gap-y-0.5 mt-1 flex-wrap">
                 <span className="text-xs text-muted-foreground">SKU: {product.sku}</span>
                 {product.presentacion && (
                   <span className="text-xs text-muted-foreground">• {product.presentacion}</span>
@@ -138,8 +138,8 @@ export const ProductSearch = ({
                 )}
               </div>
             </div>
-            <div className="text-right flex items-center gap-1 sm:gap-2">
-              <p className="font-semibold text-primary mr-1 sm:mr-2 text-sm sm:text-base">
+            <div className="text-left sm:text-right flex items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 border-t sm:border-t-0 border-border/40">
+              <p className="font-semibold text-primary text-sm sm:text-base">
                 S/ {Number(product.precio_base).toFixed(2)}
               </p>
               <div className="flex items-center gap-1">

@@ -16,7 +16,8 @@ class ViaticoController
 
         $query = Viatico::with([
             'vendedor.usuario',
-            'ruta'
+            'ruta',
+            'salida'
         ])
         ->orderBy('fecha', 'desc');
 
@@ -36,8 +37,9 @@ class ViaticoController
             'tipo' => 'required|string|in:inicial,viaje',
             'fecha' => 'required|date',
             'monto' => 'required|numeric',
-            'zona' => 'required|string|max:255',
-            'ruta_id' => 'required|exists:rutas,id',
+            'zona' => 'nullable|string|max:255',
+            'ruta_id' => 'nullable|exists:rutas,id',
+            'salida_id' => 'nullable|exists:salidas,id',
             'descripcion' => 'nullable|string|max:255',
         ]);
 
@@ -46,6 +48,17 @@ class ViaticoController
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
         $vendedorId = $vendedor ? $vendedor->id : $request->vendedor_id;
 
+        $salidaId = $request->salida_id;
+        if (!$salidaId) {
+            $activeSalida = \App\Models\Salida::where('vendedor_id', $vendedorId)
+                ->where('estado', 'EN RUTA')
+                ->latest('id')
+                ->first();
+            if ($activeSalida) {
+                $salidaId = $activeSalida->id;
+            }
+        }
+
         $viatico = Viatico::create([
             'vendedor_id' => $vendedorId,
             'tipo' => $request->tipo,
@@ -53,6 +66,7 @@ class ViaticoController
             'monto' => $request->monto,
             'zona' => $request->zona,
             'ruta_id' => $request->ruta_id,
+            'salida_id' => $salidaId,
             'descripcion' => $request->descripcion,
             'estado' => 'PENDIENTE',
         ]);

@@ -552,12 +552,12 @@ const FactoryOutput = () => {
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" onClick={() => { setSelectedSalida(s); setIsDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
-                      {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && (
+                      {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && !s.tiene_ventas && (
                         <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(s)}><Pencil className="h-4 w-4 text-blue-600" /></Button>
                       )}
                       {s.estado === 'PENDIENTE' && <Button size="sm" variant="outline" onClick={() => handleUpdateEstado(s.id, 'EN_RUTA')}>Despachar</Button>}
                       {s.estado === 'EN_RUTA' && <Button size="sm" variant="outline" onClick={() => handleUpdateEstado(s.id, 'COMPLETADO')}>Completar</Button>}
-                      {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && (
+                      {(s.estado === 'PENDIENTE' || s.estado === 'EN_RUTA') && !s.tiene_ventas && (
                         <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleAnular(s.id)}>
                           Anular
                         </Button>

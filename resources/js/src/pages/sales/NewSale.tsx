@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertTriangle, Lock } from 'lucide-react';
+import { Loader2, AlertTriangle, Lock, ShoppingCart } from 'lucide-react';
 import type { CartItem } from '@/types/sales';
 import { ventaService } from '@/services/ventaService';
 import { useRole } from '@/contexts/RoleContext';
@@ -519,17 +519,17 @@ const NewSale = () => {
 
           {/* Client credit info */}
           {selectedClientData && paymentType === 'CREDITO' && (
-            <div className="bg-card rounded-xl border shadow-card p-4 animate-fade-in">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
+            <div className="bg-card rounded-xl border shadow-card p-3 sm:p-4 animate-fade-in">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
+                <div className="flex justify-between sm:block">
                   <p className="text-muted-foreground">Límite Crédito</p>
                   <p className="font-bold">S/ {(selectedClientData.limite_credito || 0).toLocaleString()}</p>
                 </div>
-                <div>
+                <div className="flex justify-between sm:block">
                   <p className="text-muted-foreground">Deuda Actual</p>
                   <p className="font-bold text-amber-600">S/ {(selectedClientData.deuda_actual || 0).toLocaleString()}</p>
                 </div>
-                <div>
+                <div className="flex justify-between sm:block">
                   <p className="text-muted-foreground">Disponible</p>
                   <p className={`font-bold ${(selectedClientData.limite_credito || 0) - (selectedClientData.deuda_actual || 0) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     S/ {((selectedClientData.limite_credito || 0) - (selectedClientData.deuda_actual || 0)).toLocaleString()}
@@ -547,7 +547,7 @@ const NewSale = () => {
           />
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1" id="sale-cart-section">
           <SaleCart
             cart={cart}
             paymentType={paymentType}
@@ -581,6 +581,29 @@ const NewSale = () => {
           />
         </div>
       </div>
+
+      {/* Botón Flotante de Carrito en Móvil */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden animate-slide-up">
+          <Button
+            type="button"
+            variant="gradient"
+            className="w-full shadow-xl h-12 flex items-center justify-between px-4 text-xs sm:text-sm font-semibold rounded-xl"
+            onClick={() => {
+              const cartElem = document.getElementById('sale-cart-section');
+              cartElem?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            <span className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              {cart.reduce((sum, item) => sum + item.quantity, 0)} item(s)
+            </span>
+            <span className="font-bold">
+              Ver Carrito (S/ {total.toFixed(2)}) ↓
+            </span>
+          </Button>
+        </div>
+      )}
 
       {/* Modal de Caja Cerrada */}
       <Dialog open={isCajaCerradaModalOpen} onOpenChange={setIsCajaCerradaModalOpen}>

@@ -172,21 +172,21 @@ const SalesReports = () => {
       </div>
 
       {/* KPI Cards Row 1 - Principales */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="shadow-card">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-primary" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                 </div>
-                <div className="flex items-center gap-1 text-emerald-500 text-xs">
+                <div className="flex items-center gap-1 text-emerald-500 text-[10px] sm:text-xs">
                   <ArrowUp className="h-3 w-3" />
                   <span>12.5%</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">Ventas Mes</p>
-              <p className="text-lg font-bold text-foreground">
+              <p className="text-sm sm:text-lg font-bold text-foreground truncate">
                 S/ {mockDashboardKPIs.sales.month.toLocaleString()}
               </p>
             </div>
@@ -194,19 +194,19 @@ const SalesReports = () => {
         </Card>
 
         <Card className="shadow-card">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                  <ShoppingCart className="h-5 w-5 text-emerald-600" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600" />
                 </div>
-                <div className="flex items-center gap-1 text-emerald-500 text-xs">
+                <div className="flex items-center gap-1 text-emerald-500 text-[10px] sm:text-xs">
                   <ArrowUp className="h-3 w-3" />
                   <span>8.2%</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">Ventas Hoy</p>
-              <p className="text-lg font-bold text-foreground">
+              <p className="text-sm sm:text-lg font-bold text-foreground truncate">
                 S/ {mockDashboardKPIs.sales.today.toLocaleString()}
               </p>
             </div>
@@ -214,70 +214,70 @@ const SalesReports = () => {
         </Card>
 
         <Card className="shadow-card">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                  <BarChart3 className="h-5 w-5 text-amber-600" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
                 </div>
-                <div className="flex items-center gap-1 text-red-500 text-xs">
+                <div className="flex items-center gap-1 text-red-500 text-[10px] sm:text-xs">
                   <ArrowDown className="h-3 w-3" />
                   <span>3.1%</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">Ticket Promedio</p>
-              <p className="text-lg font-bold text-foreground">S/ 135</p>
+              <p className="text-sm sm:text-lg font-bold text-foreground truncate">S/ 135</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-blue-600" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                 </div>
-                <div className="flex items-center gap-1 text-emerald-500 text-xs">
+                <div className="flex items-center gap-1 text-emerald-500 text-[10px] sm:text-xs">
                   <ArrowUp className="h-3 w-3" />
                   <span>+5</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">Clientes Activos</p>
-              <p className="text-lg font-bold text-foreground">{mockDashboardKPIs.clients.active}</p>
+              <p className="text-sm sm:text-lg font-bold text-foreground truncate">{mockDashboardKPIs.clients.active}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="h-10 w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <Package className="h-5 w-5 text-purple-600" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                  <Package className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
                 </div>
-                <div className="flex items-center gap-1 text-emerald-500 text-xs">
+                <div className="flex items-center gap-1 text-emerald-500 text-[10px] sm:text-xs">
                   <ArrowUp className="h-3 w-3" />
                   <span>15%</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">Unidades Vendidas</p>
-              <p className="text-lg font-bold text-foreground">4,580</p>
+              <p className="text-sm sm:text-lg font-bold text-foreground truncate">4,580</p>
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
-          <CardContent className="pt-4 pb-4">
+          <CardContent className="pt-3 pb-3 sm:pt-4 sm:pb-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between mb-2">
-                <div className="h-10 w-10 rounded-xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
-                  <Truck className="h-5 w-5 text-teal-600" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+                  <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-teal-600" />
                 </div>
-                <Badge variant="secondary" className="text-xs">5</Badge>
+                <Badge variant="secondary" className="text-[10px] sm:text-xs">5</Badge>
               </div>
               <p className="text-xs text-muted-foreground">Vehículos Activos</p>
-              <p className="text-lg font-bold text-foreground">5/6</p>
+              <p className="text-sm sm:text-lg font-bold text-foreground truncate">5/6</p>
             </div>
           </CardContent>
         </Card>
@@ -285,35 +285,35 @@ const SalesReports = () => {
 
       {/* Proyección y Meta */}
       <Card className="shadow-card bg-gradient-to-r from-primary/5 to-primary/10">
-        <CardContent className="pt-6">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4 sm:gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Target className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Proyección del Mes</h3>
+                <h3 className="font-semibold text-foreground text-sm sm:text-base">Proyección del Mes</h3>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Meta Mensual</p>
-                  <p className="text-lg font-bold text-foreground">S/ {projectionData.metaMensual.toLocaleString()}</p>
+                  <p className="text-base sm:text-lg font-bold text-foreground truncate">S/ {projectionData.metaMensual.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Ventas Actuales</p>
-                  <p className="text-lg font-bold text-emerald-600">S/ {projectionData.ventasActuales.toLocaleString()}</p>
+                  <p className="text-base sm:text-lg font-bold text-emerald-600 truncate">S/ {projectionData.ventasActuales.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Días Restantes</p>
-                  <p className="text-lg font-bold text-foreground">{projectionData.diasRestantes} días</p>
+                  <p className="text-base sm:text-lg font-bold text-foreground truncate">{projectionData.diasRestantes} días</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Venta Diaria Necesaria</p>
-                  <p className="text-lg font-bold text-amber-600">S/ {projectionData.ventasDiariasNecesarias.toLocaleString()}</p>
+                  <p className="text-base sm:text-lg font-bold text-amber-600 truncate">S/ {projectionData.ventasDiariasNecesarias.toLocaleString()}</p>
                 </div>
               </div>
             </div>
             <div className="lg:w-64">
               <div className="text-center mb-2">
-                <span className="text-3xl font-bold text-primary">{projectionData.cumplimiento}%</span>
+                <span className="text-2xl sm:text-3xl font-bold text-primary">{projectionData.cumplimiento}%</span>
                 <p className="text-xs text-muted-foreground">Cumplimiento</p>
               </div>
               <Progress value={projectionData.cumplimiento} className="h-3" />
@@ -327,12 +327,12 @@ const SalesReports = () => {
 
       {/* Tabs para diferentes vistas */}
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="clientes">Por Clientes</TabsTrigger>
-          <TabsTrigger value="vehiculos">Por Vehículos</TabsTrigger>
-          <TabsTrigger value="productos">Por Productos</TabsTrigger>
-          <TabsTrigger value="tiempo">Por Tiempo</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto p-1 gap-1">
+          <TabsTrigger value="general" className="text-xs sm:text-sm py-1.5">General</TabsTrigger>
+          <TabsTrigger value="clientes" className="text-xs sm:text-sm py-1.5">Por Clientes</TabsTrigger>
+          <TabsTrigger value="vehiculos" className="text-xs sm:text-sm py-1.5">Por Vehículos</TabsTrigger>
+          <TabsTrigger value="productos" className="text-xs sm:text-sm py-1.5">Por Productos</TabsTrigger>
+          <TabsTrigger value="tiempo" className="text-xs sm:text-sm py-1.5 col-span-2 sm:col-span-1">Por Tiempo</TabsTrigger>
         </TabsList>
 
         {/* Tab General */}

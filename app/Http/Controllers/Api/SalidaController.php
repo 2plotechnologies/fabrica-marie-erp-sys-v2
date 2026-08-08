@@ -254,6 +254,12 @@ class SalidaController
             ], 400);
         }
 
+        if ($salida->tiene_ventas) {
+            return response()->json([
+                'error' => 'No se puede anular esta salida porque el vendedor ya ha realizado ventas.'
+            ], 400);
+        }
+
         DB::beginTransaction();
 
         try {
@@ -330,6 +336,12 @@ class SalidaController
         if (!in_array($salida->estado, ['PENDIENTE', 'EN_RUTA'])) {
             return response()->json([
                 'error' => 'Solo se pueden modificar salidas en estado PENDIENTE o EN_RUTA.'
+            ], 400);
+        }
+
+        if ($salida->tiene_ventas) {
+            return response()->json([
+                'error' => 'No se puede modificar esta salida porque el vendedor ya ha realizado ventas.'
             ], 400);
         }
 

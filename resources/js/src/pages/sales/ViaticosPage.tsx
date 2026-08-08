@@ -67,6 +67,7 @@ const ViaticosPage = () => {
   const [selectedViatico, setSelectedViatico] = useState<any>(null);
   const [rutas, setRutas] = useState<any[]>([]);
   const [zonas, setZonas] = useState<any[]>([]);
+  const [salidas, setSalidas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -82,6 +83,7 @@ const ViaticosPage = () => {
   const [formDescripcion, setFormDescripcion] = useState('');
   const [formZona, setFormZona] = useState('');
   const [formRuta, setFormRuta] = useState('');
+  const [formSalida, setFormSalida] = useState('');
   const [formFecha, setFormFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const vendedorActual = vendedores.find(v => v.usuario_id === user?.id);
@@ -111,16 +113,18 @@ const ViaticosPage = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [viaticosData, vendedoresData, rutasData, zonasData] = await Promise.all([
+        const [viaticosData, vendedoresData, rutasData, zonasData, salidasData] = await Promise.all([
           cajaChicaService.getAll(),
           cajaChicaService.getVendedores(),
           cajaChicaService.getRutas(),
           mapaInteractivoService.getZonas(),
+          cajaChicaService.getSalidas(),
         ]);
         setViaticos(viaticosData);
         setVendedores(vendedoresData);
         setRutas(rutasData);
         setZonas(zonasData);
+        setSalidas(salidasData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -144,6 +148,7 @@ const ViaticosPage = () => {
     setFormDescripcion('');
     setFormZona('');
     setFormRuta('');
+    setFormSalida('');
     setFormFecha(format(new Date(), 'yyyy-MM-dd'));
   };
 
@@ -169,7 +174,8 @@ const ViaticosPage = () => {
         monto: Number(formMonto),
         descripcion: formDescripcion || undefined,
         zona: formZona || undefined,
-        ruta_id: Number(formRuta),
+        ruta_id: formRuta ? Number(formRuta) : undefined,
+        salida_id: formSalida ? Number(formSalida) : undefined,
       });
       const viaticosData = await cajaChicaService.getAll();
       setViaticos(viaticosData);
@@ -288,7 +294,7 @@ const ViaticosPage = () => {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Fecha *</Label>
                   <Input
@@ -310,7 +316,7 @@ const ViaticosPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Zona</Label>
                   <Select value={formZona} onValueChange={setFormZona}>
@@ -342,6 +348,23 @@ const ViaticosPage = () => {
               </div>
 
               <div>
+                <Label>Salida de Fábrica (Viaje)</Label>
+                <Select value={formSalida} onValueChange={setFormSalida}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Asignar a salida / viaje (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sin_salida">Sin Salida especificada</SelectItem>
+                    {salidas?.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        #{s.id} - {s.fecha} - {s.vendedor?.usuario?.nombre} ({s.vehiculo?.placa || 'Sin vehículo'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label>Descripción</Label>
                 <Textarea
                   placeholder="Detalle del viático..."
@@ -360,55 +383,55 @@ const ViaticosPage = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-slide-up" style={{ animationDelay: '100ms' }}>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Pendientes</p>
-                <p className="text-lg font-bold">S/ {Number(totalPendiente).toFixed(2)}</p>
+                <p className="text-base sm:text-lg font-bold truncate">S/ {Number(totalPendiente).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Aprobados</p>
-                <p className="text-lg font-bold">S/ {Number(totalAprobado).toFixed(2)}</p>
+                <p className="text-base sm:text-lg font-bold truncate">S/ {Number(totalAprobado).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Inicial</p>
-                <p className="text-lg font-bold">S/ {Number(totalInicial).toFixed(2)}</p>
+                <p className="text-base sm:text-lg font-bold truncate">S/ {Number(totalInicial).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                <Car className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                <Car className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">De Viaje</p>
-                <p className="text-lg font-bold">S/ {Number(totalViaje).toFixed(2)}</p>
+                <p className="text-base sm:text-lg font-bold truncate">S/ {Number(totalViaje).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -416,9 +439,9 @@ const ViaticosPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 animate-slide-up" style={{ animationDelay: '200ms' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 animate-slide-up" style={{ animationDelay: '200ms' }}>
         <Select value={filterVendedor} onValueChange={setFilterVendedor} disabled={isVendedor}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full">
             <Filter className="h-3.5 w-3.5 mr-1" />
             <SelectValue placeholder="Vendedor" />
           </SelectTrigger>
@@ -431,7 +454,7 @@ const ViaticosPage = () => {
         </Select>
 
         <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
@@ -442,7 +465,7 @@ const ViaticosPage = () => {
         </Select>
 
         <Select value={filterEstado} onValueChange={setFilterEstado}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Estado" />
           </SelectTrigger>
           <SelectContent>
