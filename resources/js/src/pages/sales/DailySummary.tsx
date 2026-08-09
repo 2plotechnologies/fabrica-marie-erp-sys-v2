@@ -644,7 +644,7 @@ const DailySummaryPage = () => {
                         <SelectItem value="sin_salida">Sin Salida</SelectItem>
                         {(Array.isArray(salidas) ? salidas : []).map(s => (
                           <SelectItem key={s.id} value={String(s.id)}>
-                            {s.fecha} - {s.vehiculo?.placa} - {s.ruta?.nombre}
+                            #{s.id} - {s.fecha} - {s.vehiculo?.placa || 'Sin vehículo'} - {(s.rutas && s.rutas.length > 0) ? s.rutas.map((r: any) => r.nombre).join(', ') : (s.ruta?.nombre || 'Sin Ruta')}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -82,7 +82,7 @@ const ViaticosPage = () => {
   const [formMonto, setFormMonto] = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
   const [formZona, setFormZona] = useState('');
-  const [formRuta, setFormRuta] = useState('');
+  const [formRutaIds, setFormRutaIds] = useState<number[]>([]);
   const [formSalida, setFormSalida] = useState('');
   const [formFecha, setFormFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -147,18 +147,44 @@ const ViaticosPage = () => {
     setFormMonto('');
     setFormDescripcion('');
     setFormZona('');
-    setFormRuta('');
+    setFormRutaIds([]);
     setFormSalida('');
     setFormFecha(format(new Date(), 'yyyy-MM-dd'));
   };
 
+  const handleZonaChange = (newZona: string) => {
+    const validRutas = rutas
+      .filter(r => r.zona === newZona && formRutaIds.includes(r.id))
+      .map(r => r.id);
+    setFormZona(newZona);
+    setFormRutaIds(validRutas);
+  };
 
-  const handleRutaChange = (rutaId: string) => {
-    const rutaSeleccionada = rutas.find(r => String(r.id) === rutaId);
-    setFormRuta(rutaId);
-    if (rutaSeleccionada?.zona) {
-      setFormZona(rutaSeleccionada.zona);
+  const handleAddRuta = (rutaIdStr: string) => {
+    const rutaId = Number(rutaIdStr);
+    if (!rutaId || formRutaIds.includes(rutaId)) return;
+
+    const selectedRuta = rutas.find(r => r.id === rutaId);
+    const newZona = selectedRuta?.zona || formZona;
+
+    const existingValid = formRutaIds.filter(id => {
+      const r = rutas.find(x => x.id === id);
+      return !newZona || r?.zona === newZona;
+    });
+
+    setFormZona(newZona);
+    setFormRutaIds([...existingValid, rutaId]);
+  };
+
+  const handleRemoveRuta = (rutaId: number) => {
+    setFormRutaIds(prev => prev.filter(id => id !== rutaId));
+  };
+
+  const renderRutasText = (viatico: any) => {
+    if (viatico.rutas && viatico.rutas.length > 0) {
+      return viatico.rutas.map((r: any) => r.nombre).join(', ');
     }
+    return viatico.ruta?.nombre || null;
   };
 
   const handleSubmit = async () => {
@@ -174,8 +200,9 @@ const ViaticosPage = () => {
         monto: Number(formMonto),
         descripcion: formDescripcion || undefined,
         zona: formZona || undefined,
-        ruta_id: formRuta ? Number(formRuta) : undefined,
-        salida_id: formSalida ? Number(formSalida) : undefined,
+        ruta_id: formRutaIds.length > 0 ? formRutaIds[0] : undefined,
+        ruta_ids: formRutaIds.length > 0 ? formRutaIds : undefined,
+        salida_id: formSalida && formSalida !== 'sin_salida' ? Number(formSalida) : undefined,
       });
       const viaticosData = await cajaChicaService.getAll();
       setViaticos(viaticosData);
@@ -319,9 +346,9 @@ const ViaticosPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>Zona</Label>
-                  <Select value={formZona} onValueChange={setFormZona}>
+                  <Select value={formZona} onValueChange={handleZonaChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                      <SelectValue placeholder="Seleccionar zona" />
                     </SelectTrigger>
                     <SelectContent>
                       {zonas.map(z => (
@@ -333,19 +360,49 @@ const ViaticosPage = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label>Ruta</Label>
-                  <Select
-                    value={formRuta}
-                    onValueChange={handleRutaChange}>
+                  <Label>Rutas</Label>
+                  <Select value="" onValueChange={handleAddRuta}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                      <SelectValue placeholder={formRutaIds.length > 0 ? "Agregar otra ruta..." : "Seleccionar ruta(s)..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      {rutas.map(v => <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>)}
+                      {rutas
+                        .filter(r => !formZona || r.zona === formZona)
+                        .filter(r => !formRutaIds.includes(r.id))
+                        .map(r => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {r.nombre} {r.zona ? `(${r.zona})` : ''}
+                          </SelectItem>
+                        ))}
+                      {rutas.filter(r => (!formZona || r.zona === formZona) && !formRutaIds.includes(r.id)).length === 0 && (
+                        <SelectItem value="none" disabled>
+                          {formZona ? "No hay más rutas en esta zona" : "No hay rutas disponibles"}
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              {formRutaIds.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-xs text-muted-foreground flex items-center mr-1">Rutas seleccionadas:</span>
+                  {formRutaIds.map(id => {
+                    const rObj = rutas.find(r => r.id === id);
+                    return (
+                      <Badge key={id} variant="secondary" className="px-2.5 py-1 text-xs font-medium flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20">
+                        {rObj?.nombre || `Ruta #${id}`}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRuta(id)}
+                          className="hover:text-red-500 font-bold ml-1"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
 
               <div>
                 <Label>Salida de Fábrica (Viaje)</Label>
@@ -525,9 +582,9 @@ const ViaticosPage = () => {
                     <TableCell>
                       <div className="text-sm">
                         {v.zona && <span>{v.zona}</span>}
-                        {v.zona && v.ruta.nombre && <span> / </span>}
-                        {v.ruta.nombre && <span>{v.ruta.nombre}</span>}
-                        {!v.zona && !v.ruta && '—'}
+                        {v.zona && renderRutasText(v) && <span> / </span>}
+                        {renderRutasText(v) && <span>{renderRutasText(v)}</span>}
+                        {!v.zona && !renderRutasText(v) && '—'}
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate text-sm">

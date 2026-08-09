@@ -7,6 +7,7 @@ export interface ViaticoPayload {
     monto: number;
     zona?: string;
     ruta_id?: number;
+    ruta_ids?: number[];
     salida_id?: number;
     descripcion?: string;
 }

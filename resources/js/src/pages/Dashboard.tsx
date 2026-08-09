@@ -655,6 +655,10 @@ const Dashboard = () => {
                         <span>Cobranzas:</span>
                         <span className="font-semibold text-foreground">S/ {Number(resumen.efectivo_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span>Entregas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.efectivo_entregas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -674,6 +678,10 @@ const Dashboard = () => {
                       <div className="flex justify-between">
                         <span>Cobranzas:</span>
                         <span className="font-semibold text-foreground">S/ {Number(resumen.yape_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Entregas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.yape_entregas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
                       </div>
                     </div>
                   </div>
@@ -695,6 +703,10 @@ const Dashboard = () => {
                         <span>Cobranzas:</span>
                         <span className="font-semibold text-foreground">S/ {Number(resumen.plin_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span>Entregas:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.plin_entregas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -715,6 +727,10 @@ const Dashboard = () => {
                         <span>Cobranzas:</span>
                         <span className="font-semibold text-foreground">S/ {Number(resumen.deposito_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span>Entregas / Transf.:</span>
+                        <span className="font-semibold text-foreground">S/ {Number(resumen.deposito_entregas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -727,6 +743,10 @@ const Dashboard = () => {
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Total Cobranzas:</span>
                         <span className="font-bold text-emerald-600 dark:text-emerald-400">S/ {Number(resumen.total_cobranzas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Total Entregas:</span>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">S/ {Number(resumen.total_entregas || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Ventas Crédito:</span>

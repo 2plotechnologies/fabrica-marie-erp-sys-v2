@@ -36,6 +36,11 @@ class Viatico extends Model
         return $this->belongsTo(Ruta::class);
     }
 
+    public function rutas()
+    {
+        return $this->belongsToMany(Ruta::class, 'viatico_rutas', 'viatico_id', 'ruta_id');
+    }
+
     public function salida()
     {
         return $this->belongsTo(Salida::class, 'salida_id');

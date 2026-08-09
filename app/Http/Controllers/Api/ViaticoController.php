@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Viatico;
+use App\Models\Ruta;
 use App\Services\CajaService;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,7 @@ class ViaticoController
         $query = Viatico::with([
             'vendedor.usuario',
             'ruta',
+            'rutas',
             'salida'
         ])
         ->orderBy('fecha', 'desc');
@@ -38,10 +40,28 @@ class ViaticoController
             'fecha' => 'required|date',
             'monto' => 'required|numeric',
             'zona' => 'nullable|string|max:255',
+            'ruta_ids' => 'nullable|array',
+            'ruta_ids.*' => 'exists:rutas,id',
             'ruta_id' => 'nullable|exists:rutas,id',
             'salida_id' => 'nullable|exists:salidas,id',
             'descripcion' => 'nullable|string|max:255',
         ]);
+
+        $rutaIds = $request->input('ruta_ids', []);
+        if (empty($rutaIds) && $request->filled('ruta_id')) {
+            $rutaIds = [(int)$request->ruta_id];
+        }
+
+        if (!empty($rutaIds) && $request->filled('zona')) {
+            $rutasBD = Ruta::whereIn('id', $rutaIds)->get();
+            foreach ($rutasBD as $r) {
+                if ($r->zona !== $request->zona) {
+                    return response()->json([
+                        'error' => 'Todas las rutas seleccionadas deben pertenecer a la zona especificada (' . $request->zona . ').'
+                    ], 400);
+                }
+            }
+        }
 
         $user = auth()->user();
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
@@ -65,25 +85,53 @@ class ViaticoController
             'fecha' => $request->fecha,
             'monto' => $request->monto,
             'zona' => $request->zona,
-            'ruta_id' => $request->ruta_id,
+            'ruta_id' => !empty($rutaIds) ? $rutaIds[0] : null,
             'salida_id' => $salidaId,
             'descripcion' => $request->descripcion,
             'estado' => 'PENDIENTE',
         ]);
-        return response()->json($viatico);
+
+        if (!empty($rutaIds)) {
+            $viatico->rutas()->sync($rutaIds);
+        }
+
+        return response()->json($viatico->load('vendedor.usuario', 'ruta', 'rutas', 'salida'));
     }
 
     public function show($id)
     {
-        $viatico = Viatico::find($id);
+        $viatico = Viatico::with(['vendedor.usuario', 'ruta', 'rutas', 'salida'])->findOrFail($id);
         return response()->json($viatico);
     }
 
     public function update(Request $request, $id)
     {
-        $viatico = Viatico::find($id);
+        $viatico = Viatico::findOrFail($id);
+        
+        $rutaIds = $request->input('ruta_ids', []);
+        if (empty($rutaIds) && $request->filled('ruta_id')) {
+            $rutaIds = [(int)$request->ruta_id];
+        }
+
+        if (!empty($rutaIds) && $request->filled('zona')) {
+            $rutasBD = Ruta::whereIn('id', $rutaIds)->get();
+            foreach ($rutasBD as $r) {
+                if ($r->zona !== $request->zona) {
+                    return response()->json([
+                        'error' => 'Todas las rutas seleccionadas deben pertenecer a la zona especificada (' . $request->zona . ').'
+                    ], 400);
+                }
+            }
+        }
+
         $viatico->update($request->all());
-        return response()->json($viatico);
+
+        if (!empty($rutaIds)) {
+            $viatico->update(['ruta_id' => $rutaIds[0]]);
+            $viatico->rutas()->sync($rutaIds);
+        }
+
+        return response()->json($viatico->load('vendedor.usuario', 'ruta', 'rutas', 'salida'));
     }
 
     public function updateEstado(Request $request, $id)

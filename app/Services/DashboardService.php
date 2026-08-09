@@ -58,18 +58,23 @@ class DashboardService
                         'ventas_credito'     => 0,
                         'adelantos_credito'  => 0,
                         'total_cobranzas'    => 0,
+                        'total_entregas'     => 0,
                         'efectivo_total'     => 0,
                         'efectivo_ventas'    => 0,
                         'efectivo_cobranzas' => 0,
+                        'efectivo_entregas'  => 0,
                         'yape_total'         => 0,
                         'yape_ventas'        => 0,
                         'yape_cobranzas'     => 0,
+                        'yape_entregas'      => 0,
                         'plin_total'         => 0,
                         'plin_ventas'        => 0,
                         'plin_cobranzas'     => 0,
+                        'plin_entregas'      => 0,
                         'deposito_total'     => 0,
                         'deposito_ventas'    => 0,
                         'deposito_cobranzas' => 0,
+                        'deposito_entregas'  => 0,
                     ],
                     'creditos_pendientes' => ['total_saldo' => 0, 'cuentas' => []],
                     'stock_en_ruta'       => [],
@@ -520,18 +525,23 @@ class DashboardService
                 'ventas_credito'     => 0,
                 'adelantos_credito'  => 0,
                 'total_cobranzas'    => 0,
+                'total_entregas'     => 0,
                 'efectivo_total'     => 0,
                 'efectivo_ventas'    => 0,
                 'efectivo_cobranzas' => 0,
+                'efectivo_entregas'  => 0,
                 'yape_total'         => 0,
                 'yape_ventas'        => 0,
                 'yape_cobranzas'     => 0,
+                'yape_entregas'      => 0,
                 'plin_total'         => 0,
                 'plin_ventas'        => 0,
                 'plin_cobranzas'     => 0,
+                'plin_entregas'      => 0,
                 'deposito_total'     => 0,
                 'deposito_ventas'    => 0,
                 'deposito_cobranzas' => 0,
+                'deposito_entregas'  => 0,
             ];
         }
 
@@ -610,11 +620,41 @@ class DashboardService
             }
         }
 
+        // Entregas de dinero / Transferencias realizadas por el vendedor en esta salida
+        $entregasItems = DB::table('entregas_dinero_item')
+            ->join('entregas_de_dinero', 'entregas_dinero_item.entrega_id', '=', 'entregas_de_dinero.id')
+            ->where('entregas_de_dinero.usuario_id', $usuarioId)
+            ->whereIn('entregas_de_dinero.estado', ['PENDIENTE', 'ACEPTADA'])
+            ->whereDate('entregas_de_dinero.created_at', '>=', $fechaSalida)
+            ->select('entregas_dinero_item.metodo_pago', 'entregas_dinero_item.monto')
+            ->get();
+
+        $efectivoEntregas = 0;
+        $yapeEntregas = 0;
+        $plinEntregas = 0;
+        $depositoEntregas = 0;
+
+        foreach ($entregasItems as $item) {
+            $metodo = strtoupper(trim($item->metodo_pago));
+            $monto = (float) $item->monto;
+
+            if ($metodo === 'YAPE') {
+                $yapeEntregas += $monto;
+            } elseif ($metodo === 'PLIN') {
+                $plinEntregas += $monto;
+            } elseif (in_array($metodo, ['DEPOSITO', 'TRANSFERENCIA'])) {
+                $depositoEntregas += $monto;
+            } else {
+                $efectivoEntregas += $monto;
+            }
+        }
+
         $totalVentas = (float) $ventas->sum('total_neto');
         $totalVentasContado = (float) $ventas->where('tipo_pago', 'CONTADO')->sum('total_neto');
         $totalVentasCredito = (float) $ventas->where('tipo_pago', 'CREDITO')->sum('total_neto');
         $totalAdelantos = (float) $ventas->where('tipo_pago', 'CREDITO')->sum('adelanto');
         $totalCobranzas = (float) $abonos->sum('monto');
+        $totalEntregas = $efectivoEntregas + $yapeEntregas + $plinEntregas + $depositoEntregas;
 
         return [
             'total_ventas'       => $totalVentas,
@@ -622,22 +662,27 @@ class DashboardService
             'ventas_credito'     => $totalVentasCredito,
             'adelantos_credito'  => $totalAdelantos,
             'total_cobranzas'    => $totalCobranzas,
+            'total_entregas'     => $totalEntregas,
 
-            'efectivo_total'     => $efectivoVentas + $efectivoCobranzas,
+            'efectivo_total'     => $efectivoVentas + $efectivoCobranzas + $efectivoEntregas,
             'efectivo_ventas'    => $efectivoVentas,
             'efectivo_cobranzas' => $efectivoCobranzas,
+            'efectivo_entregas'  => $efectivoEntregas,
 
-            'yape_total'         => $yapeVentas + $yapeCobranzas,
+            'yape_total'         => $yapeVentas + $yapeCobranzas + $yapeEntregas,
             'yape_ventas'        => $yapeVentas,
             'yape_cobranzas'     => $yapeCobranzas,
+            'yape_entregas'      => $yapeEntregas,
 
-            'plin_total'         => $plinVentas + $plinCobranzas,
+            'plin_total'         => $plinVentas + $plinCobranzas + $plinEntregas,
             'plin_ventas'        => $plinVentas,
             'plin_cobranzas'     => $plinCobranzas,
+            'plin_entregas'      => $plinEntregas,
 
-            'deposito_total'     => $depositoVentas + $depositoCobranzas,
+            'deposito_total'     => $depositoVentas + $depositoCobranzas + $depositoEntregas,
             'deposito_ventas'    => $depositoVentas,
             'deposito_cobranzas' => $depositoCobranzas,
+            'deposito_entregas'  => $depositoEntregas,
         ];
     }
 
