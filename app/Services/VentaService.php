@@ -118,6 +118,18 @@ class VentaService
                     }
                     $stockVendedor->fecha_ultimo_mov = now();
                     $stockVendedor->save();
+                } else {
+                    StockVendedor::create([
+                        'producto_id' => $item->producto_id,
+                        'vendedor_id' => $venta->vendedor_id,
+                        'salida_id' => $targetSalidaId,
+                        'cantidad' => $item->cantidad,
+                        'cantidad_entregada' => $item->cantidad,
+                        'stock_reservado' => 0,
+                        'vendido' => 0,
+                        'devuelto' => 0,
+                        'fecha_ultimo_mov' => now()
+                    ]);
                 }
 
                 if ($targetSalidaId) {
@@ -134,7 +146,7 @@ class VentaService
 
             /*
             =========================================
-            💳 2️⃣ ROLLBACK CUENTA POR COBRAR
+            💳 2️⃣ ROLLBACK CUENTA POR COBRAR Y DEUDA CLIENTE
             =========================================
             */
 
@@ -151,7 +163,28 @@ class VentaService
                     );
                 }
 
+                // 🔁 Restar de la deuda acumulada del cliente
+                $cliente = \App\Models\Cliente::find($venta->cliente_id);
+                if ($cliente) {
+                    $montoRestar = $venta->total_neto - $venta->adelanto;
+                    if ($montoRestar > 0) {
+                        $cliente->update([
+                            'deuda_actual' => max(0, $cliente->deuda_actual - $montoRestar)
+                        ]);
+                    }
+                }
+
                 $venta->cuenta->delete();
+            } else if ($venta->tipo_pago === 'CREDITO') {
+                $cliente = \App\Models\Cliente::find($venta->cliente_id);
+                if ($cliente) {
+                    $montoRestar = $venta->total_neto - $venta->adelanto;
+                    if ($montoRestar > 0) {
+                        $cliente->update([
+                            'deuda_actual' => max(0, $cliente->deuda_actual - $montoRestar)
+                        ]);
+                    }
+                }
             }
 
             /*

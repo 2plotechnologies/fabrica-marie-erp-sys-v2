@@ -275,7 +275,13 @@ class SalidaController
             $salida->save();
 
             // Revertir inventario
-            $movimientos = \App\Models\MovimientoStock::where('motivo', 'Despacho de fabrica. Salida #' . $salida->id)
+            $movimientos = \App\Models\MovimientoStock::where(function($q) use ($salida) {
+                    $q->where('motivo', 'like', '%Salida #' . $salida->id . '%')
+                      ->orWhere(function($subQ) use ($salida) {
+                          $subQ->where('referencia_tipo', 'SALIDA')
+                               ->where('referencia_id', $salida->id);
+                      });
+                })
                 ->where('tipo', 'SALIDA')
                 ->get();
 
@@ -310,6 +316,18 @@ class SalidaController
                     if ($stockAnterior) {
                         $stockAnterior->cantidad += $item->cantidad;
                         $stockAnterior->save();
+                    } else {
+                        StockVendedor::create([
+                            'salida_id' => $ultimaSalida->id,
+                            'vendedor_id' => $salida->vendedor_id,
+                            'producto_id' => $item->producto_id,
+                            'cantidad' => $item->cantidad,
+                            'cantidad_entregada' => $item->cantidad,
+                            'stock_reservado' => 0,
+                            'vendido' => 0,
+                            'devuelto' => 0,
+                            'fecha_ultimo_mov' => now()
+                        ]);
                     }
                 }
             }
@@ -430,7 +448,13 @@ class SalidaController
             }
 
             // 2. Revertir inventario anterior de la salida
-            $movimientosAnteriores = \App\Models\MovimientoStock::where('motivo', 'Despacho de fabrica. Salida #' . $salida->id)
+            $movimientosAnteriores = \App\Models\MovimientoStock::where(function($q) use ($salida) {
+                    $q->where('motivo', 'like', '%Salida #' . $salida->id . '%')
+                      ->orWhere(function($subQ) use ($salida) {
+                          $subQ->where('referencia_tipo', 'SALIDA')
+                               ->where('referencia_id', $salida->id);
+                      });
+                })
                 ->where('tipo', 'SALIDA')
                 ->get();
 
@@ -465,6 +489,18 @@ class SalidaController
                     if ($stockAnterior) {
                         $stockAnterior->cantidad += $oldItem->cantidad;
                         $stockAnterior->save();
+                    } else {
+                        StockVendedor::create([
+                            'salida_id' => $ultimaSalidaAnterior->id,
+                            'vendedor_id' => $salida->vendedor_id,
+                            'producto_id' => $oldItem->producto_id,
+                            'cantidad' => $oldItem->cantidad,
+                            'cantidad_entregada' => $oldItem->cantidad,
+                            'stock_reservado' => 0,
+                            'vendido' => 0,
+                            'devuelto' => 0,
+                            'fecha_ultimo_mov' => now()
+                        ]);
                     }
                 }
             }

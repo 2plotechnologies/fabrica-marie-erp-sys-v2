@@ -21,10 +21,20 @@ class AbonoService
 
             $cuenta = $abono->cuenta;
 
-            // 🔁 Restaurar saldo
+            // 🔁 Restaurar saldo y estado de la cuenta por cobrar
             $cuenta->saldo += $abono->monto;
-            $cuenta->estado = 'PENDIENTE';
+            if ($cuenta->saldo >= $cuenta->monto_total) {
+                $cuenta->saldo = $cuenta->monto_total;
+                $cuenta->estado = 'PENDIENTE';
+            } else {
+                $cuenta->estado = 'PARCIAL';
+            }
             $cuenta->save();
+
+            // 🔁 Restaurar deuda actual del cliente
+            if ($cuenta->cliente) {
+                $cuenta->cliente->increment('deuda_actual', $abono->monto);
+            }
 
             // 🔁 Movimiento inverso en caja
             MovimientoCaja::create([

@@ -152,12 +152,16 @@ class MovimientoStockController extends Controller
     {
         return DB::transaction(function () use ($id) {
 
-            $movimiento = MovimientoStock::lockForUpdate()->findOrFail($id);
+            if ($movimiento->estado === 'ANULADO') {
+                throw new Exception('El movimiento ya se encuentra anulado');
+            }
 
             $stock = StockActual::where('producto_id', $movimiento->producto_id)
                 ->where('ruma_id', $movimiento->ruma_id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $stockAnterior = $stock->cantidad;
 
             switch ($movimiento->tipo) {
 
@@ -174,16 +178,9 @@ class MovimientoStockController extends Controller
                     break;
 
                 case 'DEVOLUCION_MALA':
-                    // Si la devolución mala no afecta stock bueno,
-                    // aquí no harías nada o dependerá de tu lógica
                     break;
 
                 case 'AJUSTE':
-                    /*
-                    Aquí depende de cómo guardaste el ajuste.
-                    Si ajuste guarda cantidad positiva o negativa,
-                    simplemente:
-                    */
                     $stock->cantidad -= $movimiento->cantidad;
                     break;
 
@@ -203,7 +200,24 @@ class MovimientoStockController extends Controller
             $stock->save();
 
             $movimiento->estado = 'ANULADO';
+            $movimiento->user_id = auth()->id() ?? $movimiento->user_id;
             $movimiento->save();
+
+            // 🔁 Movimiento compensatorio de auditoría
+            MovimientoStock::create([
+                'tipo' => 'AJUSTE',
+                'producto_id' => $movimiento->producto_id,
+                'ruma_id' => $movimiento->ruma_id,
+                'cantidad' => $movimiento->cantidad,
+                'referencia_tipo' => 'ANULACION_MOVIMIENTO',
+                'referencia_id' => $movimiento->id,
+                'motivo' => 'Anulación de movimiento #' . $movimiento->id . ' (' . $movimiento->tipo . ')',
+                'stock_anterior' => $stockAnterior,
+                'stock_post_mov' => $stock->cantidad,
+                'user_id' => auth()->id(),
+                'estado' => 'REGISTRADO',
+                'created_at' => now()
+            ]);
 
             return response()->json([
                 'message' => 'Movimiento descartado y stock restablecido correctamente'

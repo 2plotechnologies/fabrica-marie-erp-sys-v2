@@ -88,24 +88,39 @@ class ViaticoController
 
     public function updateEstado(Request $request, $id)
     {
-        $viatico = Viatico::findOrFail($id);
-        $viatico->estado = $request->estado;
-        $viatico->save();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id) {
+            $viatico = Viatico::findOrFail($id);
+            $estadoAnterior = $viatico->estado;
 
-        //Si el estado es aprobado, se debe registrar el movimiento en caja.
-        if ($viatico->estado == 'APROBADO') {
-            $movimiento = CajaService::registrarMovimiento([
-                'tipo' => 'EGRESO',
-                'estado' => 'APROBADO',
-                'monto' => $viatico->monto,
-                'categoria' => 'VIATICO',
-                'descripcion' => 'Viatico ' . $viatico->tipo . ' para ' . $viatico->vendedor->usuario->nombre . ' - ' . $viatico->zona . '. Viatico #' . $viatico->id,
-                'referencia_tipo' => 'VIATICO',
-                'referencia_id' => $viatico->id
-            ]);
-        }
+            $viatico->estado = $request->estado;
+            $viatico->save();
 
-        return response()->json($viatico);
+            // Si pasa a APROBADO desde PENDIENTE o RECHAZADO, registrar EGRESO
+            if ($request->estado === 'APROBADO' && $estadoAnterior !== 'APROBADO' && $estadoAnterior !== 'LIQUIDADO') {
+                CajaService::registrarMovimiento([
+                    'tipo' => 'EGRESO',
+                    'estado' => 'APROBADO',
+                    'monto' => $viatico->monto,
+                    'categoria' => 'VIATICO',
+                    'descripcion' => 'Viatico ' . $viatico->tipo . ' para ' . ($viatico->vendedor?->usuario?->nombre ?? 'Vendedor') . ' - ' . $viatico->zona . '. Viatico #' . $viatico->id,
+                    'referencia_tipo' => 'VIATICO',
+                    'referencia_id' => $viatico->id
+                ]);
+            } else if (in_array($estadoAnterior, ['APROBADO', 'LIQUIDADO']) && in_array($request->estado, ['RECHAZADO', 'PENDIENTE'])) {
+                // Si estaba APROBADO o LIQUIDADO y ahora es RECHAZADO/PENDIENTE, revertir con INGRESO
+                CajaService::registrarMovimiento([
+                    'tipo' => 'INGRESO',
+                    'estado' => 'APROBADO',
+                    'monto' => $viatico->monto,
+                    'categoria' => 'REVERSION_VIATICO',
+                    'descripcion' => 'Reversión por cambio de estado (' . $request->estado . ') de viático #' . $viatico->id,
+                    'referencia_tipo' => 'VIATICO',
+                    'referencia_id' => $viatico->id
+                ]);
+            }
+
+            return response()->json($viatico);
+        });
     }
 
     //Liquidar viatico.
@@ -158,8 +173,27 @@ class ViaticoController
 
     public function destroy($id)
     {
-        $viatico = Viatico::find($id);
-        $viatico->delete();
-        return response()->json($viatico);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+            $viatico = Viatico::findOrFail($id);
+
+            if (in_array($viatico->estado, ['APROBADO', 'LIQUIDADO'])) {
+                CajaService::registrarMovimiento([
+                    'tipo' => 'INGRESO',
+                    'estado' => 'APROBADO',
+                    'monto' => $viatico->monto,
+                    'categoria' => 'REVERSION_VIATICO',
+                    'descripcion' => 'Eliminación de viático #' . $viatico->id . ' (' . $viatico->tipo . ')',
+                    'referencia_tipo' => 'VIATICO',
+                    'referencia_id' => $viatico->id
+                ]);
+            }
+
+            $viatico->delete();
+
+            return response()->json([
+                'message' => 'Viático eliminado correctamente',
+                'viatico' => $viatico
+            ]);
+        });
     }
 }
