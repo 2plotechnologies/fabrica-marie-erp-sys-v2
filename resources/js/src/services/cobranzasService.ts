@@ -23,4 +23,9 @@ export const cobranzasService = {
     async fechaVencimiento(cuentaId: string, fecha_vencimiento: string) {
         return api.put(`/cuentas_por_cobrar/${cuentaId}/fecha_vencimiento`, { fecha_vencimiento });
     },
+
+    async anularAbono(abonoId: string | number) {
+        const response = await api.post(`/cuentas_por_cobrar/abonos/${abonoId}/anular`);
+        return response.data;
+    },
 }

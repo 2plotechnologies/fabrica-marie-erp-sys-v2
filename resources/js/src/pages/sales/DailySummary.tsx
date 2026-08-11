@@ -18,7 +18,7 @@ import {
   CalendarIcon, FileDown, Plus,
   Search, Eye, ArrowDownCircle, ArrowUpCircle,
   Calculator, CheckCircle2, Loader2, ShieldCheck, ShieldX, ShieldAlert,
-  XCircle, Truck, MapPin, Layers, RefreshCw, ChevronRight, Fuel, AlertTriangle, Banknote
+  XCircle, Truck, MapPin, Layers, RefreshCw, ChevronRight, Fuel, AlertTriangle
 } from 'lucide-react';
 import { resumenDiarioService } from '@/services/resumenDiarioService';
 import { mapaInteractivoService } from '@/services/mapaInteractivoService';
@@ -414,7 +414,7 @@ const DailySummaryPage = () => {
       credito: resumenVendedor.totalCredito || 0,
       cobranza: resumenVendedor.totalCobranzas || 0,
       viaticos: resumenVendedor.totalViaticos || 0,
-      depositos: (resumenVendedor.totalDepositos || 0) + totalEntregasMoneyDelivery,
+      depositos: resumenVendedor.totalDepositos || 0,
       monederoVirtual: resumenVendedor.totalMonederoVirtual || 0,
       adelantos: resumenVendedor.totalAdelantos || 0,
       saldo_entregado: resumenVendedor.saldoEntregar || 0,
@@ -506,8 +506,10 @@ const DailySummaryPage = () => {
     if (!newResumen.vendedor_id) return;
 
     try {
+      const totalEntregasMoneyDelivery = resumenVendedor?.totalEntregasDinero || 0;
       const payload = {
         ...newResumen,
+        depositos: (newResumen.depositos || 0) + totalEntregasMoneyDelivery,
         ruta_id: (newResumen.ruta_ids && newResumen.ruta_ids.length > 0) ? newResumen.ruta_ids[0] : ((!newResumen.ruta_id || newResumen.ruta_id === 'sin_ruta') ? null : newResumen.ruta_id),
         ruta_ids: (newResumen.ruta_ids && newResumen.ruta_ids.length > 0) ? newResumen.ruta_ids : undefined,
         vehiculo_id: (!newResumen.vehiculo_id || newResumen.vehiculo_id === 'sin_vehiculo') ? null : newResumen.vehiculo_id,
@@ -958,91 +960,30 @@ const DailySummaryPage = () => {
 
                 {/* Saldo Entregado Calculado */}
                 <Card className="bg-muted/50 border-primary/20">
-                  <CardContent className="pt-4 space-y-3">
+                  <CardContent className="pt-4 space-y-2">
                     <h4 className="font-semibold text-sm">Saldo Entregado (Cálculo Automático)</h4>
                     <p className="text-xs text-muted-foreground">
-                      Desglose: Efectivo del Día − Depósitos / Entregas en Banco/Yape
+                      = Venta Contado + Cobranzas + Adelantos + Caja Chica − Gastos − Depósitos − Yape/Plin {resumenVendedor?.totalEntregasDinero > 0 ? `− MoneyDelivery Aprobado (S/ ${Number(resumenVendedor.totalEntregasDinero).toFixed(2)})` : ''}
                     </p>
                     {(() => {
                       const totalGastosForm = totalGastosBackend;
                       const totalEntregasMoneyDelivery = resumenVendedor?.totalEntregasDinero || 0;
-                      const contadoVal = Number(newResumen.contado || 0);
-                      const cobranzaVal = Number(newResumen.cobranza || 0);
-                      const adelantosVal = Number(newResumen.adelantos || 0);
-                      const viaticosVal = Number(newResumen.viaticos || 0);
-                      const depositosVal = Number(newResumen.depositos || 0);
-                      const monederoVal = Number(newResumen.monederoVirtual || 0);
+                      let saldoEntregadoCalculado =
+                        (newResumen.contado || 0) +
+                        (newResumen.cobranza || 0) +
+                        (newResumen.adelantos || 0) +
+                        (newResumen.viaticos || 0) -
+                        totalGastosForm -
+                        (newResumen.depositos || 0) -
+                        (newResumen.monederoVirtual || 0) -
+                        totalEntregasMoneyDelivery;
 
-                      const efectivoDelDia = (contadoVal + cobranzaVal + adelantosVal + viaticosVal) - totalGastosForm;
-                      const totalDeducciones = depositosVal + monederoVal + totalEntregasMoneyDelivery;
-
-                      let saldoEntregadoCalculado = efectivoDelDia - totalDeducciones;
                       if (saldoEntregadoCalculado < 0) saldoEntregadoCalculado = 0;
 
-                      const depositosExceden = totalDeducciones > 0 && totalDeducciones >= efectivoDelDia;
-
                       return (
-                        <div className="space-y-3 pt-1">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">(+) Venta Contado</span>
-                              <span className="font-medium text-emerald-600">S/ {contadoVal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">(+) Cobranzas</span>
-                              <span className="font-medium text-emerald-600">S/ {cobranzaVal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">(+) Adelantos Crédito</span>
-                              <span className="font-medium text-emerald-600">S/ {adelantosVal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">(+) Viáticos</span>
-                              <span className="font-medium text-emerald-600">S/ {viaticosVal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between sm:col-span-2 pt-1 border-t">
-                              <span className="text-muted-foreground">(−) Total Gastos</span>
-                              <span className="font-medium text-red-600">S/ {totalGastosForm.toFixed(2)}</span>
-                            </div>
-                          </div>
-
-                          {/* Campo destacado: Efectivo del Día */}
-                          <div className="flex justify-between items-center p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-xs sm:text-sm">
-                            <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                              <Banknote className="h-4 w-4 text-emerald-600" />
-                              Efectivo del Día (Bruto Recabado)
-                            </span>
-                            <span className="font-bold text-emerald-700 dark:text-emerald-400 text-sm sm:text-base">
-                              S/ {efectivoDelDia.toFixed(2)}
-                            </span>
-                          </div>
-
-                          {totalDeducciones > 0 && (
-                            <div className="flex justify-between text-xs text-muted-foreground pt-1">
-                              <span>(−) Depósitos / Yape / MoneyDelivery</span>
-                              <span className="font-medium text-red-600">S/ {totalDeducciones.toFixed(2)}</span>
-                            </div>
-                          )}
-
-                          <Separator />
-
-                          <div className="flex justify-between items-center text-xs sm:text-sm pt-1">
-                            <span className="font-bold">Saldo Entregado Esperado</span>
-                            <span className="text-xl sm:text-2xl font-bold text-emerald-600">
-                              S/ {saldoEntregadoCalculado.toFixed(2)}
-                            </span>
-                          </div>
-
-                          {depositosExceden && (
-                            <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-md text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2 mt-2">
-                              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                              <div>
-                                <span className="font-semibold">Depósitos registrados desde MoneyDelivery / Banco: </span>
-                                El vendedor acumuló entregas/depósitos por <strong>S/ {totalDeducciones.toFixed(2)}</strong> (monto superior o igual al efectivo recabado de S/ {efectivoDelDia.toFixed(2)}). Por ello, no se exige saldo en efectivo en mano (S/ 0.00).
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <p className={`text-2xl font-bold ${saldoEntregadoCalculado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          S/ {saldoEntregadoCalculado.toFixed(2)}
+                        </p>
                       );
                     })()}
                   </CardContent>
@@ -1344,16 +1285,9 @@ const DailySummaryPage = () => {
                             <TableCell className="text-right">S/ {Number(resumen.cobranza).toLocaleString()}</TableCell>
                             <TableCell className="text-right text-red-600">S/ {Number(resumen.total_gastos).toLocaleString()}</TableCell>
                             <TableCell className="text-right font-bold">S/ {Number(resumen.saldo_entregado).toLocaleString()}</TableCell>
-                            {(() => {
-                              const efecDia = (Number(resumen.contado || 0) + Number(resumen.cobranza || 0) + Number(resumen.adelanto || 0) + Number(resumen.viaticos || 0)) - Number(resumen.total_gastos || 0);
-                              const saldoEsp = Math.max(0, efecDia - Number(resumen.depositos || 0));
-                              const difRow = Number(resumen.saldo_entregado || 0) - saldoEsp;
-                              return (
-                                <TableCell className={`text-right font-bold ${difRow >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                  {difRow >= 0 ? '+' : ''}{difRow.toFixed(2)}
-                                </TableCell>
-                              );
-                            })()}
+                            <TableCell className={`text-right font-bold ${Number(resumen.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                              {Number(resumen.diferencia) >= 0 ? '+' : ''}{Number(resumen.diferencia).toFixed(2)}
+                            </TableCell>
                             <TableCell>{getEstadoBadge(resumen.estado)}</TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" onClick={() => { setSelectedResumen(resumen); console.log(resumen); }}>
@@ -1526,14 +1460,10 @@ const DailySummaryPage = () => {
                 <div className="space-y-4">
                   {filteredAcumuladoSalidas.map((item) => {
                     const s = item.salida;
-                    const tot = item.totales || {};
+                    const tot = item.totales;
                     const resumenesList = item.resumenes || [];
                     const viaticosList = item.viaticos || [];
                     const isSinSalida = !s.id || s.id === 0;
-
-                    const efecAcumuladoViaje = (Number(tot.totalContado || 0) + Number(tot.totalCobranza || 0) + Number(tot.totalAdelanto || 0) + Number(tot.totalViaticos || 0)) - Number(tot.totalGastos || 0);
-                    const saldoAcumuladoEsperado = Math.max(0, efecAcumuladoViaje - Number(tot.totalDepositos || 0));
-                    const difAcumuladaCalc = Number(tot.totalEntregado || 0) - saldoAcumuladoEsperado;
 
                     return (
                       <Card key={isSinSalida ? `sin-salida-${s.vendedor_id}` : s.id} className="overflow-hidden border border-muted hover:border-primary/30 transition-all">
@@ -1563,7 +1493,7 @@ const DailySummaryPage = () => {
 
                             <div className="text-right">
                               <p className="text-xs text-muted-foreground">Saldo Final Acumulado a Entregar</p>
-                              <p className="text-2xl font-bold text-emerald-600">S/ {saldoAcumuladoEsperado.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                              <p className="text-2xl font-bold text-emerald-600">S/ {Number(tot.saldoAcumuladoEntregar || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                             </div>
                           </div>
                         </CardHeader>
@@ -1605,8 +1535,8 @@ const DailySummaryPage = () => {
                             </div>
                             <div>
                               <span className="text-muted-foreground block">Diferencia</span>
-                              <span className={`font-bold text-sm ${difAcumuladaCalc >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {difAcumuladaCalc >= 0 ? '+' : ''}{difAcumuladaCalc.toFixed(2)}
+                              <span className={`font-bold text-sm ${tot.diferenciaAcumulada >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {tot.diferenciaAcumulada >= 0 ? '+' : ''}{Number(tot.diferenciaAcumulada || 0).toFixed(2)}
                               </span>
                             </div>
                           </div>
@@ -1649,34 +1579,28 @@ const DailySummaryPage = () => {
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
-                                            {resumenesList.map((r: any, idx: number) => {
-                                              const efecDia = (Number(r.contado || 0) + Number(r.cobranza || 0) + Number(r.adelanto || 0) + Number(r.viaticos || 0)) - Number(r.total_gastos || 0);
-                                              const saldoEspDia = Math.max(0, efecDia - Number(r.depositos || 0));
-                                              const difDia = Number(r.saldo_entregado || 0) - saldoEspDia;
-
-                                              return (
-                                                <TableRow key={r.id} className="text-xs">
-                                                  <TableCell className="font-medium">
-                                                    <span className="font-bold text-primary mr-1">Día {idx + 1}:</span>
-                                                    {format(new Date((r.fecha || '').substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}
-                                                  </TableCell>
-                                                  <TableCell>{r.vendedor?.usuario?.nombre || '-'}</TableCell>
-                                                  <TableCell>{r.conductor || r.zona || '-'}</TableCell>
-                                                  <TableCell className="text-right text-emerald-600 font-medium">S/ {Number(r.contado).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right text-amber-600">S/ {Number(r.credito).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right text-purple-600 font-medium">S/ {Number(r.adelanto || 0).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right">S/ {Number(r.cobranza).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right text-sky-600 font-medium">S/ {Number(r.depositos || 0).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right text-indigo-600 font-medium">S/ {Number(r.viaticos).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right text-red-600">S/ {Number(r.total_gastos).toFixed(2)}</TableCell>
-                                                  <TableCell className="text-right font-bold">S/ {Number(r.saldo_entregado).toFixed(2)}</TableCell>
-                                                  <TableCell className={`text-right font-bold ${difDia >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                    {difDia >= 0 ? '+' : ''}{difDia.toFixed(2)}
-                                                  </TableCell>
-                                                  <TableCell>{getEstadoBadge(r.estado)}</TableCell>
-                                                </TableRow>
-                                              );
-                                            })}
+                                            {resumenesList.map((r: any, idx: number) => (
+                                              <TableRow key={r.id} className="text-xs">
+                                                <TableCell className="font-medium">
+                                                  <span className="font-bold text-primary mr-1">Día {idx + 1}:</span>
+                                                  {format(new Date((r.fecha || '').substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}
+                                                </TableCell>
+                                                <TableCell>{r.vendedor?.usuario?.nombre || '-'}</TableCell>
+                                                <TableCell>{r.conductor || r.zona || '-'}</TableCell>
+                                                <TableCell className="text-right text-emerald-600 font-medium">S/ {Number(r.contado).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right text-amber-600">S/ {Number(r.credito).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right text-purple-600 font-medium">S/ {Number(r.adelanto || 0).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right">S/ {Number(r.cobranza).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right text-sky-600 font-medium">S/ {Number(r.depositos || 0).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right text-indigo-600 font-medium">S/ {Number(r.viaticos).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right text-red-600">S/ {Number(r.total_gastos).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-bold">S/ {Number(r.saldo_entregado).toFixed(2)}</TableCell>
+                                                <TableCell className={`text-right font-bold ${Number(r.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                  {Number(r.diferencia) >= 0 ? '+' : ''}{Number(r.diferencia).toFixed(2)}
+                                                </TableCell>
+                                                <TableCell>{getEstadoBadge(r.estado)}</TableCell>
+                                              </TableRow>
+                                            ))}
                                           </TableBody>
                                         </Table>
                                       </div>
@@ -1910,86 +1834,52 @@ const DailySummaryPage = () => {
                     Saldo Entregado (Cálculo Automático)
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Desglose: Efectivo del Día − Depósitos / Entregas Electrónicas
+                    = Venta Contado + Cobranzas + Adelantos + Viáticos − Gastos − Pagos Electrónicos
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">(+) Venta Contado</span>
+                      <span className="font-medium text-emerald-600">S/ {Number(selectedResumen.contado).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">(+) Cobranzas</span>
+                      <span className="font-medium text-emerald-600">S/ {Number(selectedResumen.cobranza).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">(+) Adelantos</span>
+                      <span className="font-medium text-emerald-600">S/ {Number(selectedResumen.adelanto).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">(+) Viáticos</span>
+                      <span className="font-medium text-emerald-600">S/ {Number(selectedResumen.viaticos).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">(−) Gastos</span>
+                      <span className="font-medium text-red-600">S/ {Number(selectedResumen.total_gastos).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">(−) Depósitos</span>
+                      <span className="font-medium text-red-600">S/ {Number(selectedResumen.depositos).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <Separator />
                   {(() => {
-                    const contado = Number(selectedResumen.contado || 0);
-                    const cobranza = Number(selectedResumen.cobranza || 0);
-                    const adelanto = Number(selectedResumen.adelanto || 0);
-                    const viaticos = Number(selectedResumen.viaticos || 0);
-                    const gastos = Number(selectedResumen.total_gastos || 0);
-                    const depositos = Number(selectedResumen.depositos || 0);
-
-                    const efectivoDelDia = (contado + cobranza + adelanto + viaticos) - gastos;
-                    let saldoCalculado = efectivoDelDia - depositos;
-                    if (saldoCalculado < 0) saldoCalculado = 0;
-
-                    const depositosExceden = depositos > 0 && depositos >= efectivoDelDia;
-
+                    const saldoCalculado =
+                      Number(selectedResumen.contado) +
+                      Number(selectedResumen.cobranza) +
+                      Number(selectedResumen.adelanto) +
+                      Number(selectedResumen.viaticos) -
+                      Number(selectedResumen.total_gastos) -
+                      Number(selectedResumen.depositos);
                     return (
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">(+) Venta Contado</span>
-                            <span className="font-medium text-emerald-600">S/ {contado.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">(+) Cobranzas</span>
-                            <span className="font-medium text-emerald-600">S/ {cobranza.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">(+) Adelantos</span>
-                            <span className="font-medium text-emerald-600">S/ {adelanto.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">(+) Viáticos</span>
-                            <span className="font-medium text-emerald-600">S/ {viaticos.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between sm:col-span-2 pt-1 border-t">
-                            <span className="text-muted-foreground">(−) Gastos</span>
-                            <span className="font-medium text-red-600">S/ {gastos.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                        </div>
-
-                        {/* Campo destacado: Efectivo del Día */}
-                        <div className="flex justify-between items-center p-2.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-xs sm:text-sm">
-                          <span className="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                            <Banknote className="h-4 w-4 text-emerald-600" />
-                            Efectivo del Día (Bruto Recabado)
-                          </span>
-                          <span className="font-bold text-emerald-700 dark:text-emerald-400 text-sm sm:text-base">
-                            S/ {efectivoDelDia.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-
-                        {depositos > 0 && (
-                          <div className="flex justify-between text-xs sm:text-sm">
-                            <span className="text-muted-foreground">(−) Depósitos / MoneyDelivery / Pagos Electrónicos</span>
-                            <span className="font-medium text-red-600">S/ {depositos.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-
-                        <Separator />
-
-                        <div className="flex justify-between items-center text-xs sm:text-sm">
-                          <span className="font-bold">Saldo Entregado Esperado</span>
-                          <span className="text-xl sm:text-2xl font-bold text-emerald-600">
-                            S/ {saldoCalculado.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-
-                        {depositosExceden && (
-                          <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-md text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2 mt-2">
-                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                            <div>
-                              <span className="font-semibold">Depósitos / Entregas en MoneyDelivery: </span>
-                              El vendedor acumuló depósitos/entregas por <strong>S/ {depositos.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>, el cual iguala o supera el efectivo recabado del día (S/ {efectivoDelDia.toLocaleString(undefined, { minimumFractionDigits: 2 })}). Por ende, no se exige saldo en efectivo en mano (S/ 0.00).
-                            </div>
-                          </div>
-                        )}
-                      </>
+                      <div className="flex justify-between items-center text-xs sm:text-sm">
+                        <span className="font-bold">Saldo Entregado Esperado</span>
+                        <span className={`text-xl sm:text-2xl font-bold ${saldoCalculado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          S/ {saldoCalculado.toLocaleString()}
+                        </span>
+                      </div>
                     );
                   })()}
                 </CardContent>
@@ -2013,42 +1903,24 @@ const DailySummaryPage = () => {
               {/* Resumen final */}
               <Card className="bg-muted/50">
                 <CardContent className="pt-4 sm:pt-6">
-                  {(() => {
-                    const contado = Number(selectedResumen.contado || 0);
-                    const cobranza = Number(selectedResumen.cobranza || 0);
-                    const adelanto = Number(selectedResumen.adelanto || 0);
-                    const viaticos = Number(selectedResumen.viaticos || 0);
-                    const gastos = Number(selectedResumen.total_gastos || 0);
-                    const depositos = Number(selectedResumen.depositos || 0);
-
-                    const efectivoDelDia = (contado + cobranza + adelanto + viaticos) - gastos;
-                    const saldoEsperadoCalc = Math.max(0, efectivoDelDia - depositos);
-                    const efectivoRecibido = Number(selectedResumen.saldo_entregado || 0);
-                    const diferenciaCalc = efectivoRecibido - saldoEsperadoCalc;
-
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-center">
-                        <div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Saldo Esperado</p>
-                          <p className="text-xl sm:text-2xl font-bold text-emerald-600">
-                            S/ {saldoEsperadoCalc.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Efectivo Recibido</p>
-                          <p className="text-xl sm:text-2xl font-bold text-blue-600">
-                            S/ {efectivoRecibido.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Diferencia</p>
-                          <p className={`text-xl sm:text-2xl font-bold ${diferenciaCalc >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {diferenciaCalc >= 0 ? '+' : ''}S/ {diferenciaCalc.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-center">
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1">Saldo Esperado</p>
+                      <p className="text-xl sm:text-2xl font-bold">
+                        S/ {(Number(selectedResumen.contado) + Number(selectedResumen.cobranza) + Number(selectedResumen.adelanto) + Number(selectedResumen.viaticos) - Number(selectedResumen.total_gastos) - Number(selectedResumen.depositos)).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1">Efectivo Recibido</p>
+                      <p className="text-xl sm:text-2xl font-bold text-blue-600">S/ {Number(selectedResumen.saldo_entregado).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1">Diferencia</p>
+                      <p className={`text-xl sm:text-2xl font-bold ${Number(selectedResumen.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {Number(selectedResumen.diferencia) >= 0 ? '+' : ''}S/ {Number(selectedResumen.diferencia).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
 
                   {selectedResumen.estado === 'CONFIRMADO' && (
                     <div className="mt-6 pt-4 border-t flex items-center justify-center gap-2 text-muted-foreground">

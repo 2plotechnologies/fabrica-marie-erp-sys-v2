@@ -10,16 +10,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins, Plus, Trash2 } from 'lucide-react';
+//import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins, Plus, Trash2 } from 'lucide-react';
+import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins, Plus, Trash2, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { cobranzasService } from '@/services/cobranzasService';
 import { formatErrorMessage } from '@/lib/axios-error';
-
 const CollectionsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVendedor, setFilterVendedor] = useState<string>('all');
   const [selectedCuentaId, setSelectedCuentaId] = useState<string | null>(null);
-
+  // Annul Dialog State
+  const [anularDialog, setAnularDialog] = useState<any | null>(null);
+  const [isAnulling, setIsAnulling] = useState(false);
   // Payment dialog
   const [payDialog, setPayDialog] = useState<{ cuentaId: string; saldo: number; clienteName: string; diasPlazo?: number } | null>(null);
   const [payAmount, setPayAmount] = useState('');
@@ -28,16 +30,13 @@ const CollectionsPage = () => {
   const [operationNumber, setOperationNumber] = useState('');
   const [isSplitPay, setIsSplitPay] = useState(false);
   const [splitPayRows, setSplitPayRows] = useState<{ metodo_pago: string; monto: number; banco?: string; numero_operacion?: string }[]>([]);
-
   // Extend date dialog  
   const [extendDialog, setExtendDialog] = useState<{ cuentaId: string; currentDate: string } | null>(null);
   const [newDate, setNewDate] = useState('');
-
   const [cuentas, setCuentas] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [pagos, setPagos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
   const fetchCuentas = async () => {
     setIsLoading(true);
     try {
@@ -50,7 +49,6 @@ const CollectionsPage = () => {
       setIsLoading(false);
     }
   };
-
   const fetchVendedores = async () => {
     setIsLoading(true);
     try {
@@ -62,7 +60,6 @@ const CollectionsPage = () => {
       setIsLoading(false);
     }
   };
-
   const fetchPagos = async () => {
     setIsLoading(true);
     try {
@@ -75,18 +72,30 @@ const CollectionsPage = () => {
       setIsLoading(false);
     }
   };
-
+  const handleAnularAbono = async () => {
+    if (!anularDialog) return;
+    try {
+      setIsAnulling(true);
+      await cobranzasService.anularAbono(anularDialog.id);
+      toast.success('Abono anulado con éxito');
+      setAnularDialog(null);
+      fetchCuentas();
+      fetchPagos();
+    } catch (error: any) {
+      toast.error(formatErrorMessage('Error al anular abono', error, 'No se pudo anular el abono.'));
+    } finally {
+      setIsAnulling(false);
+    }
+  };
   useEffect(() => {
     if (selectedCuentaId) {
       fetchPagos();
     }
   }, [selectedCuentaId]);
-
   useEffect(() => {
     fetchCuentas();
     fetchVendedores();
   }, []);
-
   const calculateAmortizationDays = (cuenta: any) => {
     if (!cuenta) return { diasPlazo: 0, textRestantes: '', isOverdue: false };
     let diasPlazo = cuenta.cliente?.dias_credito || 0;
@@ -95,16 +104,13 @@ const CollectionsPage = () => {
       const end = new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00");
       diasPlazo = Math.max(0, differenceInDays(end, start));
     }
-
     let textRestantes = '';
     let isOverdue = false;
-
     if (cuenta.fecha_vencimiento) {
       const dueDate = new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00");
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const days = differenceInDays(dueDate, today);
-
       if (days < 0) {
         isOverdue = true;
         textRestantes = `${Math.abs(days)} días vencido`;
@@ -114,13 +120,10 @@ const CollectionsPage = () => {
         textRestantes = `${days} días restantes`;
       }
     }
-
     return { diasPlazo, textRestantes, isOverdue };
   };
-
   const handlePay = async () => {
     if (!payDialog) return;
-
     if (isSplitPay) {
       const totalSplit = splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
       if (totalSplit <= 0) {
@@ -131,7 +134,6 @@ const CollectionsPage = () => {
         toast.error(`El monto total de pago (S/ ${totalSplit.toFixed(2)}) supera el saldo pendiente (S/ ${payDialog.saldo.toFixed(2)}).`);
         return;
       }
-
       try {
         await cobranzasService.registrarAbono(payDialog.cuentaId, {
           pagos: splitPayRows
@@ -149,7 +151,6 @@ const CollectionsPage = () => {
       }
       return;
     }
-
     if (!payAmount) return;
     if (payMethod === 'DEPOSITO') {
       if (!bank.trim() || !operationNumber.trim()) {
@@ -178,7 +179,6 @@ const CollectionsPage = () => {
       toast.error(formatErrorMessage('Error al crear abono', error, 'No se pudo crear el abono.'));
     }
   };
-
   const handleExtendDate = async () => {
     if (!extendDialog || !newDate) return;
     try {
@@ -193,7 +193,6 @@ const CollectionsPage = () => {
       toast.error(formatErrorMessage('Error al extender fecha de vencimiento', error, 'No se pudo extender la fecha.'));
     }
   };
-
   const filteredCuentas = cuentas.filter(c => {
     const matchesSearch =
       (c.cliente?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
@@ -201,20 +200,16 @@ const CollectionsPage = () => {
     const matchesVendedor = filterVendedor === 'all' || c.venta.vendedor_id === filterVendedor;
     return matchesSearch && matchesVendedor;
   });
-
   const itemsPerPage = 4;
   const [page, setPage] = useState(1);
   const totalPages = Math.ceil(filteredCuentas.length / itemsPerPage);
-
   const paginatedCuentas = filteredCuentas.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
-
   const totalDeuda = filteredCuentas.reduce((acc, c) => acc + Number(c.saldo), 0);
   const totalCobrado = filteredCuentas.reduce((acc, c) => acc + Number(c.monto_pagado), 0);
   const cuentasActivas = filteredCuentas.filter(c => c.estado !== 'PAGADO').length;
-
   const getEstadoBadge = (estado: string) => {
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
       pendiente: { variant: 'secondary', label: 'PENDIENTE' },
@@ -225,11 +220,9 @@ const CollectionsPage = () => {
     const config = variants[estado] || { variant: 'outline', label: estado };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
-
   if (isLoading) {
     return <div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -239,7 +232,6 @@ const CollectionsPage = () => {
         </div>
         <Button variant="outline" size="sm"><FileDown className="h-4 w-4 mr-2" />Exportar</Button>
       </div>
-
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <Card className="shadow-card">
@@ -267,7 +259,6 @@ const CollectionsPage = () => {
           </CardContent>
         </Card>
       </div>
-
       {/* Filters */}
       <Card className="shadow-card">
         <CardContent className="pt-6">
@@ -286,14 +277,12 @@ const CollectionsPage = () => {
           </div>
         </CardContent>
       </Card>
-
       {/* Tabs */}
       <Tabs defaultValue="historial" className="space-y-4">
         <TabsList>
           <TabsTrigger value="historial">Historial de Cobranzas</TabsTrigger>
           <TabsTrigger value="detalle">Detalle de Pagos</TabsTrigger>
         </TabsList>
-
         <TabsContent value="historial">
           <Card className="shadow-card">
             <CardHeader>
@@ -408,11 +397,9 @@ const CollectionsPage = () => {
                   >
                     Anterior
                   </Button>
-
                   <span className="px-3 py-2 text-sm">
                     Página {page} de {totalPages}
                   </span>
-
                   <Button
                     disabled={page === totalPages}
                     onClick={() => setPage(page + 1)}
@@ -424,7 +411,6 @@ const CollectionsPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="detalle">
           <Card className="shadow-card">
             <CardHeader><CardTitle>Selecciona una cuenta para ver los pagos</CardTitle></CardHeader>
@@ -449,17 +435,47 @@ const CollectionsPage = () => {
                           <TableHead>Método</TableHead>
                           <TableHead className="text-right">Monto</TableHead>
                           <TableHead>Referencia</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {pagos.map(pago => (
-                          <TableRow key={pago.id}>
-                            <TableCell>{format(new Date(pago.fecha.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
-                            <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
-                            <TableCell className="text-right font-bold text-emerald-600">S/ {Number(pago.monto).toFixed(2)}</TableCell>
-                            <TableCell>{pago.referencia || '-'}</TableCell>
-                          </TableRow>
-                        ))}
+                        {pagos.map(pago => {
+                          const isAnulado = pago.estado === 'ANULADO';
+                          const isAdelanto = String(pago.id).startsWith('adelanto-') || pago.metodo_pago === 'ADELANTO';
+                          return (
+                            <TableRow key={pago.id} className={isAnulado ? 'bg-destructive/5 opacity-70' : ''}>
+                              <TableCell>{format(new Date((pago.fecha || '').substring(0, 10) + "T00:00:00"), "dd/MM/yyyy")}</TableCell>
+                              <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
+                              <TableCell className={`text-right font-bold ${isAnulado ? 'line-through text-muted-foreground' : 'text-emerald-600'}`}>
+                                S/ {Number(pago.monto).toFixed(2)}
+                              </TableCell>
+                              <TableCell>{pago.referencia || '-'}</TableCell>
+                              <TableCell>
+                                <Badge variant={isAnulado ? 'destructive' : isAdelanto ? 'outline' : 'secondary'}>
+                                  {isAnulado ? 'ANULADO' : isAdelanto ? 'ADELANTO' : 'ACTIVO'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {!isAdelanto && !isAnulado ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                                    onClick={() => setAnularDialog(pago)}
+                                  >
+                                    <Ban className="h-3.5 w-3.5 mr-1" />
+                                    Anular
+                                  </Button>
+                                ) : isAnulado ? (
+                                  <span className="text-xs text-muted-foreground italic">Anulado</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground italic" title="No se puede anular un adelanto de crédito">Adelanto (No anulable)</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   )}
@@ -471,7 +487,6 @@ const CollectionsPage = () => {
           </Card>
         </TabsContent>
       </Tabs>
-
       {/* Pay / Amortize Dialog */}
       <Dialog open={!!payDialog} onOpenChange={() => setPayDialog(null)}>
         <DialogContent className="max-w-md">
@@ -482,7 +497,6 @@ const CollectionsPage = () => {
               {payDialog?.diasPlazo && payDialog.diasPlazo > 0 ? ` — Plazo de amortización: ${payDialog.diasPlazo} días` : ''}
             </DialogDescription>
           </DialogHeader>
-
           <div className="flex justify-end pt-1">
             <Button
               type="button"
@@ -503,7 +517,6 @@ const CollectionsPage = () => {
               {isSplitPay ? '← Usar pago único' : '🔀 Dividir pago (Múltiples Métodos)'}
             </Button>
           </div>
-
           {!isSplitPay ? (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
@@ -559,7 +572,6 @@ const CollectionsPage = () => {
                   Suma: S/ {splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0).toFixed(2)}
                 </span>
               </div>
-
               {splitPayRows.map((row, idx) => (
                 <div key={idx} className="p-2.5 bg-muted/40 rounded-lg border space-y-2 text-xs">
                   <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
@@ -582,7 +594,6 @@ const CollectionsPage = () => {
                         <SelectItem value="DEPOSITO">Depósito</SelectItem>
                       </SelectContent>
                     </Select>
-
                     <div className="flex items-center gap-1 w-full sm:w-28 shrink-0">
                       <span>S/</span>
                       <Input
@@ -610,7 +621,6 @@ const CollectionsPage = () => {
                       )}
                     </div>
                   </div>
-
                   {row.metodo_pago === 'DEPOSITO' && (
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <Input
@@ -637,7 +647,6 @@ const CollectionsPage = () => {
                   )}
                 </div>
               ))}
-
               <Button
                 type="button"
                 variant="outline"
@@ -649,7 +658,6 @@ const CollectionsPage = () => {
               </Button>
             </div>
           )}
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayDialog(null)}>Cancelar</Button>
             <Button
@@ -666,7 +674,6 @@ const CollectionsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Extend Date Dialog */}
       <Dialog open={!!extendDialog} onOpenChange={() => setExtendDialog(null)}>
         <DialogContent>
@@ -689,8 +696,32 @@ const CollectionsPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Annul Abono Confirmation Dialog */}
+      <Dialog open={!!anularDialog} onOpenChange={(open) => { if (!open) setAnularDialog(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Ban className="h-5 w-5" /> Confirmar Anulación de Abono
+            </DialogTitle>
+            <DialogDescription className="pt-2 space-y-2">
+              ¿Estás seguro de que deseas anular este abono de <strong>S/ {Number(anularDialog?.monto || 0).toFixed(2)}</strong> ({anularDialog?.metodo_pago})?
+              <br /><br />
+              <span className="text-xs text-muted-foreground block">
+                Esto restaurará el saldo pendiente de la cuenta por cobrar y registrará un egreso de ajuste en caja.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAnularDialog(null)} disabled={isAnulling}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleAnularAbono} disabled={isAnulling}>
+              {isAnulling ? 'Anulando...' : 'Anular Abono'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
-
 export default CollectionsPage;

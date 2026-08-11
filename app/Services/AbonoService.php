@@ -19,6 +19,10 @@ class AbonoService
                 throw new Exception('El abono ya fue anulado');
             }
 
+            if (strtoupper($abono->metodo_pago ?? '') === 'ADELANTO') {
+                throw new Exception('No se puede anular el adelanto de una venta a crédito.');
+            }
+
             $cuenta = $abono->cuenta;
 
             // 🔁 Restaurar saldo y estado de la cuenta por cobrar
@@ -37,13 +41,19 @@ class AbonoService
             }
 
             // 🔁 Movimiento inverso en caja
+            $cajaAbierta = \App\Models\Caja::where('estado', 'ABIERTA')->first();
+            $cajaId = $abono->movimiento_caja_id && $abono->movimientoCaja
+                ? $abono->movimientoCaja->caja_id
+                : ($cajaAbierta ? $cajaAbierta->id : null);
+
             MovimientoCaja::create([
-                'caja_id' => $abono->movimiento_caja_id
-                    ? $abono->movimientoCaja->caja_id
-                    : null,
+                'caja_id' => $cajaId,
                 'tipo' => 'EGRESO',
                 'estado' => 'APROBADO',
                 'monto' => $abono->monto,
+                'usuario_id' => $userId,
+                'categoria' => 'ANULACION_ABONO',
+                'descripcion' => 'Anulación de abono ID: ' . $abono->id . ($cuenta ? ' (Cuenta ID: ' . $cuenta->id . ')' : ''),
                 'referencia_tipo' => 'ANULACION_ABONO',
                 'referencia_id' => $abono->id,
                 'created_at' => now()

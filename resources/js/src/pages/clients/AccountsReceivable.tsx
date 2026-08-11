@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle, Loader2, Eye, Plus, Trash2 } from 'lucide-react';
+import { Search, CreditCard, DollarSign, AlertTriangle, Clock, Filter, CheckCircle, Loader2, Eye, Plus, Trash2, Ban } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cobranzasService } from '@/services/cobranzasService';
@@ -56,6 +56,9 @@ const AccountsReceivable = () => {
   const [cuentaPagos, setCuentaPagos] = useState<any[]>([]);
   const [loadingPagos, setLoadingPagos] = useState(false);
 
+  const [anularDialog, setAnularDialog] = useState<any | null>(null);
+  const [isAnulling, setIsAnulling] = useState(false);
+
   const handleVerPagos = async (cuenta: any) => {
     setPagosDialog(cuenta);
     setLoadingPagos(true);
@@ -66,6 +69,25 @@ const AccountsReceivable = () => {
       console.error('Error fetching pagos:', error);
     } finally {
       setLoadingPagos(false);
+    }
+  };
+
+  const handleAnularAbono = async () => {
+    if (!anularDialog) return;
+    try {
+      setIsAnulling(true);
+      await cobranzasService.anularAbono(anularDialog.id);
+      toast.success('Abono anulado con éxito');
+      setAnularDialog(null);
+      if (pagosDialog) {
+        const data = await cobranzasService.getPagosCuenta(pagosDialog.id);
+        setCuentaPagos(data);
+      }
+      fetchCuentas();
+    } catch (error: any) {
+      toast.error(formatErrorMessage('Error al anular abono', error, 'No se pudo anular el abono.'));
+    } finally {
+      setIsAnulling(false);
     }
   };
 
@@ -683,23 +705,79 @@ const AccountsReceivable = () => {
                     <TableHead>Método</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
                     <TableHead>Referencia</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cuentaPagos.map((pago: any) => (
-                    <TableRow key={pago.id}>
-                      <TableCell>{format(new Date(pago.fecha), "dd/MM/yyyy")}</TableCell>
-                      <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
-                      <TableCell className="text-right text-emerald-600 font-bold">S/ {Number(pago.monto).toLocaleString()}</TableCell>
-                      <TableCell>{pago.referencia || '-'}</TableCell>
-                    </TableRow>
-                  ))}
+                  {cuentaPagos.map((pago: any) => {
+                    const isAnulado = pago.estado === 'ANULADO';
+                    const isAdelanto = String(pago.id).startsWith('adelanto-') || pago.metodo_pago === 'ADELANTO';
+                    return (
+                      <TableRow key={pago.id} className={isAnulado ? 'bg-destructive/5 opacity-70' : ''}>
+                        <TableCell>{format(new Date(typeof pago.fecha === 'string' ? pago.fecha.substring(0, 10) + "T00:00:00" : pago.fecha), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
+                        <TableCell className={`text-right font-bold ${isAnulado ? 'line-through text-muted-foreground' : 'text-emerald-600'}`}>
+                          S/ {Number(pago.monto).toFixed(2)}
+                        </TableCell>
+                        <TableCell>{pago.referencia || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={isAnulado ? 'destructive' : isAdelanto ? 'outline' : 'secondary'}>
+                            {isAnulado ? 'ANULADO' : isAdelanto ? 'ADELANTO' : 'ACTIVO'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!isAdelanto && !isAnulado ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                              onClick={() => setAnularDialog(pago)}
+                            >
+                              <Ban className="h-3.5 w-3.5 mr-1" />
+                              Anular
+                            </Button>
+                          ) : isAnulado ? (
+                            <span className="text-xs text-muted-foreground italic">Anulado</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic" title="No se puede anular un adelanto de crédito">Adelanto (No anulable)</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPagosDialog(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Annul Abono Confirmation Dialog */}
+      <Dialog open={!!anularDialog} onOpenChange={(open) => { if (!open) setAnularDialog(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Ban className="h-5 w-5" /> Confirmar Anulación de Abono
+            </DialogTitle>
+            <DialogDescription className="pt-2 space-y-2">
+              ¿Estás seguro de que deseas anular este abono de <strong>S/ {Number(anularDialog?.monto || 0).toFixed(2)}</strong> ({anularDialog?.metodo_pago})?
+              <br /><br />
+              <span className="text-xs text-muted-foreground block">
+                Esto restaurará el saldo pendiente de la cuenta por cobrar y registrará un egreso de ajuste en caja.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAnularDialog(null)} disabled={isAnulling}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleAnularAbono} disabled={isAnulling}>
+              {isAnulling ? 'Anulando...' : 'Anular Abono'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

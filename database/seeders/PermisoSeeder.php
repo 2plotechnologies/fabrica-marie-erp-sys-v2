@@ -18,6 +18,7 @@ class PermisoSeeder extends Seeder
             // Ventas
             ['codigo' => 'ver_ventas', 'descripcion' => 'Ver ventas'],
             ['codigo' => 'crear_venta', 'descripcion' => 'Crear venta'],
+            ['codigo' => 'anular_abono', 'descripcion' => 'Anular abono de cuenta por cobrar'],
 
             // Inventario
             ['codigo' => 'ver_inventario', 'descripcion' => 'Ver inventario'],

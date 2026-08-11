@@ -339,7 +339,7 @@ const MoneyDelivery = () => {
                                                         <SelectItem value="plin">Plin</SelectItem>
                                                         <SelectItem value="transferencia">Transferencia</SelectItem>
                                                         <SelectItem value="deposito">Depósito en Agente</SelectItem>
-                                                        <SelectItem value="tarjeta_debito">Depósito Bancario</SelectItem>
+                                                        <SelectItem value="deposito_bancario">Depósito Bancario</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>

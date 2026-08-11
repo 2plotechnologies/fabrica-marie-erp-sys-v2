@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, ReceiptText } from 'lucide-react';
+import { Plus, ReceiptText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -43,6 +44,10 @@ const ExpenseList = () => {
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Delete State
+  const [deleteConfirmGasto, setDeleteConfirmGasto] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form State
   const [formVendedor, setFormVendedor] = useState('');
@@ -108,6 +113,22 @@ const ExpenseList = () => {
       toast.success('Gasto registrado con éxito');
     } catch (error: any) {
       toast.error(formatErrorMessage('Error al crear gasto', error, 'No se pudo crear el gasto.'));
+    }
+  };
+
+  const handleDeleteGasto = async () => {
+    if (!deleteConfirmGasto) return;
+    try {
+      setIsDeleting(true);
+      await gastoService.deleteGasto(deleteConfirmGasto.id);
+      toast.success('Gasto eliminado con éxito');
+      const gastosData = await gastoService.getGastos();
+      setGastos(gastosData);
+      setDeleteConfirmGasto(null);
+    } catch (error: any) {
+      toast.error(formatErrorMessage('Error al eliminar gasto', error, 'Solo se pueden eliminar gastos en estado PENDIENTE.'));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -229,18 +250,19 @@ const ExpenseList = () => {
               <TableHead>Comprobante</TableHead>
               <TableHead className="text-right">Monto</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : gastos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   <ReceiptText className="h-8 w-8 mx-auto mb-2 opacity-30" />
                   No hay gastos registrados
                 </TableCell>
@@ -261,6 +283,21 @@ const ExpenseList = () => {
                     <Badge variant={g.estado === 'APROBADO' ? 'default' : g.estado === 'RECHAZADO' ? 'destructive' : 'secondary'}>
                       {g.estado || 'PENDIENTE'}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {(!g.estado || g.estado === 'PENDIENTE') ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteConfirmGasto(g)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Eliminar
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">No eliminable</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
@@ -289,6 +326,30 @@ const ExpenseList = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog for Expense Deletion */}
+      <Dialog open={!!deleteConfirmGasto} onOpenChange={(open) => { if (!open) setDeleteConfirmGasto(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="h-5 w-5" /> Confirmar Eliminación de Gasto
+            </DialogTitle>
+            <DialogDescription className="pt-2 space-y-2">
+              ¿Estás seguro de que deseas eliminar este gasto de <strong>S/ {Number(deleteConfirmGasto?.monto || 0).toFixed(2)}</strong> ({deleteConfirmGasto?.tipo}) registrado por <strong>{deleteConfirmGasto?.vendedor?.usuario?.nombre || 'el vendedor'}</strong>?
+              <br />
+              <span className="text-xs text-muted-foreground">Esta acción no se puede deshacer.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteConfirmGasto(null)} disabled={isDeleting}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteGasto} disabled={isDeleting}>
+              {isDeleting ? 'Eliminando...' : 'Eliminar Gasto'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

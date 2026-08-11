@@ -34,20 +34,16 @@ class VentaService
                 throw new Exception('Solo se pueden anular ventas confirmadas');
             }
 
-            // 🔒 Validar si existe un Resumen Diario aprobado
+            // 🔒 Validar si existe un Resumen Diario aprobado exclusivamente para la fecha de la venta.
+            $fechaVenta = Carbon::parse($venta->fecha)->toDateString();
+
             $resumenAprobado = ResumenDiario::where('vendedor_id', $venta->vendedor_id)
                 ->whereIn('estado', ['CONFIRMADO', 'APROBADO'])
-                ->where(function ($query) use ($venta) {
-                    $query->whereDate('fecha', Carbon::parse($venta->fecha)->toDateString());
-                    $salidaIds = $venta->items->pluck('salida_id')->filter()->unique();
-                    if ($salidaIds->isNotEmpty()) {
-                        $query->orWhereIn('salida_id', $salidaIds);
-                    }
-                })
+                ->whereDate('fecha', $fechaVenta)
                 ->exists();
 
             if ($resumenAprobado) {
-                throw new Exception('No se puede anular la venta porque ya se registró un resumen diario aprobado para este vendedor.');
+                throw new Exception('No se puede anular la venta porque ya se registró un resumen diario aprobado para este vendedor en la fecha de la venta (' . Carbon::parse($venta->fecha)->format('d/m/Y') . ').');
             }
 
             // 🔒 Validar si el vendedor tiene una salida en ruta activa
@@ -68,34 +64,109 @@ class VentaService
             */
 
             foreach ($venta->items as $item) {
-                if (empty($item->salida_id) && !$salidaEnRuta) {
-                    // Venta directa fábrica sin salida en ruta: devolver a StockActual
-                    $stockActual = StockActual::where('producto_id', $item->producto_id)->orderBy('cantidad', 'asc')->first();
-                    if (!$stockActual) {
-                        $stockActual = StockActual::firstOrCreate(
-                            ['producto_id' => $item->producto_id],
-                            ['cantidad' => 0]
-                        );
-                    }
-                    $stockAnterior = $stockActual->cantidad;
-                    $stockActual->cantidad += $item->cantidad;
-                    $stockActual->fecha_ultimo_mov = now();
-                    $stockActual->save();
+                if (empty($item->salida_id)) {
+                    // Venta directa fábrica: devolver a StockActual en almacén central
+                    $movimientosSalida = MovimientoStock::where('referencia_tipo', 'VENTA')
+                        ->where('referencia_id', $venta->id)
+                        ->where('producto_id', $item->producto_id)
+                        ->where('tipo', 'SALIDA')
+                        ->get();
 
-                    MovimientoStock::create([
-                        'tipo' => 'DEVOLUCION_BUENA',
-                        'producto_id' => $item->producto_id,
-                        'ruma_id' => $stockActual->ruma_id,
-                        'cantidad' => $item->cantidad,
-                        'referencia_tipo' => 'ANULACION_VENTA',
-                        'referencia_id' => $venta->id,
-                        'motivo' => 'Anulación de venta directa fábrica',
-                        'stock_anterior' => $stockAnterior,
-                        'stock_post_mov' => $stockActual->cantidad,
-                        'user_id' => $userId,
-                        'estado' => 'REGISTRADO',
-                        'created_at' => now()
-                    ]);
+                    if ($movimientosSalida->isNotEmpty()) {
+                        foreach ($movimientosSalida as $mov) {
+                            $stockActual = StockActual::where('producto_id', $item->producto_id)
+                                ->where('ruma_id', $mov->ruma_id)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if (!$stockActual) {
+                                $stockActual = StockActual::create([
+                                    'producto_id' => $item->producto_id,
+                                    'ruma_id' => $mov->ruma_id,
+                                    'cantidad' => 0,
+                                    'fecha_ultimo_mov' => now()
+                                ]);
+                            }
+
+                            $stockAnterior = $stockActual->cantidad;
+                            $stockActual->cantidad += $mov->cantidad;
+                            $stockActual->fecha_ultimo_mov = now();
+                            $stockActual->save();
+
+                            if ($stockActual->ruma_id) {
+                                $ruma = \App\Models\Ruma::find($stockActual->ruma_id);
+                                if ($ruma && $ruma->capacidad_unidades > 0) {
+                                    $totalRuma = StockActual::where('ruma_id', $stockActual->ruma_id)->sum('cantidad');
+                                    if ($totalRuma >= $ruma->capacidad_unidades) {
+                                        $ruma->estado = 'LLENA';
+                                        $ruma->save();
+                                    }
+                                }
+                            }
+
+                            MovimientoStock::create([
+                                'tipo' => 'DEVOLUCION_BUENA',
+                                'producto_id' => $item->producto_id,
+                                'ruma_id' => $stockActual->ruma_id,
+                                'cantidad' => $mov->cantidad,
+                                'referencia_tipo' => 'ANULACION_VENTA',
+                                'referencia_id' => $venta->id,
+                                'motivo' => 'Anulación de venta directa fábrica',
+                                'stock_anterior' => $stockAnterior,
+                                'stock_post_mov' => $stockActual->cantidad,
+                                'user_id' => $userId,
+                                'estado' => 'REGISTRADO',
+                                'created_at' => now()
+                            ]);
+                        }
+                    } else {
+                        // Fallback si no existen registros de movimientos previos
+                        $stockActual = StockActual::where('producto_id', $item->producto_id)
+                            ->orderBy('cantidad', 'asc')
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$stockActual) {
+                            $rumaId = \App\Models\Ruma::value('id');
+                            $stockActual = StockActual::create([
+                                'producto_id' => $item->producto_id,
+                                'ruma_id' => $rumaId,
+                                'cantidad' => 0,
+                                'fecha_ultimo_mov' => now()
+                            ]);
+                        }
+
+                        $stockAnterior = $stockActual->cantidad;
+                        $stockActual->cantidad += $item->cantidad;
+                        $stockActual->fecha_ultimo_mov = now();
+                        $stockActual->save();
+
+                        if ($stockActual->ruma_id) {
+                            $ruma = \App\Models\Ruma::find($stockActual->ruma_id);
+                            if ($ruma && $ruma->capacidad_unidades > 0) {
+                                $totalRuma = StockActual::where('ruma_id', $stockActual->ruma_id)->sum('cantidad');
+                                if ($totalRuma >= $ruma->capacidad_unidades) {
+                                    $ruma->estado = 'LLENA';
+                                    $ruma->save();
+                                }
+                            }
+                        }
+
+                        MovimientoStock::create([
+                            'tipo' => 'DEVOLUCION_BUENA',
+                            'producto_id' => $item->producto_id,
+                            'ruma_id' => $stockActual->ruma_id,
+                            'cantidad' => $item->cantidad,
+                            'referencia_tipo' => 'ANULACION_VENTA',
+                            'referencia_id' => $venta->id,
+                            'motivo' => 'Anulación de venta directa fábrica',
+                            'stock_anterior' => $stockAnterior,
+                            'stock_post_mov' => $stockActual->cantidad,
+                            'user_id' => $userId,
+                            'estado' => 'REGISTRADO',
+                            'created_at' => now()
+                        ]);
+                    }
                     continue;
                 }
 

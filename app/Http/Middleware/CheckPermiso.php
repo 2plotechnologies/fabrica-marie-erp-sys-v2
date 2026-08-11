@@ -17,6 +17,10 @@ class CheckPermiso
     {
          $user = $request->user();
 
+        if ($user && $user->roles()->where('nombre', 'ADMIN')->exists()) {
+            return $next($request);
+        }
+
         if (!$user->permisos()->where('codigo', $permiso)->exists()) {
             return response()->json(['message' => 'No autorizado'], 403);
         }

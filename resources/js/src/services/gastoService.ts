@@ -12,5 +12,9 @@ export const gastoService = {
   getVendedores: async () => {
     const response = await api.get('/vendedores');
     return response.data;
+  },
+  deleteGasto: async (id: number | string) => {
+    const response = await api.delete(`/resumen-diario/gastos/${id}`);
+    return response.data;
   }
 };

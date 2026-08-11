@@ -14,7 +14,11 @@ class CuentaPorCobrarController
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
 
         $query = CuentaPorCobrar::with(['cliente', 'venta', 'abonos'])
-            ->withSum('abonos as monto_pagado_abonos', 'monto')
+            ->withSum(['abonos as monto_pagado_abonos' => function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNull('estado')->orWhere('estado', '!=', 'ANULADO');
+                });
+            }], 'monto')
             ->orderBy('saldo', 'desc');
 
         if ($vendedor) {

@@ -88,16 +88,19 @@ class ResumenDiarioController extends Controller
 
         $cobranzas = Abono::where('usuario_id', $vendedor->usuario_id)
             ->whereDate('fecha', $fecha)
+            ->where(function($q) { $q->whereNull('estado')->orWhere('estado', '!=', 'ANULADO'); })
             ->get();
 
         $cobranzas_deposito = Abono::where('usuario_id', $vendedor->usuario_id)
             ->whereDate('fecha', $fecha)
             ->whereIn('metodo_pago', ['DEPOSITO', 'TRANSFERENCIA'])
+            ->where(function($q) { $q->whereNull('estado')->orWhere('estado', '!=', 'ANULADO'); })
             ->get();
 
         $cobranzas_monedero_virtual = Abono::where('usuario_id', $vendedor->usuario_id)
             ->whereDate('fecha', $fecha)
             ->whereIn('metodo_pago', ['YAPE', 'PLIN'])
+            ->where(function($q) { $q->whereNull('estado')->orWhere('estado', '!=', 'ANULADO'); })
             ->get();
 
         $credito = Venta::where('vendedor_id', $vendedor_id)
@@ -411,6 +414,24 @@ class ResumenDiarioController extends Controller
         $gasto->estado = $request->estado;
         $gasto->save();
         return response()->json($gasto);
+    }
+
+    //Eliminar gasto (Solo en estado PENDIENTE)
+    public function destroyGasto($id)
+    {
+        $gasto = Gasto::findOrFail($id);
+
+        if ($gasto->estado !== 'PENDIENTE') {
+            return response()->json([
+                'message' => 'No se puede eliminar un gasto en estado ' . ($gasto->estado ?? 'NO PENDIENTE') . '. Solo se pueden eliminar gastos en estado PENDIENTE.'
+            ], 422);
+        }
+
+        $gasto->delete();
+
+        return response()->json([
+            'message' => 'Gasto eliminado correctamente'
+        ]);
     }
 
     public function getResumenGeneral(){

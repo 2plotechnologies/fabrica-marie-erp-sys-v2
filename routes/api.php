@@ -305,9 +305,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             Route::post('/{id}/abonos', [AbonoController::class, 'store'])
                 ->middleware(['caja.abierta']);
             Route::get('/{id}/abonos', [AbonoController::class, 'index']);
-            Route::post('/{id}/anular',
-                [AbonoController::class, 'anular']
-            )->middleware(['permiso:anular_abono']);
+            Route::post('/abonos/{id}/anular', [AbonoController::class, 'anular']);
+            Route::post('/{id}/anular', [AbonoController::class, 'anular']);
             Route::put('/{id}/fecha_vencimiento', [CuentaPorCobrarController::class, 'updateFechaVencimiento']);
         });
 
@@ -366,6 +365,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             Route::get('/salidas', [ResumenDiarioController::class, 'getSalidas']);
             Route::get('/gastos/all', [ResumenDiarioController::class, 'getGastos']);
             Route::post('/gastos', [ResumenDiarioController::class, 'storeGasto']);
+            Route::delete('/gastos/{id}', [ResumenDiarioController::class, 'destroyGasto']);
             Route::get('/resumen-general', [ResumenDiarioController::class, 'getResumenGeneral']);
             Route::get('/acumulado-salidas', [ResumenDiarioController::class, 'getResumenAcumuladoSalidas']);
             Route::get('/{vendedor_id}', [ResumenDiarioController::class, 'autoResumenDiario']);

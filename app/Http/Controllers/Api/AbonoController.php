@@ -175,6 +175,14 @@ class AbonoController extends Controller
 
     public function anular($id, AbonoService $service)
     {
-        return $service->anular($id, auth()->id());
+        if (is_string($id) && str_starts_with($id, 'adelanto-')) {
+            return response()->json(['message' => 'No se puede anular el adelanto de una venta a crédito.'], 422);
+        }
+
+        try {
+            return response()->json($service->anular((int)$id, auth()->id()));
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 }
