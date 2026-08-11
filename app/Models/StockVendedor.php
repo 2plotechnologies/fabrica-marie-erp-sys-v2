@@ -21,6 +21,14 @@ class StockVendedor extends Model
         'fecha_ultimo_mov'
     ];
 
+    protected $casts = [
+        'cantidad' => 'float',
+        'cantidad_entregada' => 'float',
+        'stock_reservado' => 'float',
+        'vendido' => 'float',
+        'devuelto' => 'float',
+    ];
+
     public $timestamps = false;
 
     public function producto()

@@ -36,6 +36,7 @@ type StockItem = {
     marca?: string;
     precio_base?: number;
     stock_minimo?: number;
+    tipo_venta?: 'UNIDAD' | 'GRANEL';
   };
   rumas: StockRuma[];
 };
@@ -48,7 +49,7 @@ const StockList = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Discard dialog state
-  const [discardDialog, setDiscardDialog] = useState<{ productoId: string; nombre: string } | null>(null);
+  const [discardDialog, setDiscardDialog] = useState<{ productoId: string; nombre: string; tipo_venta?: string } | null>(null);
   const [discardType, setDiscardType] = useState<string>('DESECHO');
   const [discardQty, setDiscardQty] = useState('');
   const [discardRuma, setDiscardRuma] = useState<string | undefined>(undefined);
@@ -215,8 +216,17 @@ const StockList = () => {
                     </div>
                   </TableCell>
                   <TableCell><code className="text-xs bg-muted px-2 py-1 rounded">{item.producto?.sku}</code></TableCell>
-                  <TableCell><span className={cn("font-semibold", status.color)}>{Number(item.cantidad)}</span>{maxStock > 0 && <span className="text-xs text-muted-foreground ml-1">/ {maxStock}</span>}</TableCell>
-                  <TableCell className="min-w-[120px]"><Progress value={Math.min(percentage, 100)} className="h-2" />{minStock > 0 && <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Mín: {minStock}</span><span>Máx: {maxStock}</span></div>}</TableCell>
+                  <TableCell>
+                    <span className={cn("font-semibold", status.color)}>
+                      {item.producto?.tipo_venta === 'GRANEL' ? Number(item.cantidad).toFixed(2) : Number(item.cantidad)}
+                    </span>
+                    {maxStock > 0 && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        / {item.producto?.tipo_venta === 'GRANEL' ? maxStock.toFixed(2) : maxStock}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="min-w-[120px]"><Progress value={Math.min(percentage, 100)} className="h-2" />{minStock > 0 && <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Mín: {item.producto?.tipo_venta === 'GRANEL' ? minStock.toFixed(2) : minStock}</span><span>Máx: {item.producto?.tipo_venta === 'GRANEL' ? maxStock.toFixed(2) : maxStock}</span></div>}</TableCell>
                   <TableCell><Badge variant="outline" className={cn(
                     status.label === 'Bajo' && 'border-destructive/30 text-destructive bg-destructive/10',
                     status.label === 'Regular' && 'border-warning/30 text-warning bg-warning/10',
@@ -228,7 +238,7 @@ const StockList = () => {
                       variant="ghost"
                       size="sm"
                       className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      onClick={() => setDiscardDialog({ productoId: item.producto_id, nombre: item.producto?.nombre || '' })}
+                      onClick={() => setDiscardDialog({ productoId: item.producto_id, nombre: item.producto?.nombre || '', tipo_venta: item.producto?.tipo_venta })}
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
                       Descartar
@@ -285,7 +295,13 @@ const StockList = () => {
             </div>
             <div className="space-y-2">
               <Label>Cantidad a descartar</Label>
-              <Input type="number" min="1" placeholder="0" value={discardQty} onChange={(e) => setDiscardQty(e.target.value)} />
+              <Input type="number" step={discardDialog?.tipo_venta === 'GRANEL' ? '0.01' : '1'} min={discardDialog?.tipo_venta === 'GRANEL' ? '0.01' : '1'} placeholder="0" value={discardQty} onChange={(e) => {
+                let valStr = e.target.value;
+                if (valStr && discardDialog?.tipo_venta === 'UNIDAD' && valStr.includes('.')) {
+                  valStr = valStr.split('.')[0];
+                }
+                setDiscardQty(valStr);
+              }} />
             </div>
             <div className="space-y-2">
               <Label>Ruma de origen (opcional)</Label>

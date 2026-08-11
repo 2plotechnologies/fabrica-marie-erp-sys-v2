@@ -112,7 +112,7 @@ class StockService
 
      public function descontarStock(
         int $productoId,
-        int $cantidad,
+        float $cantidad,
         int $ventaId,
         int $userId
     ) {
@@ -161,7 +161,7 @@ class StockService
 
     public function descontarStockVendedor(
         int $productoId,
-        int $cantidad,
+        float $cantidad,
         int $vendedorId,
     ) {
         $salidaId = Salida::where('vendedor_id', $vendedorId)

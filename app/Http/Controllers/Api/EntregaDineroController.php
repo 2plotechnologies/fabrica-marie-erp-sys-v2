@@ -154,7 +154,7 @@ class EntregaDineroController
 
             'items.*.metodo_pago' => 'required|string',
             'items.*.monto' => 'required|numeric|min:0',
-            'items.*.comprobante' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048'
+            'items.*.comprobante' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048'
         ]);
 
         $targetUser = \App\Models\Usuario::with('roles')->find($request->usuario_id);
@@ -186,15 +186,13 @@ class EntregaDineroController
             // 🔹 Procesar items
             foreach ($request->items as $index => $item) {
 
-                // 📁 Obtener archivo
+                // 📁 Obtener archivo opcional
                 $file = $request->file("items.$index.comprobante");
+                $path = null;
 
-                if (!$file) {
-                    throw new \Exception("El comprobante es obligatorio en todos los items.");
+                if ($file) {
+                    $path = $file->store('comprobantes_entregas', 'public');
                 }
-
-                // 📁 Guardar archivo en storage
-                $path = $file->store('comprobantes_entregas', 'public');
 
                 // 🔹 Crear item
                 EntregaDineroItem::create([

@@ -344,15 +344,20 @@ const WarehouseReturns = () => {
                         <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{prod?.nombre}</p><p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p></div>
                         <Input
                           type="number"
-                          min="1"
+                          step={prod?.tipo_venta === 'GRANEL' ? '0.01' : '1'}
+                          min={prod?.tipo_venta === 'GRANEL' ? "0.01" : "1"}
                           max={prod?.stockActual !== undefined ? prod.stockActual : undefined}
                           value={item.cantidad}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 1;
+                            let valStr = e.target.value;
+                            if (valStr && prod?.tipo_venta === 'UNIDAD' && valStr.includes('.')) {
+                              valStr = valStr.split('.')[0];
+                            }
+                            const val = parseFloat(valStr) || 1;
                             const maxVal = prod?.stockActual !== undefined ? prod.stockActual : Infinity;
                             setFormItems(formItems.map((it, i) => i === index ? {
                               ...it,
-                              cantidad: Math.max(1, Math.min(maxVal, val))
+                              cantidad: Math.max(0, Math.min(maxVal, val))
                             } : it));
                           }}
                           className="w-20"

@@ -12,6 +12,7 @@ class Producto extends Model
         'sku',
         'categoria',
         'nombre',
+        'tipo_venta',
         'descripcion',
         'presentacion',
         'marca',
@@ -23,6 +24,10 @@ class Producto extends Model
         'activo',
         'created_at',
         'created_by'
+    ];
+
+    protected $casts = [
+        'stock_minimo' => 'float',
     ];
 
     public $timestamps = false;

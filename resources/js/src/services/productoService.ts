@@ -18,6 +18,7 @@ export interface ProductoPayload {
   precio_base: number;
   costo: number;
   stock_minimo: number;
+  tipo_venta: 'UNIDAD' | 'GRANEL';
   activo: boolean;
 }
 

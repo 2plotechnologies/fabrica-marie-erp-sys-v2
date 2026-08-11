@@ -23,6 +23,12 @@ class MovimientoStock extends Model
         'created_at'
     ];
 
+    protected $casts = [
+        'cantidad' => 'float',
+        'stock_anterior' => 'float',
+        'stock_post_mov' => 'float',
+    ];
+
     public $timestamps = false;
 
     public function producto()

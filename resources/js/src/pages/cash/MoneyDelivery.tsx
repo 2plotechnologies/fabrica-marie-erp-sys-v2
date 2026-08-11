@@ -183,10 +183,6 @@ const MoneyDelivery = () => {
                 toast.error('Todos los ítems deben tener un monto mayor a 0.');
                 return;
             }
-            if (!item.comprobante) {
-                toast.error('Todos los ítems deben tener un comprobante adjunto.');
-                return;
-            }
             totalMonto += Number(item.monto);
         }
 
@@ -210,7 +206,9 @@ const MoneyDelivery = () => {
         items.forEach((item, index) => {
             formData.append(`items[${index}][metodo_pago]`, item.metodo_pago);
             formData.append(`items[${index}][monto]`, String(item.monto));
-            formData.append(`items[${index}][comprobante]`, item.comprobante as File);
+            if (item.comprobante) {
+                formData.append(`items[${index}][comprobante]`, item.comprobante as File);
+            }
         });
 
         createEntrega.mutate(formData);
@@ -341,6 +339,7 @@ const MoneyDelivery = () => {
                                                         <SelectItem value="plin">Plin</SelectItem>
                                                         <SelectItem value="transferencia">Transferencia</SelectItem>
                                                         <SelectItem value="deposito">Depósito en Agente</SelectItem>
+                                                        <SelectItem value="tarjeta_debito">Depósito Bancario</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -349,7 +348,7 @@ const MoneyDelivery = () => {
                                                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={item.monto} onChange={(e) => handleItemChange(item.id, 'monto', e.target.value)} />
                                             </div>
                                             <div className="space-y-2 md:col-span-2">
-                                                <Label>Comprobante Adjunto</Label>
+                                                <Label>Comprobante Adjunto (Opcional)</Label>
                                                 <div className="flex items-center gap-3">
                                                     <Input
                                                         type="file"

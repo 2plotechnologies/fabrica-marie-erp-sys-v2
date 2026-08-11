@@ -55,7 +55,21 @@ class DevolucionController
             'tipo' => 'required|in:BUENA,MALA',
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
-            'items.*.cantidad' => 'required|integer|min:1'
+            'items.*.cantidad' => [
+                'required', 
+                'numeric', 
+                'gt:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    $index = explode('.', $attribute)[1];
+                    $productoId = $request->input("items.{$index}.producto_id");
+                    if ($productoId) {
+                        $producto = \App\Models\Producto::find($productoId);
+                        if ($producto && $producto->tipo_venta === 'UNIDAD' && floor($value) != $value) {
+                            $fail("La cantidad para el producto {$producto->nombre} debe ser un número entero.");
+                        }
+                    }
+                }
+            ]
         ]);
 
         $user = auth()->user();

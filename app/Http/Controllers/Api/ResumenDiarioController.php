@@ -12,6 +12,7 @@ use App\Models\Vendedor;
 use App\Models\Salida;
 use App\Models\Vehiculo;
 use App\Models\EntregaDinero;
+use App\Models\Ruta;
 use Carbon\Carbon;
 
 class ResumenDiarioController extends Controller
@@ -22,7 +23,7 @@ class ResumenDiarioController extends Controller
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
 
-        $query = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
+        $query = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'rutas', 'salida')
             ->orderBy('fecha', 'desc');
 
         if ($vendedor) {
@@ -40,7 +41,7 @@ class ResumenDiarioController extends Controller
 
     public function getSalidas(Request $request)
     {
-        $query = Salida::with('vendedor.usuario', 'vehiculo', 'ruta')
+        $query = Salida::with('vendedor.usuario', 'vehiculo', 'ruta', 'rutas')
             ->where('estado', '!=', 'PENDIENTE');
 
         if ($request->filled('vendedor_id')) {
@@ -158,7 +159,7 @@ class ResumenDiarioController extends Controller
         }
 
         // Prioridad 1: Salida vigente EN RUTA del vendedor (para viajes largos / multidía)
-        $salidaActiva = Salida::with('vehiculo', 'ruta')
+        $salidaActiva = Salida::with('vehiculo', 'ruta', 'rutas')
             ->where('vendedor_id', $vendedor_id)
             ->whereIn('estado', ['EN RUTA', 'EN_RUTA'])
             ->orderBy('id', 'desc')
@@ -166,7 +167,7 @@ class ResumenDiarioController extends Controller
 
         // Prioridad 2: Si no hay salida EN RUTA, buscar salidas asociadas a la fecha especificada
         if (!$salidaActiva) {
-            $salidaActiva = Salida::with('vehiculo', 'ruta')
+            $salidaActiva = Salida::with('vehiculo', 'ruta', 'rutas')
                 ->where('vendedor_id', $vendedor_id)
                 ->whereDate('fecha', $fecha)
                 ->whereIn('estado', ['FINALIZADO', 'COMPLETADO', 'EN RUTA', 'EN_RUTA', 'PENDIENTE'])
@@ -176,7 +177,7 @@ class ResumenDiarioController extends Controller
 
         // Prioridad 3: Fallback a salida previa a la fecha
         if (!$salidaActiva) {
-            $salidaActiva = Salida::with('vehiculo', 'ruta')
+            $salidaActiva = Salida::with('vehiculo', 'ruta', 'rutas')
                 ->where('vendedor_id', $vendedor_id)
                 ->whereDate('fecha', '<=', $fecha)
                 ->whereIn('estado', ['FINALIZADO', 'COMPLETADO', 'EN RUTA', 'EN_RUTA', 'PENDIENTE'])
@@ -277,14 +278,29 @@ class ResumenDiarioController extends Controller
         $vendedorId = $vendedor ? $vendedor->id : $request->vendedor_id;
 
         $salidaId = ($request->salida_id && $request->salida_id !== 'sin_salida' && $request->salida_id !== '0') ? $request->salida_id : null;
-        $rutaId = ($request->ruta_id && $request->ruta_id !== 'sin_ruta' && $request->ruta_id !== '0') ? $request->ruta_id : null;
+        
+        $rutaIds = $request->input('ruta_ids', []);
+        if (empty($rutaIds) && $request->filled('ruta_id') && $request->ruta_id !== 'sin_ruta' && $request->ruta_id !== '0') {
+            $rutaIds = [(int)$request->ruta_id];
+        }
+
+        if (!empty($rutaIds) && $request->filled('zona')) {
+            $rutasBD = Ruta::whereIn('id', $rutaIds)->get();
+            foreach ($rutasBD as $r) {
+                if ($r->zona !== $request->zona) {
+                    return response()->json([
+                        'error' => 'Todas las rutas seleccionadas deben pertenecer a la zona especificada (' . $request->zona . ').'
+                    ], 400);
+                }
+            }
+        }
 
         $resumenDiario = ResumenDiario::create(
             [
                 'fecha' => $request->fecha,
                 'vendedor_id' => $vendedorId,
                 'vehiculo_id' => $request->vehiculo_id,
-                'ruta_id' => $rutaId,
+                'ruta_id' => !empty($rutaIds) ? $rutaIds[0] : null,
                 'salida_id' => $salidaId,
                 'conductor' => $request->conductor,
                 'zona' => $request->zona,
@@ -304,6 +320,10 @@ class ResumenDiarioController extends Controller
             ]
         );
 
+        if (!empty($rutaIds)) {
+            $resumenDiario->rutas()->sync($rutaIds);
+        }
+
         //Asignar resumen_diario_id a gastos
         $gastos = Gasto::where('vendedor_id', $request->vendedor_id)->whereDate('fecha', $request->fecha)->get();
         foreach ($gastos as $gasto) {
@@ -311,8 +331,7 @@ class ResumenDiarioController extends Controller
             $gasto->save();
         }
 
-
-        return response()->json($resumenDiario, 201);
+        return response()->json($resumenDiario->load('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'rutas', 'salida'), 201);
     }
 
     public function updateEstado(Request $request, $id)
@@ -395,7 +414,7 @@ class ResumenDiarioController extends Controller
     }
 
     public function getResumenGeneral(){
-        $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'salida')
+        $resumenDiario = ResumenDiario::with('vendedor.usuario', 'vehiculo', 'gastos', 'ruta', 'rutas', 'salida')
         ->where('estado', '!=', 'PENDIENTE')
         ->where('estado', '!=', 'RECHAZADO')
         ->orderBy('fecha', 'desc')
@@ -451,14 +470,14 @@ class ResumenDiarioController extends Controller
             $salidas = $query->get();
 
             $resultSalidas = $salidas->map(function ($salida) {
-                $resumenes = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta'])
+                $resumenes = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta', 'rutas'])
                     ->where('salida_id', $salida->id)
                     ->orderBy('fecha', 'asc')
                     ->get();
 
                 // Si no hay resúmenes asignados directamente por salida_id, buscar por vendedor y coincidencia de fecha
                 if ($resumenes->isEmpty()) {
-                    $resumenes = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta'])
+                    $resumenes = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta', 'rutas'])
                         ->where('vendedor_id', $salida->vendedor_id)
                         ->whereDate('fecha', '>=', $salida->fecha)
                         ->orderBy('fecha', 'asc')
@@ -529,7 +548,7 @@ class ResumenDiarioController extends Controller
 
         // 2. Incluir resúmenes de Ventas de Fábrica (Sin Salida)
         if (!$targetSalidaId || $targetSalidaId === 'all' || $targetSalidaId === 'sin_salida' || $targetSalidaId === '0') {
-            $sinSalidaQuery = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta'])
+            $sinSalidaQuery = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta', 'rutas'])
                 ->where(function($q) {
                     $q->whereNull('salida_id')->orWhere('salida_id', 0);
                 })

@@ -61,6 +61,7 @@ const NewSale = () => {
     costo: number;
     categoria: string;
     estado: string;
+    tipo_venta: 'UNIDAD' | 'GRANEL';
     salida_id?: number | null;
     created_at: string;
     updated_at: string;
@@ -122,6 +123,23 @@ const NewSale = () => {
   const vendedorActual = vendedores.find(
     v => v.usuario_id === user?.id
   );
+
+  const [isCartInView, setIsCartInView] = useState(false);
+
+  useEffect(() => {
+    const cartElement = document.getElementById('sale-cart-section');
+    if (!cartElement) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsCartInView(entry.isIntersecting);
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(cartElement);
+    return () => observer.disconnect();
+  }, [cart.length]);
 
   const selectedVendedorObj = vendedores.find(v => String(v.id) === selectedVendedor);
   const targetVendedor = isVendedor ? vendedorActual : selectedVendedorObj;
@@ -193,6 +211,7 @@ const NewSale = () => {
         marca: product.marca,
         presentacion: product.presentacion,
         peso: product.peso,
+        tipo_venta: product.tipo_venta,
         esBonificacion: false,
         esDegustacion: false,
       }]);
@@ -221,6 +240,7 @@ const NewSale = () => {
         marca: product.marca,
         presentacion: product.presentacion,
         peso: product.peso,
+        tipo_venta: product.tipo_venta,
         esBonificacion: true,
         esDegustacion: false,
       }]);
@@ -249,6 +269,7 @@ const NewSale = () => {
         marca: product.marca,
         presentacion: product.presentacion,
         peso: product.peso,
+        tipo_venta: product.tipo_venta,
         esBonificacion: false,
         esDegustacion: true,
       }]);
@@ -294,6 +315,7 @@ const NewSale = () => {
         productId: bonificacionId, name: item.name, price: 0, quantity: 1,
         salida_id: item.salida_id,
         marca: item.marca, presentacion: item.presentacion, peso: item.peso,
+        tipo_venta: item.tipo_venta,
         esBonificacion: true, esDegustacion: false,
       }]);
       toast.success(`Bonificación de ${item.name} agregada`);
@@ -313,6 +335,7 @@ const NewSale = () => {
         productId: degustacionId, name: item.name, price: 0, quantity: 1,
         salida_id: item.salida_id,
         marca: item.marca, presentacion: item.presentacion, peso: item.peso,
+        tipo_venta: item.tipo_venta,
         esBonificacion: false, esDegustacion: true,
       }]);
       toast.success(`Degustación de ${item.name} agregada`);
@@ -582,8 +605,8 @@ const NewSale = () => {
         </div>
       </div>
 
-      {/* Botón Flotante de Carrito en Móvil */}
-      {cart.length > 0 && (
+      {/* Botón Flotante de Carrito en Móvil (Se oculta automáticamente al llegar al área del carrito / Registrar Venta) */}
+      {cart.length > 0 && !isCartInView && (
         <div className="fixed bottom-4 left-4 right-4 z-40 lg:hidden animate-slide-up">
           <Button
             type="button"

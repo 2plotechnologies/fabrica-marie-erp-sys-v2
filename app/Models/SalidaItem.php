@@ -17,6 +17,10 @@ class SalidaItem extends Model
         'cantidad'
     ];
 
+    protected $casts = [
+        'cantidad' => 'float',
+    ];
+
     public function producto()
     {
         return $this->belongsTo(Producto::class);

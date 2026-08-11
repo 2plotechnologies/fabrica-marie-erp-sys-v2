@@ -27,7 +27,20 @@ class MovimientoStockController extends Controller
             'tipo' => 'required|in:INGRESO,SALIDA,AJUSTE,DEVOLUCION_BUENA,DEVOLUCION_MALA,DESECHO',
             'producto_id' => 'required|integer',
             'ruma_id' => 'required|integer',
-            'cantidad' => 'required|integer|min:1',
+            'cantidad' => [
+                'required', 
+                'numeric', 
+                'gt:0',
+                function ($attribute, $value, $fail) use ($request) {
+                    $productoId = $request->input("producto_id");
+                    if ($productoId) {
+                        $producto = \App\Models\Producto::find($productoId);
+                        if ($producto && $producto->tipo_venta === 'UNIDAD' && floor($value) != $value) {
+                            $fail("La cantidad para el producto {$producto->nombre} debe ser un número entero.");
+                        }
+                    }
+                }
+            ],
             'motivo' => 'nullable|string'
         ]);
 

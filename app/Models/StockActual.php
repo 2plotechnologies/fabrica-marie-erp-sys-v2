@@ -15,6 +15,11 @@ class StockActual extends Model
         'fecha_ultimo_mov'
     ];
 
+    protected $casts = [
+        'cantidad' => 'float',
+        'stock_reservado' => 'float',
+    ];
+
     public $timestamps = false;
 
     public function producto()

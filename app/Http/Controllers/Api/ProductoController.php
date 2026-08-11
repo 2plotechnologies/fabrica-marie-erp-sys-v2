@@ -29,7 +29,7 @@ class ProductoController extends Controller
             return [
                 'producto' => $producto,
                 'salida_id' => null,
-                'cantidad' => (int) ($producto->total_stock ?? 0),
+                'cantidad' => (float) ($producto->total_stock ?? 0),
                 'stock_reservado' => 0
             ];
         });
@@ -54,6 +54,7 @@ class ProductoController extends Controller
             'sku' => 'required|string|max:50|unique:productos,sku',
             'categoria' => 'required|string|max:100',
             'nombre' => 'required|string|max:150',
+            'tipo_venta' => 'required|in:UNIDAD,GRANEL',
             'descripcion' => 'nullable|string',
             'presentacion' => 'nullable|string|max:100',
             'marca' => 'required|string|max:100',
@@ -61,7 +62,7 @@ class ProductoController extends Controller
             'peso' => 'nullable|numeric|min:0',
             'precio_base' => 'required|numeric|min:0',
             'costo' => 'required|numeric|min:0',
-            'stock_minimo' => 'required|integer|min:0',
+            'stock_minimo' => 'required|numeric|min:0',
             'activo' => 'required|boolean',
         ]);
 
@@ -88,6 +89,7 @@ class ProductoController extends Controller
             'sku' => 'required|string|max:50|unique:productos,sku,' . $id,
             'categoria' => 'required|string|max:100',
             'nombre' => 'required|string|max:150',
+            'tipo_venta' => 'required|in:UNIDAD,GRANEL',
             'descripcion' => 'nullable|string',
             'presentacion' => 'nullable|string|max:100',
             'marca' => 'required|string|max:100',
@@ -95,7 +97,7 @@ class ProductoController extends Controller
             'peso' => 'nullable|numeric|min:0',
             'precio_base' => 'required|numeric|min:0',
             'costo' => 'required|numeric|min:0',
-            'stock_minimo' => 'required|integer|min:0',
+            'stock_minimo' => 'required|numeric|min:0',
             'activo' => 'required|boolean',
         ]);
 

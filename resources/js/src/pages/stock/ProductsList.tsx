@@ -41,6 +41,7 @@ const ProductsList = () => {
     precio_base: '',
     costo: '',
     stock_minimo: '',
+    tipo_venta: 'UNIDAD',
     activo: true,
   });
 
@@ -85,6 +86,7 @@ const ProductsList = () => {
         precio_base: Number(form.precio_base),
         costo: Number(form.costo),
         stock_minimo: Number(form.stock_minimo),
+        tipo_venta: form.tipo_venta as 'UNIDAD' | 'GRANEL',
         activo: form.activo,
       });
 
@@ -102,6 +104,7 @@ const ProductsList = () => {
         precio_base: '',
         costo: '',
         stock_minimo: '',
+        tipo_venta: 'UNIDAD',
         activo: true,
       });
 
@@ -142,6 +145,7 @@ const ProductsList = () => {
         precio_base: Number(form.precio_base),
         costo: Number(form.costo),
         stock_minimo: Number(form.stock_minimo),
+        tipo_venta: form.tipo_venta as 'UNIDAD' | 'GRANEL',
         activo: form.activo,
       });
 
@@ -159,6 +163,7 @@ const ProductsList = () => {
         precio_base: '',
         costo: '',
         stock_minimo: '',
+        tipo_venta: 'UNIDAD',
         activo: true,
       });
 
@@ -266,6 +271,18 @@ const ProductsList = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Marca</Label><Input value={form.marca} onChange={(e) => setForm({ ...form, marca: e.target.value })} placeholder="Rey del Centro" /></div>
                 <div className="space-y-2"><Label>Presentación</Label><Input value={form.presentacion} onChange={(e) => setForm({ ...form, presentacion: e.target.value })} placeholder="5x800, 5x900..." /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Tipo de Venta</Label>
+                  <select 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={form.tipo_venta} 
+                    onChange={(e) => setForm({ ...form, tipo_venta: e.target.value })}
+                  >
+                    <option value="UNIDAD">Por Unidad (Display)</option>
+                    <option value="GRANEL">A Granel (Decimal)</option>
+                  </select>
+                </div>
               </div>
               <div className="space-y-2"><Label>Descripción</Label><Textarea value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Describe el producto..." /></div>
               <div className="grid grid-cols-3 gap-4">
@@ -402,6 +419,18 @@ const ProductsList = () => {
               <div className="space-y-2"><Label>Presentación</Label><Input value={form.presentacion} onChange={(e) => setForm({ ...form, presentacion: e.target.value })} placeholder="5x800, 5x900..." /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Tipo de Venta</Label>
+                <select 
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={form.tipo_venta} 
+                  onChange={(e) => setForm({ ...form, tipo_venta: e.target.value })}
+                >
+                  <option value="UNIDAD">Por Unidad (Display)</option>
+                  <option value="GRANEL">A Granel (Decimal)</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Unidad de Medida *</Label><Input value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} placeholder="Kg, Lb, etc." /></div>
               <div className="space-y-2"><Label>Peso (kg)</Label><Input value={form.peso} onChange={(e) => setForm({ ...form, peso: e.target.value })} placeholder="0.5" /></div>
             </div>
@@ -427,6 +456,7 @@ const ProductsList = () => {
                 precio_base: '',
                 costo: '',
                 stock_minimo: '',
+                tipo_venta: 'UNIDAD',
                 activo: true,
               });
             }}>

@@ -575,17 +575,22 @@ const CartItemRow = ({ item, index = 0, onUpdateQuantity, onUpdatePrice, onRemov
           </Button>
           <Input
             type="number"
+            step={item.tipo_venta === 'GRANEL' ? "0.01" : "1"}
             value={inputValue}
             onChange={(e) => {
               const valStr = e.target.value;
               setInputValue(valStr);
-              const val = parseInt(valStr, 10);
+              let val = parseFloat(valStr);
+              if (item.tipo_venta === 'UNIDAD') val = Math.floor(val);
+              
               if (!isNaN(val) && val > 0) {
                 onUpdateQuantity(item.productId, val);
               }
             }}
             onBlur={() => {
-              const val = parseInt(inputValue, 10);
+              let val = parseFloat(inputValue);
+              if (item.tipo_venta === 'UNIDAD') val = Math.floor(val);
+              
               if (isNaN(val) || val <= 0) {
                 onUpdateQuantity(item.productId, 1);
                 setInputValue("1");

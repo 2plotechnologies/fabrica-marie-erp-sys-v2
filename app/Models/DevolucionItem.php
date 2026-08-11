@@ -17,6 +17,10 @@ class DevolucionItem extends Model
         'motivo'
     ];
 
+    protected $casts = [
+        'cantidad' => 'float',
+    ];
+
     public function producto()
     {
         return $this->belongsTo(Producto::class);

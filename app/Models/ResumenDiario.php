@@ -44,6 +44,11 @@ class ResumenDiario extends Model
         return $this->belongsTo(Ruta::class);
     }
 
+    public function rutas()
+    {
+        return $this->belongsToMany(Ruta::class, 'resumen_diario_rutas', 'resumen_diario_id', 'ruta_id');
+    }
+
     public function salida()
     {
         return $this->belongsTo(Salida::class);

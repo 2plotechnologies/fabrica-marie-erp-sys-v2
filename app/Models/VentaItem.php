@@ -20,6 +20,10 @@ class VentaItem extends Model
         'es_degustacion'
     ];
 
+    protected $casts = [
+        'cantidad' => 'float',
+    ];
+
     public function producto()
     {
         return $this->belongsTo(Producto::class);

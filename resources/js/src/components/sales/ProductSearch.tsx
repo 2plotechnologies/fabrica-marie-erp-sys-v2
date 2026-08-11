@@ -25,6 +25,7 @@ interface Producto {
     categoria: string;
     estado: string;
     stock?: number;
+    tipo_venta?: 'UNIDAD' | 'GRANEL';
     created_at: string;
     updated_at: string;
   }
@@ -133,7 +134,7 @@ export const ProductSearch = ({
                 )}
                 {product.stock !== undefined && (
                   <span className={`text-xs font-semibold ${product.stock > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                    • Stock: {product.stock}
+                    • Stock: {product.tipo_venta === 'GRANEL' ? product.stock.toFixed(2) : product.stock}
                   </span>
                 )}
               </div>

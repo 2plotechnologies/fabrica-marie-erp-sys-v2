@@ -217,7 +217,13 @@ const StockMovements = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2"><Label>Cantidad *</Label><Input type="number" min="1" value={form.cantidad || ''} onChange={(e) => setForm({ ...form, cantidad: parseInt(e.target.value) || 0 })} /></div>
+              <div className="space-y-2"><Label>Cantidad *</Label><Input type="number" step={productos.find(p => p.id.toString() === form.producto_id)?.tipo_venta === 'GRANEL' ? '0.01' : '1'} min={productos.find(p => p.id.toString() === form.producto_id)?.tipo_venta === 'GRANEL' ? '0.01' : '1'} value={form.cantidad || ''} onChange={(e) => {
+                let valStr = e.target.value;
+                if (valStr && productos.find(p => p.id.toString() === form.producto_id)?.tipo_venta === 'UNIDAD' && valStr.includes('.')) {
+                  valStr = valStr.split('.')[0];
+                }
+                setForm({ ...form, cantidad: parseFloat(valStr) || 0 });
+              }} /></div>
             </div>
             <div className="space-y-2">
               <Label>Producto *</Label>

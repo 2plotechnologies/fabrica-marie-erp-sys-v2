@@ -9,6 +9,7 @@ export interface CartItem {
   marca?: string;
   presentacion?: string;
   peso?: number;
+  tipo_venta?: 'UNIDAD' | 'GRANEL';
   esBonificacion?: boolean;
   esDegustacion?: boolean;
 }
