@@ -588,26 +588,26 @@ const DailySummaryPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-display font-bold text-foreground">Resumen Diario</h1>
-          <p className="text-muted-foreground">Reporte diario de ingresos y egresos por vendedor</p>
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">Resumen Diario</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Reporte diario de ingresos y egresos por vendedor</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto h-9">
             <FileDown className="h-4 w-4 mr-2" />
             Exportar
           </Button>
           <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-gradient-warm hover:opacity-90">
+              <Button size="default" className="w-full sm:w-auto h-11 sm:h-9 text-sm font-semibold bg-gradient-warm hover:opacity-90 shadow-md flex items-center justify-center">
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Resumen Diario
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-3xl md:max-w-4xl max-h-[92vh] p-3 sm:p-6 overflow-y-auto overflow-x-hidden rounded-xl">
               <DialogHeader>
-                <DialogTitle>Crear Resumen Diario</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">Crear Resumen Diario</DialogTitle>
               </DialogHeader>
 
               <div className="space-y-4 sm:space-y-6 py-2 sm:py-4 min-w-0 w-full max-w-full overflow-x-hidden">
@@ -1243,62 +1243,110 @@ const DailySummaryPage = () => {
 
               {/* Tabla principal */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Resúmenes Diarios</CardTitle>
+                <CardHeader className="px-4 py-4 sm:px-6">
+                  <CardTitle className="text-base sm:text-lg">Resúmenes Diarios</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Vendedor</TableHead>
-                        <TableHead>Conductor</TableHead>
-                        <TableHead>Zona</TableHead>
-                        <TableHead>Ruta</TableHead>
-                        <TableHead className="text-right">Contado</TableHead>
-                        <TableHead className="text-right">Crédito</TableHead>
-                        <TableHead className="text-right">Cobranza</TableHead>
-                        <TableHead className="text-right">Gastos</TableHead>
-                        <TableHead className="text-right">Entregado</TableHead>
-                        <TableHead className="text-right">Diferencia</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredResumenes.length === 0 ? (
+                <CardContent className="p-2 sm:p-6">
+                  {/* Mobile Card View */}
+                  <div className="space-y-3 sm:hidden">
+                    {filteredResumenes.length === 0 ? (
+                      <div className="py-8 text-center text-sm text-muted-foreground">
+                        {resumenes.length === 0 ? 'No hay resúmenes registrados' : 'No se encontraron resultados'}
+                      </div>
+                    ) : (
+                      paginatedResumenes.map((resumen) => (
+                        <div key={resumen.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-sm text-foreground truncate">{resumen.vendedor?.usuario?.nombre || '-'}</span>
+                            {getEstadoBadge(resumen.estado)}
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
+                            <div>📅 <strong className="text-foreground">{format(new Date(resumen.fecha.substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}</strong></div>
+                            <div className="truncate">🗺️ <strong className="text-foreground truncate">{renderRutasText(resumen) || '-'}</strong></div>
+                            {resumen.conductor && <div className="truncate">👤 <strong className="text-foreground truncate">{resumen.conductor}</strong></div>}
+                            {resumen.zona && <div className="truncate">📍 <strong className="text-foreground truncate">{resumen.zona}</strong></div>}
+                          </div>
+                          <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-border/50 text-center">
+                            <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded border border-emerald-200 dark:border-emerald-800">
+                              <span className="text-[10px] text-muted-foreground block">Contado</span>
+                              <span className="font-bold text-emerald-600">S/ {Number(resumen.contado).toLocaleString()}</span>
+                            </div>
+                            <div className="bg-muted/40 p-1.5 rounded border">
+                              <span className="text-[10px] text-muted-foreground block">Entregado</span>
+                              <span className="font-bold text-foreground">S/ {Number(resumen.saldo_entregado).toLocaleString()}</span>
+                            </div>
+                            <div className={`p-1.5 rounded border ${Number(resumen.diferencia) >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200' : 'bg-red-50 dark:bg-red-950/30 border-red-200'}`}>
+                              <span className="text-[10px] text-muted-foreground block">Diferencia</span>
+                              <span className={`font-bold ${Number(resumen.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {Number(resumen.diferencia) >= 0 ? '+' : ''}{Number(resumen.diferencia).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex justify-end pt-1">
+                            <Button size="sm" variant="outline" className="w-full h-8 text-xs font-medium gap-1.5" onClick={() => setSelectedResumen(resumen)}>
+                              <Eye className="h-3.5 w-3.5" /> Ver Detalle Completo
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Desktop Table View */}
+                  <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+                    <Table className="w-full min-w-[850px]">
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
-                            {resumenes.length === 0 ? 'No hay resúmenes registrados' : 'No se encontraron resultados'}
-                          </TableCell>
+                          <TableHead className="whitespace-nowrap">Fecha</TableHead>
+                          <TableHead className="whitespace-nowrap">Vendedor</TableHead>
+                          <TableHead className="whitespace-nowrap">Conductor</TableHead>
+                          <TableHead className="whitespace-nowrap">Zona</TableHead>
+                          <TableHead className="whitespace-nowrap">Ruta</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Contado</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Crédito</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Cobranza</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Gastos</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Entregado</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Diferencia</TableHead>
+                          <TableHead className="whitespace-nowrap">Estado</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Acciones</TableHead>
                         </TableRow>
-                      ) : (
-                        paginatedResumenes.map((resumen) => (
-                          <TableRow key={resumen.id}>
-                            <TableCell>{format(new Date(resumen.fecha.substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
-                            <TableCell className="font-medium">{resumen.vendedor?.usuario?.nombre || '-'}</TableCell>
-                            <TableCell>{resumen.conductor || '-'}</TableCell>
-                            <TableCell>{resumen.zona || '-'}</TableCell>
-                            <TableCell>{renderRutasText(resumen) || '-'}</TableCell>
-                            <TableCell className="text-right text-emerald-600">S/ {Number(resumen.contado).toLocaleString()}</TableCell>
-                            <TableCell className="text-right text-amber-600">S/ {Number(resumen.credito).toLocaleString()}</TableCell>
-                            <TableCell className="text-right">S/ {Number(resumen.cobranza).toLocaleString()}</TableCell>
-                            <TableCell className="text-right text-red-600">S/ {Number(resumen.total_gastos).toLocaleString()}</TableCell>
-                            <TableCell className="text-right font-bold">S/ {Number(resumen.saldo_entregado).toLocaleString()}</TableCell>
-                            <TableCell className={`text-right font-bold ${Number(resumen.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                              {Number(resumen.diferencia) >= 0 ? '+' : ''}{Number(resumen.diferencia).toFixed(2)}
-                            </TableCell>
-                            <TableCell>{getEstadoBadge(resumen.estado)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" onClick={() => { setSelectedResumen(resumen); console.log(resumen); }}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredResumenes.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                              {resumenes.length === 0 ? 'No hay resúmenes registrados' : 'No se encontraron resultados'}
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : (
+                          paginatedResumenes.map((resumen) => (
+                            <TableRow key={resumen.id}>
+                              <TableCell className="whitespace-nowrap">{format(new Date(resumen.fecha.substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}</TableCell>
+                              <TableCell className="font-medium whitespace-nowrap">{resumen.vendedor?.usuario?.nombre || '-'}</TableCell>
+                              <TableCell className="whitespace-nowrap">{resumen.conductor || '-'}</TableCell>
+                              <TableCell className="whitespace-nowrap">{resumen.zona || '-'}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{renderRutasText(resumen) || '-'}</TableCell>
+                              <TableCell className="text-right text-emerald-600 font-medium whitespace-nowrap">S/ {Number(resumen.contado).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-amber-600 font-medium whitespace-nowrap">S/ {Number(resumen.credito).toLocaleString()}</TableCell>
+                              <TableCell className="text-right whitespace-nowrap">S/ {Number(resumen.cobranza).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-red-600 font-medium whitespace-nowrap">S/ {Number(resumen.total_gastos).toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-bold whitespace-nowrap">S/ {Number(resumen.saldo_entregado).toLocaleString()}</TableCell>
+                              <TableCell className={`text-right font-bold whitespace-nowrap ${Number(resumen.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {Number(resumen.diferencia) >= 0 ? '+' : ''}{Number(resumen.diferencia).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">{getEstadoBadge(resumen.estado)}</TableCell>
+                              <TableCell className="text-right whitespace-nowrap">
+                                <Button variant="ghost" size="sm" onClick={() => { setSelectedResumen(resumen); console.log(resumen); }}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                   {totalPages > 1 && (
                     <div className="flex justify-center gap-2 mt-4">
                       <Button
@@ -1500,7 +1548,7 @@ const DailySummaryPage = () => {
 
                         <CardContent className="pt-4">
                           {/* KPIs Resumen Rápido del Viaje */}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-9 gap-3 mb-4 p-3 bg-muted/20 rounded-lg text-xs">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 sm:gap-3 mb-4 p-3 bg-muted/20 rounded-lg text-xs">
                             <div>
                               <span className="text-muted-foreground block">Contado</span>
                               <span className="font-bold text-emerald-600 text-sm">S/ {Number(tot.totalContado || 0).toFixed(2)}</span>
@@ -1656,38 +1704,38 @@ const DailySummaryPage = () => {
 
       {/* Modal de detalle */}
       <Dialog open={!!selectedResumen} onOpenChange={() => setSelectedResumen(null)}>
-        <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-3xl md:max-w-4xl max-h-[92vh] p-3 sm:p-6 overflow-y-auto overflow-x-hidden rounded-xl">
           <DialogHeader>
-            <DialogTitle>Resumen de Ventas y Egresos</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">Resumen de Ventas y Egresos</DialogTitle>
           </DialogHeader>
 
           {selectedResumen && (
-            <div className="space-y-6 py-4 min-w-0 w-full max-w-full overflow-x-hidden">
+            <div className="space-y-4 sm:space-y-6 py-2 sm:py-4 min-w-0 w-full max-w-full overflow-x-hidden">
               {/* Header del resumen */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 sm:p-4 bg-muted/50 rounded-lg text-xs sm:text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 sm:p-4 bg-muted/50 rounded-lg text-xs sm:text-sm">
                 <div>
-                  <p className="text-muted-foreground">Fecha</p>
-                  <p className="font-medium">{format(new Date(selectedResumen.fecha.substring(0, 10) + 'T00:00:00'), 'PPP', { locale: es })}</p>
+                  <p className="text-muted-foreground text-[11px]">Fecha</p>
+                  <p className="font-medium">{format(new Date(selectedResumen.fecha.substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Vendedor</p>
-                  <p className="font-medium">{selectedResumen.vendedor?.usuario?.nombre || '-'}</p>
+                  <p className="text-muted-foreground text-[11px]">Vendedor</p>
+                  <p className="font-medium truncate">{selectedResumen.vendedor?.usuario?.nombre || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Estado</p>
+                  <p className="text-muted-foreground text-[11px]">Estado</p>
                   {getEstadoBadge(selectedResumen.estado)}
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Conductor</p>
-                  <p className="font-medium">{selectedResumen.conductor || '-'}</p>
+                  <p className="text-muted-foreground text-[11px]">Conductor</p>
+                  <p className="font-medium truncate">{selectedResumen.conductor || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Zona</p>
-                  <p className="font-medium">{selectedResumen.zona || '-'}</p>
+                  <p className="text-muted-foreground text-[11px]">Zona</p>
+                  <p className="font-medium truncate">{selectedResumen.zona || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Ruta</p>
-                  <p className="font-medium">{selectedResumen.ruta?.nombre || '-'}</p>
+                  <p className="text-muted-foreground text-[11px]">Ruta</p>
+                  <p className="font-medium truncate">{selectedResumen.ruta?.nombre || '-'}</p>
                 </div>
               </div>
 
@@ -1933,13 +1981,13 @@ const DailySummaryPage = () => {
 
               {/* Botón de aprobar */}
               {selectedResumen.estado !== 'CONFIRMADO' && (
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setSelectedResumen(null)}>
+                <div className="flex flex-col sm:flex-row justify-end gap-2">
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSelectedResumen(null)}>
                     {isVendedor ? 'Cerrar' : 'Cancelar'}
                   </Button>
                   {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
                     <Button
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
                       onClick={() => handleRechazar(selectedResumen.id)}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Rechazar Resumen
@@ -1947,7 +1995,7 @@ const DailySummaryPage = () => {
                   )}
                   {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
                     <Button
-                      className="bg-emerald-600 hover:bg-emerald-700"
+                      className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
                       onClick={() => handleAprobar(selectedResumen.id)}>
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Confirmar Resumen

@@ -395,45 +395,84 @@ const SalesDetailPage = () => {
 
         <TabsContent value="detalle">
           <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>N° Pedido</TableHead>
-                    <TableHead>Vendedor</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Condición</TableHead>
-                    <TableHead className="text-right">Items</TableHead>
-                    <TableHead className="text-right">Bonif.</TableHead>
-                    <TableHead className="text-right">Degust.</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredVentas.map((venta) => (
-                    <TableRow key={venta.id}>
-                      <TableCell>{venta.fecha}</TableCell>
-                      <TableCell className="font-mono">{venta.notaPedido}</TableCell>
-                      <TableCell>{venta.vendedor}</TableCell>
-                      <TableCell>{venta.cliente}</TableCell>
-                      <TableCell>{getTipoClienteBadge(venta.tipoCliente)}</TableCell>
-                      <TableCell>{getCondicionBadge(venta.condicionVenta)}</TableCell>
-                      <TableCell className="text-right">{venta.items.length}</TableCell>
-                      <TableCell className="text-right">{venta.totalBonificacion}</TableCell>
-                      <TableCell className="text-right">{venta.totalDegustacion}</TableCell>
-                      <TableCell className="text-right font-bold">S/ {Number(venta.total).toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedVenta(venta)}>
-                          <Eye className="h-4 w-4" />
+            <CardContent className="p-2 sm:p-6">
+              {/* Mobile Card View */}
+              <div className="space-y-3 sm:hidden">
+                {filteredVentas.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No se encontraron ventas
+                  </div>
+                ) : (
+                  filteredVentas.map((venta) => (
+                    <div key={venta.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-mono font-bold text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{venta.notaPedido || '-'}</span>
+                          <span className="font-bold text-sm text-foreground truncate">{venta.cliente}</span>
+                        </div>
+                        {getCondicionBadge(venta.condicionVenta)}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
+                        <div>📅 <strong className="text-foreground">{venta.fecha}</strong></div>
+                        <div>👤 <strong className="text-foreground truncate">{venta.vendedor}</strong></div>
+                        <div>🏷️ {getTipoClienteBadge(venta.tipoCliente)}</div>
+                        <div>📦 <Badge variant="outline" className="text-[10px] py-0">{venta.items.length} items</Badge></div>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground block">Total Venta</span>
+                          <span className="text-base font-bold text-foreground">S/ {Number(venta.total).toLocaleString()}</span>
+                        </div>
+                        <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1.5" onClick={() => setSelectedVenta(venta)}>
+                          <Eye className="h-3.5 w-3.5" /> Ver Detalle
                         </Button>
-                      </TableCell>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+                <Table className="w-full min-w-[850px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>N° Pedido</TableHead>
+                      <TableHead>Vendedor</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Condición</TableHead>
+                      <TableHead className="text-right">Items</TableHead>
+                      <TableHead className="text-right">Bonif.</TableHead>
+                      <TableHead className="text-right">Degust.</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredVentas.map((venta) => (
+                      <TableRow key={venta.id}>
+                        <TableCell className="whitespace-nowrap">{venta.fecha}</TableCell>
+                        <TableCell className="font-mono whitespace-nowrap">{venta.notaPedido}</TableCell>
+                        <TableCell className="whitespace-nowrap">{venta.vendedor}</TableCell>
+                        <TableCell className="whitespace-nowrap">{venta.cliente}</TableCell>
+                        <TableCell className="whitespace-nowrap">{getTipoClienteBadge(venta.tipoCliente)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{getCondicionBadge(venta.condicionVenta)}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">{venta.items.length}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">{venta.totalBonificacion}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">{venta.totalDegustacion}</TableCell>
+                        <TableCell className="text-right font-bold whitespace-nowrap">S/ {Number(venta.total).toLocaleString()}</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedVenta(venta)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -761,9 +800,9 @@ const SalesDetailPage = () => {
 
       {/* Modal de detalle */}
       <Dialog open={!!selectedVenta} onOpenChange={() => setSelectedVenta(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-4xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>Detalle de Venta - {selectedVenta?.notaPedido}</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">Detalle de Venta - {selectedVenta?.notaPedido}</DialogTitle>
           </DialogHeader>
 
           {selectedVenta && (

@@ -122,14 +122,17 @@ const AccountsReceivable = () => {
   }, []);
 
   const filteredAccounts = cuentas.filter((account) => {
-    const matchesSearch = account.cliente?.razon_social
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || account.estado === statusFilter;
+    const matchesSearch =
+      (account.cliente?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (account.cliente?.codigo_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (account.zona_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (account.ruta_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    const normalizedState = (account.estado || '').toUpperCase();
+    const matchesStatus = statusFilter === 'all' || normalizedState === statusFilter.toUpperCase();
     return matchesSearch && matchesStatus;
   });
 
-  const itemsPerPage = 4;
+  const itemsPerPage = 10;
   const [page, setPage] = useState(1);
   const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
 
@@ -139,13 +142,16 @@ const AccountsReceivable = () => {
   );
 
   const getStatusBadge = (status: string) => {
+    const normalized = (status || '').toUpperCase();
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
       PENDIENTE: { variant: 'secondary', label: 'PENDIENTE' },
       PARCIAL: { variant: 'outline', label: 'PARCIAL' },
+      PAGADO: { variant: 'default', label: 'PAGADO' },
       PAGADA: { variant: 'default', label: 'PAGADO' },
+      VENCIDO: { variant: 'destructive', label: 'VENCIDO' },
       VENCIDA: { variant: 'destructive', label: 'VENCIDO' },
     };
-    const config = variants[status] || { variant: 'outline', label: status };
+    const config = variants[normalized] || { variant: 'outline', label: normalized };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -233,15 +239,15 @@ const AccountsReceivable = () => {
   };
 
   const totalPending = cuentas
-    .filter(a => a.estado !== 'PAGADO')
-    .reduce((acc, a) => acc + Number(a.monto_pagado), 0);
+    .filter(a => (a.estado || '').toUpperCase() !== 'PAGADO')
+    .reduce((acc, a) => acc + Number(a.saldo), 0);
 
   const totalOverdue = cuentas
-    .filter(a => a.estado === 'VENCIDO')
+    .filter(a => (a.estado || '').toUpperCase() === 'VENCIDO' || (a.estado || '').toUpperCase() === 'VENCIDA')
     .reduce((acc, a) => acc + Number(a.saldo), 0);
 
   const totalPartial = cuentas
-    .filter(a => a.estado === 'PARCIAL')
+    .filter(a => (a.estado || '').toUpperCase() === 'PARCIAL')
     .reduce((acc, a) => acc + Number(a.saldo), 0);
 
   return (
@@ -317,7 +323,7 @@ const AccountsReceivable = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Cuentas Activas</p>
                 <p className="text-2xl font-bold text-foreground">
-                  {cuentas.filter(a => a.estado !== 'PAGADO').length}
+                  {cuentas.filter(a => (a.estado || '').toUpperCase() !== 'PAGADO').length}
                 </p>
               </div>
             </div>
@@ -332,13 +338,13 @@ const AccountsReceivable = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente..."
+                placeholder="Buscar por cliente, código, zona o ruta..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
               <SelectTrigger className="w-full sm:w-48">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Estado" />
@@ -363,293 +369,173 @@ const AccountsReceivable = () => {
             Listado de Cuentas
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="text-right">Monto Original</TableHead>
-                <TableHead className="text-right">Pagado</TableHead>
-                <TableHead className="text-right">Saldo Actual</TableHead>
-                <TableHead>Vencimiento</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedAccounts.map((account) => {
+        <CardContent className="p-2 sm:p-6">
+          {/* Mobile Card View */}
+          <div className="space-y-3 sm:hidden">
+            {filteredAccounts.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No hay cuentas registradas
+              </div>
+            ) : (
+              paginatedAccounts.map((account) => {
                 const daysInfo = getDaysInfo(account);
+                const isPaid = (account.estado || '').toUpperCase() === 'PAGADO';
                 return (
-                  <TableRow key={account.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{account.cliente?.razon_social}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {account.cliente?.tipo}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      S/ {Number(account.monto_total).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right text-emerald-600 font-medium">
-                      S/ {Number(account.monto_pagado).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      S/ {Number(account.saldo).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        {account.fecha_vencimiento ? (
-                          <p className="text-sm font-medium">
-                            {format(new Date(typeof account.fecha_vencimiento === 'string' ? account.fecha_vencimiento.substring(0, 10) + "T00:00:00" : account.fecha_vencimiento), "dd MMM yyyy", { locale: es })}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Sin fecha establecida</p>
-                        )}
-                        <div className="flex flex-col gap-0.5 mt-0.5">
-                          {daysInfo.diasPlazo > 0 && (
-                            <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
-                              Plazo: {daysInfo.diasPlazo} días
-                            </span>
-                          )}
-                          {account.fecha_vencimiento && account.estado !== 'PAGADO' && (
-                            <span className={`text-xs ${daysInfo.isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
-                              {daysInfo.text}
-                            </span>
-                          )}
+                  <div key={account.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-sm text-foreground truncate">{account.cliente?.razon_social}</span>
+                          {account.es_ruta_actual ? (
+                            <Badge variant="default" className="bg-emerald-600 text-[10px] py-0 px-1.5 h-4">Ruta Actual</Badge>
+                          ) : account.es_zona_actual ? (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-[10px] py-0 px-1.5 h-4">Zona Actual</Badge>
+                          ) : null}
                         </div>
+                        <p className="text-[11px] text-muted-foreground">{account.cliente?.codigo_cliente || account.cliente?.tipo || '-'} {account.zona_nombre ? `• ${account.zona_nombre}` : ''}</p>
                       </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(account.estado)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2 items-center">
-                        <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => handleVerPagos(account)}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          Pagos
-                        </Button>
-                        {/* Deshabilitar si el estado es PAGADO */}
-                        <Dialog open={selectedAccount?.id === account.id && isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); setSelectedAccount(open ? account : null); }}>
-                          <DialogTrigger asChild>
-                            <Button size="sm" className="bg-gradient-warm hover:opacity-90" disabled={account.estado === 'PAGADO'}>
-                              <DollarSign className="h-4 w-4 mr-1" />
-                              Cobrar
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-md">
-                            <DialogHeader>
-                              <DialogTitle>Registrar Pago / Cobranza</DialogTitle>
-                              <DialogDescription>
-                                Cliente: {selectedAccount?.cliente?.razon_social}
-                                <br />
-                                Saldo pendiente: S/ {Number(selectedAccount?.saldo).toLocaleString()}
-                                {(() => {
-                                  const info = getDaysInfo(selectedAccount);
-                                  return info.diasPlazo > 0 ? ` — Plazo de amortización: ${info.diasPlazo} días` : '';
-                                })()}
-                              </DialogDescription>
-                            </DialogHeader>
+                      {getStatusBadge(account.estado)}
+                    </div>
 
-                            <div className="flex justify-end pt-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs text-primary font-medium hover:bg-primary/10 h-7"
-                                onClick={() => {
-                                  const nextState = !isSplitPay;
-                                  setIsSplitPay(nextState);
-                                  if (nextState && splitPayRows.length === 0) {
-                                    const initialMonto = parseFloat(paymentAmount) || (selectedAccount ? Number(selectedAccount.saldo) : 0);
-                                    setSplitPayRows([
-                                      { metodo_pago: payMethod || 'EFECTIVO', monto: initialMonto }
-                                    ]);
-                                  }
-                                }}
-                              >
-                                {isSplitPay ? '← Usar pago único' : '🔀 Dividir pago (Múltiples Métodos)'}
-                              </Button>
-                            </div>
-
-                            {!isSplitPay ? (
-                              <div className="space-y-4 py-2">
-                                <div className="space-y-2">
-                                  <Label htmlFor="amount">Monto a pagar (S/)</Label>
-                                  <Input
-                                    id="amount"
-                                    type="number"
-                                    placeholder="0.00"
-                                    value={paymentAmount}
-                                    onChange={(e) => setPaymentAmount(e.target.value)}
-                                    max={Number(selectedAccount?.saldo)}
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label>Método de Pago</Label>
-                                  <Select value={payMethod} onValueChange={setPayMethod}>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                                      <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                                      <SelectItem value="YAPE">Yape</SelectItem>
-                                      <SelectItem value="PLIN">Plin</SelectItem>
-                                      <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                {payMethod === 'DEPOSITO' && (
-                                  <div className="space-y-4 pt-2 border-t border-border/50">
-                                    <div className="space-y-2">
-                                      <Label>Banco donde se paga <span className="text-red-500">*</span></Label>
-                                      <Select value={bank} onValueChange={setBank}>
-                                        <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="BCP">BCP (Banco de Crédito)</SelectItem>
-                                          <SelectItem value="BBVA">BBVA</SelectItem>
-                                          <SelectItem value="Interbank">Interbank</SelectItem>
-                                          <SelectItem value="Scotiabank">Scotiabank</SelectItem>
-                                          <SelectItem value="Banco de la Nacion">Banco de la Nación</SelectItem>
-                                          <SelectItem value="BanBif">BanBif</SelectItem>
-                                          <SelectItem value="Otro">Otro Banco</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                      <Label>Número de Operación <span className="text-red-500">*</span></Label>
-                                      <Input
-                                        placeholder="Ej: 00482910"
-                                        value={operationNumber}
-                                        onChange={(e) => setOperationNumber(e.target.value)}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="space-y-3 py-2">
-                                <div className="flex justify-between items-center text-xs font-semibold">
-                                  <span>Desglose de Pagos</span>
-                                  <span className="text-primary">
-                                    Suma: S/ {splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0).toFixed(2)}
-                                  </span>
-                                </div>
-
-                                {splitPayRows.map((row, idx) => (
-                                  <div key={idx} className="p-2.5 bg-muted/40 rounded-lg border space-y-2 text-xs">
-                                    <div className="flex items-center gap-2">
-                                      <Select
-                                        value={row.metodo_pago}
-                                        onValueChange={(val) => {
-                                          const newRows = [...splitPayRows];
-                                          newRows[idx].metodo_pago = val;
-                                          setSplitPayRows(newRows);
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs flex-1">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="EFECTIVO">Efectivo</SelectItem>
-                                          <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
-                                          <SelectItem value="YAPE">Yape</SelectItem>
-                                          <SelectItem value="PLIN">Plin</SelectItem>
-                                          <SelectItem value="DEPOSITO">Depósito</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-
-                                      <div className="flex items-center gap-1 w-28">
-                                        <span>S/</span>
-                                        <Input
-                                          type="number"
-                                          step="0.5"
-                                          min="0"
-                                          value={row.monto || ''}
-                                          onChange={(e) => {
-                                            const newRows = [...splitPayRows];
-                                            newRows[idx].monto = parseFloat(e.target.value) || 0;
-                                            setSplitPayRows(newRows);
-                                          }}
-                                          className="h-8 text-xs"
-                                        />
-                                      </div>
-
-                                      {splitPayRows.length > 1 && (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-8 w-8 text-destructive"
-                                          onClick={() => setSplitPayRows(splitPayRows.filter((_, i) => i !== idx))}
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                      )}
-                                    </div>
-
-                                    {row.metodo_pago === 'DEPOSITO' && (
-                                      <div className="grid grid-cols-2 gap-2 pt-1">
-                                        <Input
-                                          placeholder="Banco"
-                                          value={row.banco || ''}
-                                          onChange={(e) => {
-                                            const newRows = [...splitPayRows];
-                                            newRows[idx].banco = e.target.value;
-                                            setSplitPayRows(newRows);
-                                          }}
-                                          className="h-7 text-xs"
-                                        />
-                                        <Input
-                                          placeholder="N° Operación"
-                                          value={row.numero_operacion || ''}
-                                          onChange={(e) => {
-                                            const newRows = [...splitPayRows];
-                                            newRows[idx].numero_operacion = e.target.value;
-                                            setSplitPayRows(newRows);
-                                          }}
-                                          className="h-7 text-xs"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full text-xs h-8 gap-1"
-                                  onClick={() => setSplitPayRows([...splitPayRows, { metodo_pago: 'EFECTIVO', monto: 0 }])}
-                                >
-                                  <Plus className="h-3 w-3" /> Agregar otro pago
-                                </Button>
-                              </div>
-                            )}
-
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                              <Button
-                                className="bg-gradient-warm hover:opacity-90"
-                                onClick={() => handlePayment(selectedAccount.id)}
-                                disabled={
-                                  isSplitPay
-                                    ? splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0) <= 0
-                                    : !paymentAmount || (payMethod === 'DEPOSITO' && (!bank || !operationNumber))
-                                }
-                              >
-                                Confirmar Pago
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                    <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-border/50 text-center">
+                      <div className="bg-muted/40 p-1.5 rounded border">
+                        <span className="text-[10px] text-muted-foreground block">Monto Orig.</span>
+                        <span className="font-semibold text-foreground">S/ {Number(account.monto_total).toLocaleString()}</span>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded border border-emerald-200">
+                        <span className="text-[10px] text-muted-foreground block">Pagado</span>
+                        <span className="font-bold text-emerald-600">S/ {Number(account.monto_pagado).toLocaleString()}</span>
+                      </div>
+                      <div className="bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded border border-amber-200">
+                        <span className="text-[10px] text-muted-foreground block">Saldo Actual</span>
+                        <span className="font-bold text-amber-600">S/ {Number(account.saldo).toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t border-border/50">
+                      <div>
+                        📅 Venc: <strong>{account.fecha_vencimiento ? format(new Date(typeof account.fecha_vencimiento === 'string' ? account.fecha_vencimiento.substring(0, 10) + "T00:00:00" : account.fecha_vencimiento), "dd/MM/yyyy") : 'Sin fecha'}</strong>
+                        {!isPaid && account.fecha_vencimiento && (
+                          <span className={`block text-[10px] ${daysInfo.isOverdue ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>{daysInfo.text}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1.5">
+                      <Button size="sm" variant="ghost" className="h-8 text-xs font-medium border" onClick={() => handleVerPagos(account)}>
+                        <Eye className="h-3.5 w-3.5 mr-1" /> Ver Pagos
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-warm hover:opacity-90 h-8 text-xs font-semibold"
+                        disabled={isPaid}
+                        onClick={() => { setSelectedAccount(account); setIsDialogOpen(true); }}
+                      >
+                        <DollarSign className="h-3.5 w-3.5 mr-1" /> Cobrar
+                      </Button>
+                    </div>
+                  </div>
                 );
-              })}
-            </TableBody>
-          </Table>
+              })
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+            <Table className="w-full min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente / Ubicación</TableHead>
+                  <TableHead className="text-right">Monto Original</TableHead>
+                  <TableHead className="text-right">Pagado</TableHead>
+                  <TableHead className="text-right">Saldo Actual</TableHead>
+                  <TableHead>Vencimiento</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedAccounts.map((account) => {
+                  const daysInfo = getDaysInfo(account);
+                  const isPaid = (account.estado || '').toUpperCase() === 'PAGADO';
+                  return (
+                    <TableRow key={account.id} className="hover:bg-muted/50">
+                      <TableCell className="whitespace-nowrap">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-medium">{account.cliente?.razon_social}</p>
+                            {account.es_ruta_actual ? (
+                              <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-[10px] py-0 px-1.5 h-4">Ruta Actual</Badge>
+                            ) : account.es_zona_actual ? (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-[10px] py-0 px-1.5 h-4">Zona Actual</Badge>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span>{account.cliente?.codigo_cliente || account.cliente?.tipo || '-'}</span>
+                            {(account.zona_nombre || account.ruta_nombre) && (
+                              <span className="text-[11px] text-muted-foreground/80">
+                                • {account.zona_nombre} ({account.ruta_nombre})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground whitespace-nowrap">
+                        S/ {Number(account.monto_total).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-emerald-600 font-medium whitespace-nowrap">
+                        S/ {Number(account.monto_pagado).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-bold whitespace-nowrap">
+                        S/ {Number(account.saldo).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div>
+                          {account.fecha_vencimiento ? (
+                            <p className="text-sm font-medium">
+                              {format(new Date(typeof account.fecha_vencimiento === 'string' ? account.fecha_vencimiento.substring(0, 10) + "T00:00:00" : account.fecha_vencimiento), "dd MMM yyyy", { locale: es })}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Sin fecha establecida</p>
+                          )}
+                          <div className="flex flex-col gap-0.5 mt-0.5">
+                            {daysInfo.diasPlazo > 0 && (
+                              <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                                Plazo: {daysInfo.diasPlazo} días
+                              </span>
+                            )}
+                            {account.fecha_vencimiento && !isPaid && (
+                              <span className={`text-xs ${daysInfo.isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                                {daysInfo.text}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{getStatusBadge(account.estado)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2 items-center">
+                          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => handleVerPagos(account)}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            Pagos
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-gradient-warm hover:opacity-90"
+                            disabled={isPaid}
+                            onClick={() => { setSelectedAccount(account); setIsDialogOpen(true); }}
+                          >
+                            <DollarSign className="h-4 w-4 mr-1" />
+                            Cobrar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
           {totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-4">
               <Button
@@ -674,19 +560,228 @@ const AccountsReceivable = () => {
         </CardContent>
       </Card>
 
+      {/* Cobrar Dialog */}
+      <Dialog open={isDialogOpen && !!selectedAccount} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setSelectedAccount(null); }}>
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl">Registrar Pago / Cobranza</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Cliente: {selectedAccount?.cliente?.razon_social}
+              <br />
+              Saldo pendiente: S/ {Number(selectedAccount?.saldo).toLocaleString()}
+              {(() => {
+                const info = getDaysInfo(selectedAccount);
+                return info.diasPlazo > 0 ? ` — Plazo: ${info.diasPlazo} días` : '';
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-xs text-primary font-medium hover:bg-primary/10 h-7"
+              onClick={() => {
+                const nextState = !isSplitPay;
+                setIsSplitPay(nextState);
+                if (nextState && splitPayRows.length === 0) {
+                  const initialMonto = parseFloat(paymentAmount) || (selectedAccount ? Number(selectedAccount.saldo) : 0);
+                  setSplitPayRows([
+                    { metodo_pago: payMethod || 'EFECTIVO', monto: initialMonto }
+                  ]);
+                }
+              }}
+            >
+              {isSplitPay ? '← Usar pago único' : '🔀 Dividir pago (Múltiples Métodos)'}
+            </Button>
+          </div>
+
+          {!isSplitPay ? (
+            <div className="space-y-4 py-2">
+              <div className="space-y-2">
+                <Label htmlFor="amount">Monto a pagar (S/)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="0.00"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  max={Number(selectedAccount?.saldo)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Método de Pago</Label>
+                <Select value={payMethod} onValueChange={setPayMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                    <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                    <SelectItem value="YAPE">Yape</SelectItem>
+                    <SelectItem value="PLIN">Plin</SelectItem>
+                    <SelectItem value="DEPOSITO">Depósito Bancario</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {payMethod === 'DEPOSITO' && (
+                <div className="space-y-4 pt-2 border-t border-border/50">
+                  <div className="space-y-2">
+                    <Label>Banco donde se paga <span className="text-red-500">*</span></Label>
+                    <Select value={bank} onValueChange={setBank}>
+                      <SelectTrigger><SelectValue placeholder="Selecciona un banco" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BCP">BCP (Banco de Crédito)</SelectItem>
+                        <SelectItem value="BBVA">BBVA</SelectItem>
+                        <SelectItem value="Interbank">Interbank</SelectItem>
+                        <SelectItem value="Scotiabank">Scotiabank</SelectItem>
+                        <SelectItem value="Banco de la Nacion">Banco de la Nación</SelectItem>
+                        <SelectItem value="BanBif">BanBif</SelectItem>
+                        <SelectItem value="Otro">Otro Banco</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Número de Operación <span className="text-red-500">*</span></Label>
+                    <Input
+                      placeholder="Ej: 00482910"
+                      value={operationNumber}
+                      onChange={(e) => setOperationNumber(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="flex justify-between items-center text-xs font-semibold">
+                <span>Desglose de Pagos</span>
+                <span className="text-primary">
+                  Suma: S/ {splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0).toFixed(2)}
+                </span>
+              </div>
+
+              {splitPayRows.map((row, idx) => (
+                <div key={idx} className="p-2.5 bg-muted/40 rounded-lg border space-y-2 text-xs">
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                    <Select
+                      value={row.metodo_pago}
+                      onValueChange={(val) => {
+                        const newRows = [...splitPayRows];
+                        newRows[idx].metodo_pago = val;
+                        setSplitPayRows(newRows);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs flex-1 min-w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EFECTIVO">Efectivo</SelectItem>
+                        <SelectItem value="TRANSFERENCIA">Transferencia</SelectItem>
+                        <SelectItem value="YAPE">Yape</SelectItem>
+                        <SelectItem value="PLIN">Plin</SelectItem>
+                        <SelectItem value="DEPOSITO">Depósito</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex items-center gap-1 w-full sm:w-28 shrink-0">
+                      <span>S/</span>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={row.monto || ''}
+                        onChange={(e) => {
+                          const newRows = [...splitPayRows];
+                          newRows[idx].monto = parseFloat(e.target.value) || 0;
+                          setSplitPayRows(newRows);
+                        }}
+                        className="h-8 text-xs flex-1"
+                      />
+                      {splitPayRows.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive shrink-0"
+                          onClick={() => setSplitPayRows(splitPayRows.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {row.metodo_pago === 'DEPOSITO' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Input
+                        placeholder="Banco"
+                        value={row.banco || ''}
+                        onChange={(e) => {
+                          const newRows = [...splitPayRows];
+                          newRows[idx].banco = e.target.value;
+                          setSplitPayRows(newRows);
+                        }}
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        placeholder="N° Operación"
+                        value={row.numero_operacion || ''}
+                        onChange={(e) => {
+                          const newRows = [...splitPayRows];
+                          newRows[idx].numero_operacion = e.target.value;
+                          setSplitPayRows(newRows);
+                        }}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full text-xs h-8 gap-1"
+                onClick={() => setSplitPayRows([...splitPayRows, { metodo_pago: 'EFECTIVO', monto: 0 }])}
+              >
+                <Plus className="h-3 w-3" /> Agregar otro pago
+              </Button>
+            </div>
+          )}
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+            <Button
+              className="bg-gradient-warm hover:opacity-90 w-full sm:w-auto"
+              onClick={() => handlePayment(selectedAccount?.id)}
+              disabled={
+                isSplitPay
+                  ? splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0) <= 0
+                  : !paymentAmount || (payMethod === 'DEPOSITO' && (!bank || !operationNumber))
+              }
+            >
+              Confirmar Pago
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Ver Pagos Dialog */}
       <Dialog open={!!pagosDialog} onOpenChange={() => setPagosDialog(null)}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-[600px] p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start flex-wrap gap-2">
               <div>
-                <DialogTitle>Detalle de Pagos</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-lg sm:text-xl">Detalle de Pagos</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm">
                   Cliente: {pagosDialog?.cliente?.razon_social}
                 </DialogDescription>
               </div>
               {pagosDialog?.venta && (
-                <Badge variant="outline" className="bg-primary/5 mt-1 text-xs">
+                <Badge variant="outline" className="bg-primary/5 text-xs">
                   Fecha Venta: {format(new Date(pagosDialog.venta.fecha), "dd/MM/yyyy")}
                 </Badge>
               )}
@@ -696,74 +791,76 @@ const AccountsReceivable = () => {
             {loadingPagos ? (
               <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : cuentaPagos.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">No hay pagos registrados</p>
+              <p className="text-center text-muted-foreground py-4 text-sm">No hay pagos registrados</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Método</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead>Referencia</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cuentaPagos.map((pago: any) => {
-                    const isAnulado = pago.estado === 'ANULADO';
-                    const isAdelanto = String(pago.id).startsWith('adelanto-') || pago.metodo_pago === 'ADELANTO';
-                    return (
-                      <TableRow key={pago.id} className={isAnulado ? 'bg-destructive/5 opacity-70' : ''}>
-                        <TableCell>{format(new Date(typeof pago.fecha === 'string' ? pago.fecha.substring(0, 10) + "T00:00:00" : pago.fecha), "dd/MM/yyyy")}</TableCell>
-                        <TableCell className="capitalize">{pago.metodo_pago}</TableCell>
-                        <TableCell className={`text-right font-bold ${isAnulado ? 'line-through text-muted-foreground' : 'text-emerald-600'}`}>
-                          S/ {Number(pago.monto).toFixed(2)}
-                        </TableCell>
-                        <TableCell>{pago.referencia || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={isAnulado ? 'destructive' : isAdelanto ? 'outline' : 'secondary'}>
-                            {isAnulado ? 'ANULADO' : isAdelanto ? 'ADELANTO' : 'ACTIVO'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {!isAdelanto && !isAnulado ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-destructive hover:bg-destructive/10"
-                              onClick={() => setAnularDialog(pago)}
-                            >
-                              <Ban className="h-3.5 w-3.5 mr-1" />
-                              Anular
-                            </Button>
-                          ) : isAnulado ? (
-                            <span className="text-xs text-muted-foreground italic">Anulado</span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic" title="No se puede anular un adelanto de crédito">Adelanto (No anulable)</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto w-full border rounded-lg">
+                <Table className="w-full min-w-[500px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Método</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                      <TableHead>Referencia</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cuentaPagos.map((pago: any) => {
+                      const isAnulado = pago.estado === 'ANULADO';
+                      const isAdelanto = String(pago.id).startsWith('adelanto-') || pago.metodo_pago === 'ADELANTO';
+                      return (
+                        <TableRow key={pago.id} className={isAnulado ? 'bg-destructive/5 opacity-70' : ''}>
+                          <TableCell className="whitespace-nowrap">{format(new Date(typeof pago.fecha === 'string' ? pago.fecha.substring(0, 10) + "T00:00:00" : pago.fecha), "dd/MM/yyyy")}</TableCell>
+                          <TableCell className="capitalize whitespace-nowrap">{pago.metodo_pago}</TableCell>
+                          <TableCell className={`text-right font-bold whitespace-nowrap ${isAnulado ? 'line-through text-muted-foreground' : 'text-emerald-600'}`}>
+                            S/ {Number(pago.monto).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">{pago.referencia || '-'}</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <Badge variant={isAnulado ? 'destructive' : isAdelanto ? 'outline' : 'secondary'}>
+                              {isAnulado ? 'ANULADO' : isAdelanto ? 'ADELANTO' : 'ACTIVO'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right whitespace-nowrap">
+                            {!isAdelanto && !isAnulado ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                                onClick={() => setAnularDialog(pago)}
+                              >
+                                <Ban className="h-3.5 w-3.5 mr-1" />
+                                Anular
+                              </Button>
+                            ) : isAnulado ? (
+                              <span className="text-xs text-muted-foreground italic">Anulado</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic" title="No se puede anular un adelanto de crédito">Adelanto (No anulable)</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPagosDialog(null)}>Cerrar</Button>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setPagosDialog(null)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Annul Abono Confirmation Dialog */}
       <Dialog open={!!anularDialog} onOpenChange={(open) => { if (!open) setAnularDialog(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2">
+            <DialogTitle className="text-destructive text-lg flex items-center gap-2">
               <Ban className="h-5 w-5" /> Confirmar Anulación de Abono
             </DialogTitle>
-            <DialogDescription className="pt-2 space-y-2">
+            <DialogDescription className="pt-2 space-y-2 text-xs sm:text-sm">
               ¿Estás seguro de que deseas anular este abono de <strong>S/ {Number(anularDialog?.monto || 0).toFixed(2)}</strong> ({anularDialog?.metodo_pago})?
               <br /><br />
               <span className="text-xs text-muted-foreground block">
@@ -771,11 +868,11 @@ const AccountsReceivable = () => {
               </span>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAnularDialog(null)} disabled={isAnulling}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setAnularDialog(null)} disabled={isAnulling}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleAnularAbono} disabled={isAnulling}>
+            <Button variant="destructive" className="w-full sm:w-auto" onClick={handleAnularAbono} disabled={isAnulling}>
               {isAnulling ? 'Anulando...' : 'Anular Abono'}
             </Button>
           </DialogFooter>

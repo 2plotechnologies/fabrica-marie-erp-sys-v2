@@ -270,8 +270,8 @@ const MoneyDelivery = () => {
                     <DialogTrigger asChild>
                         <Button className="bg-gradient-warm hover:opacity-90"><Plus className="h-4 w-4 mr-2" />Nueva Entrega</Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader><DialogTitle>Registrar Nueva Entrega</DialogTitle></DialogHeader>
+                    <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+                        <DialogHeader><DialogTitle className="text-lg sm:text-xl">Registrar Nueva Entrega</DialogTitle></DialogHeader>
 
                         <div className="space-y-6 py-4">
                             {(hasRole('VENDEDOR') || currentRole === 'VENDEDOR') && resumenVendedorData !== null && (
@@ -436,45 +436,84 @@ const MoneyDelivery = () => {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Banknote className="h-5 w-5 text-primary" />Historial de Entregas</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Fecha</TableHead>
-                                <TableHead>Usuario/Remitente</TableHead>
-                                <TableHead>Nombre del Receptor</TableHead>
-                                <TableHead>Monto Total</TableHead>
-                                <TableHead>Items</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {entregas.length === 0 ? (
+                <CardContent className="p-2 sm:p-6">
+                    {/* Mobile Card View */}
+                    <div className="space-y-3 sm:hidden">
+                        {entregas.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">
+                                No hay entregas registradas
+                            </div>
+                        ) : (
+                            paginatedEntregas.map((entrega) => (
+                                <div key={entrega.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <span className="font-bold text-sm text-foreground truncate block">{entrega.usuario?.nombre || 'Desconocido'}</span>
+                                            <p className="text-[11px] text-muted-foreground">Receptor: <strong>{entrega.nombre_receptor || '—'}</strong></p>
+                                        </div>
+                                        {getEstadoBadge(entrega.estado)}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
+                                        <div>📅 <strong>{format(new Date(entrega.created_at || new Date()), 'dd/MM/yyyy HH:mm', { locale: es })}</strong></div>
+                                        <div>📎 <Badge variant="secondary" className="text-[10px] py-0">{entrega.items?.length || 0} adjuntos</Badge></div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                                        <div>
+                                            <span className="text-[10px] text-muted-foreground block">Monto Total</span>
+                                            <span className="text-base font-bold text-primary">S/ {Number(entrega.monto_total).toFixed(2)}</span>
+                                        </div>
+                                        <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1" onClick={() => openView(entrega)}>
+                                            <Eye className="h-3.5 w-3.5" /> Ver Detalle
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+                        <Table className="w-full min-w-[750px]">
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay entregas registradas</TableCell>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Usuario/Remitente</TableHead>
+                                    <TableHead>Nombre del Receptor</TableHead>
+                                    <TableHead>Monto Total</TableHead>
+                                    <TableHead>Items</TableHead>
+                                    <TableHead>Estado</TableHead>
+                                    <TableHead className="text-right">Acciones</TableHead>
                                 </TableRow>
-                            ) : (
-                                paginatedEntregas.map((entrega) => (
-                                    <TableRow key={entrega.id} className="hover:bg-muted/30">
-                                        <TableCell>{format(new Date(entrega.created_at || new Date()), 'dd/MM/yyyy HH:mm', { locale: es })}</TableCell>
-                                        <TableCell className="font-medium">{entrega.usuario?.nombre || 'Desconocido'}</TableCell>
-                                        <TableCell className="text-muted-foreground">{entrega.nombre_receptor || '—'}</TableCell>
-                                        <TableCell className="font-bold text-foreground">S/ {Number(entrega.monto_total).toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary"><FileText className="h-3 w-3 mr-1" /> {entrega.items?.length || 0} adjuntos</Badge>
-                                        </TableCell>
-                                        <TableCell>{getEstadoBadge(entrega.estado)}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => openView(entrega)}>
-                                                <Eye className="h-4 w-4 mr-1" /> Ver Detalle
-                                            </Button>
-                                        </TableCell>
+                            </TableHeader>
+                            <TableBody>
+                                {entregas.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay entregas registradas</TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    paginatedEntregas.map((entrega) => (
+                                        <TableRow key={entrega.id} className="hover:bg-muted/30">
+                                            <TableCell className="whitespace-nowrap">{format(new Date(entrega.created_at || new Date()), 'dd/MM/yyyy HH:mm', { locale: es })}</TableCell>
+                                            <TableCell className="font-medium whitespace-nowrap">{entrega.usuario?.nombre || 'Desconocido'}</TableCell>
+                                            <TableCell className="text-muted-foreground whitespace-nowrap">{entrega.nombre_receptor || '—'}</TableCell>
+                                            <TableCell className="font-bold text-foreground whitespace-nowrap">S/ {Number(entrega.monto_total).toFixed(2)}</TableCell>
+                                            <TableCell className="whitespace-nowrap">
+                                                <Badge variant="secondary"><FileText className="h-3 w-3 mr-1" /> {entrega.items?.length || 0} adjuntos</Badge>
+                                            </TableCell>
+                                            <TableCell className="whitespace-nowrap">{getEstadoBadge(entrega.estado)}</TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="sm" onClick={() => openView(entrega)}>
+                                                    <Eye className="h-4 w-4 mr-1" /> Ver Detalle
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                     {totalPages > 1 && (
                         <div className="flex justify-center gap-2 mt-4">
                             <Button disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</Button>
@@ -487,42 +526,42 @@ const MoneyDelivery = () => {
 
             {/* View & Process Dialog */}
             <Dialog open={isViewDialog} onOpenChange={setIsViewDialog}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle>Detalle de Entrega #{selectedEntrega?.id}</DialogTitle></DialogHeader>
+                <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-3xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+                    <DialogHeader><DialogTitle className="text-lg sm:text-xl">Detalle de Entrega #{selectedEntrega?.id}</DialogTitle></DialogHeader>
                     {selectedEntrega && (
                         <><div className="space-y-6 py-4">
-                            <div className="flex flex-col md:flex-row justify-between bg-muted/40 p-4 rounded-xl gap-4">
+                            <div className="flex flex-col sm:flex-row justify-between bg-muted/40 p-4 rounded-xl gap-4">
                                 <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Remitente</p>
-                                    <p className="font-medium text-foreground">{selectedEntrega.usuario?.nombre}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Remitente</p>
+                                    <p className="font-medium text-foreground text-xs sm:text-sm">{selectedEntrega.usuario?.nombre}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Receptor</p>
-                                    <p className="font-medium text-foreground">{selectedEntrega.nombre_receptor || '—'}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Receptor</p>
+                                    <p className="font-medium text-foreground text-xs sm:text-sm">{selectedEntrega.nombre_receptor || '—'}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Fecha / Hora</p>
-                                    <p className="font-medium text-foreground">{format(new Date(selectedEntrega.created_at || new Date()), "d 'de' MMMM, yyyy HH:mm", { locale: es })}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Fecha / Hora</p>
+                                    <p className="font-medium text-foreground text-xs sm:text-sm">{format(new Date(selectedEntrega.created_at || new Date()), "d 'de' MMMM, yyyy HH:mm", { locale: es })}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Total Entregado</p>
-                                    <p className="font-bold text-lg text-primary">S/ {Number(selectedEntrega.monto_total).toFixed(2)}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Total Entregado</p>
+                                    <p className="font-bold text-base sm:text-lg text-primary">S/ {Number(selectedEntrega.monto_total).toFixed(2)}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">Estado</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground">Estado</p>
                                     {getEstadoBadge(selectedEntrega.estado)}
                                 </div>
                             </div>
 
                             {selectedEntrega.observaciones && (
-                                <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 text-sm">
+                                <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 text-xs sm:text-sm">
                                     <span className="font-semibold text-amber-700 dark:text-amber-400">Observaciones: </span>
                                     {selectedEntrega.observaciones}
                                 </div>
                             )}
 
                             <div>
-                                <h3 className="font-bold text-lg mb-4 flex items-center"><FileText className="h-5 w-5 mr-2 text-primary" /> Ítems Registrados y Comprobantes</h3>
+                                <h3 className="font-bold text-base sm:text-lg mb-4 flex items-center"><FileText className="h-5 w-5 mr-2 text-primary" /> Ítems Registrados y Comprobantes</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {selectedEntrega.items?.map((item: any) => (
                                         <Card key={item.id} className="shadow-sm border-muted">
@@ -588,20 +627,21 @@ const MoneyDelivery = () => {
                                     ))}
                                 </div>
                             </div>
-                        </div><DialogFooter className="border-t pt-4">
-                                <Button variant="outline" onClick={() => setIsViewDialog(false)}>Cerrar</Button>
+                        </div><DialogFooter className="border-t pt-4 flex-col sm:flex-row gap-2">
+                                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsViewDialog(false)}>Cerrar</Button>
 
                                 {selectedEntrega.estado === 'PENDIENTE' && canApprove && (
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                         <Button
                                             variant="destructive"
+                                            className="w-full sm:w-auto"
                                             onClick={handleRechazar}
                                             disabled={updateEstado.isPending}
                                         >
                                             <XCircle className="h-4 w-4 mr-2" /> Rechazar
                                         </Button>
                                         <Button
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white w-full sm:w-auto"
                                             onClick={handleAprobar}
                                             disabled={updateEstado.isPending}
                                         >
@@ -616,20 +656,20 @@ const MoneyDelivery = () => {
             </Dialog>
             {/* Warning Dialog for Irregular Cash Close */}
             <Dialog open={!!confirmWarningDialog} onOpenChange={(open) => !open && setConfirmWarningDialog(null)}>
-                <DialogContent>
+                <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center text-amber-600">
-                            <AlertTriangle className="h-5 w-5 mr-2" />
+                        <DialogTitle className="flex items-center text-amber-600 text-base sm:text-lg">
+                            <AlertTriangle className="h-5 w-5 mr-2 shrink-0" />
                             Advertencia de Cierre
                         </DialogTitle>
                     </DialogHeader>
                     <div className="py-4">
-                        <p className="text-sm text-muted-foreground">{confirmWarningDialog?.message}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">{confirmWarningDialog?.message}</p>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setConfirmWarningDialog(null)}>Cancelar</Button>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmWarningDialog(null)}>Cancelar</Button>
                         <Button
-                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            className="bg-amber-600 hover:bg-amber-700 text-white w-full sm:w-auto"
                             disabled={updateEstado.isPending}
                             onClick={() => {
                                 if (confirmWarningDialog) {

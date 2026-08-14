@@ -686,7 +686,7 @@ class DashboardService
         ];
     }
 
-    // Créditos pendientes de las rutas de la salida vigente (ordenados del más antiguo al más reciente)
+    // Créditos pendientes / cobranzas de la salida vigente y zonas/rutas para vendedor
     public function getCreditosPendientesRutasVendedor($vendedorId, $activeSalida = null)
     {
         if (!$activeSalida) {
@@ -695,6 +695,7 @@ class DashboardService
             $activeSalida = \App\Models\Salida::with(['rutas'])->find($activeSalida);
         }
 
+        // Si el vendedor no tiene salida en ruta activa, no se lista nada
         if (!$activeSalida) {
             return [
                 'total_saldo' => 0,
@@ -702,71 +703,105 @@ class DashboardService
             ];
         }
 
-        $rutaIds = collect();
+        $activeZona = $activeSalida->zona;
+        $activeRutaIds = collect();
         if ($activeSalida->ruta_id) {
-            $rutaIds->push($activeSalida->ruta_id);
+            $activeRutaIds->push((int)$activeSalida->ruta_id);
         }
         if ($activeSalida->rutas) {
             foreach ($activeSalida->rutas as $r) {
-                $rutaIds->push($r->id);
+                $activeRutaIds->push((int)$r->id);
             }
         }
+        $activeRutaIds = $activeRutaIds->filter()->unique()->values()->toArray();
 
-        $rutaIds = $rutaIds->filter()->unique()->values();
+        $cuentas = \App\Models\CuentaPorCobrar::with([
+            'cliente.ruta',
+            'cliente.rutas',
+            'venta',
+            'abonos'
+        ])
+        ->withSum(['abonos as monto_pagado_abonos' => function ($q) {
+            $q->where(function ($sq) {
+                $sq->whereNull('estado')->orWhere('estado', '!=', 'ANULADO');
+            });
+        }], 'monto')
+        ->get();
 
-        if ($rutaIds->isEmpty()) {
-            return [
-                'total_saldo' => 0,
-                'cuentas'     => [],
-            ];
-        }
+        $cuentas->each(function($cuenta) use ($activeZona, $activeRutaIds) {
+            $adelanto = $cuenta->venta ? (float)$cuenta->venta->adelanto : 0;
+            $monto_pagado_abonos = $cuenta->abonos ? (float)$cuenta->abonos->filter(function($abono) {
+                return empty($abono->estado) || strtoupper($abono->estado) !== 'ANULADO';
+            })->sum('monto') : 0;
+            $cuenta->monto_pagado = $monto_pagado_abonos + $adelanto;
 
-        $clientIds = DB::table('clientes')
-            ->whereIn('ruta_id', $rutaIds)
-            ->pluck('id')
-            ->merge(
-                DB::table('ruta_cliente')
-                    ->whereIn('ruta_id', $rutaIds)
-                    ->pluck('cliente_id')
-            )
-            ->unique()
-            ->values()
-            ->toArray();
+            $clienteRuta = $cuenta->cliente?->ruta;
+            $clienteRutas = $cuenta->cliente?->rutas;
 
-        if (empty($clientIds)) {
-            return [
-                'total_saldo' => 0,
-                'cuentas'     => [],
-            ];
-        }
+            $cuentaZona = $clienteRuta?->zona;
+            if (!$cuentaZona && $clienteRutas && $clienteRutas->count() > 0) {
+                $cuentaZona = $clienteRutas->first()->zona;
+            }
 
-        $cuentas = DB::table('cuentas_por_cobrar')
-            ->join('clientes', 'cuentas_por_cobrar.cliente_id', '=', 'clientes.id')
-            ->leftJoin('rutas', 'clientes.ruta_id', '=', 'rutas.id')
-            ->leftJoin('ventas', 'cuentas_por_cobrar.venta_id', '=', 'ventas.id')
-            ->whereIn('cuentas_por_cobrar.cliente_id', $clientIds)
-            ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
-            ->where('cuentas_por_cobrar.saldo', '>', 0)
-            ->select(
-                'cuentas_por_cobrar.id',
-                'cuentas_por_cobrar.cliente_id',
-                'cuentas_por_cobrar.venta_id',
-                'cuentas_por_cobrar.fecha_vencimiento',
-                'cuentas_por_cobrar.monto_total',
-                'cuentas_por_cobrar.saldo',
-                'cuentas_por_cobrar.estado',
-                'clientes.razon_social as cliente_nombre',
-                'clientes.codigo_cliente',
-                'rutas.nombre as ruta_nombre',
-                'ventas.codigo as venta_codigo',
-                'ventas.fecha as venta_fecha'
-            )
-            ->orderBy('cuentas_por_cobrar.fecha_vencimiento', 'asc')
-            ->get();
+            $cuentaRutaId = $cuenta->cliente?->ruta_id;
+            if (!$cuentaRutaId && $clienteRutas && $clienteRutas->count() > 0) {
+                $cuentaRutaId = $clienteRutas->first()->id;
+            }
+
+            $esZonaActual = false;
+            if ($activeZona && $cuentaZona && strtoupper(trim($cuentaZona)) === strtoupper(trim($activeZona))) {
+                $esZonaActual = true;
+            }
+
+            $esRutaActual = false;
+            if (!empty($activeRutaIds) && $cuentaRutaId && in_array((int)$cuentaRutaId, $activeRutaIds)) {
+                $esRutaActual = true;
+            }
+
+            $cuenta->es_zona_actual = $esZonaActual;
+            $cuenta->es_ruta_actual = $esRutaActual;
+            $cuenta->zona_nombre = $cuentaZona ?? 'Sin Zona';
+            $cuenta->ruta_nombre = $clienteRuta?->nombre ?? ($clienteRutas && $clienteRutas->count() > 0 ? $clienteRutas->first()->nombre : 'Sin Ruta');
+            $cuenta->cliente_nombre = $cuenta->cliente?->razon_social ?? 'Cliente';
+            $cuenta->codigo_cliente = $cuenta->cliente?->codigo_cliente ?? '-';
+            $cuenta->venta_codigo = $cuenta->venta?->codigo ?? "Venta #{$cuenta->venta_id}";
+            $cuenta->venta_fecha = $cuenta->venta?->fecha ?? '';
+        });
+
+        $sorted = $cuentas->sort(function($a, $b) {
+            $isPaidA = strtoupper($a->estado) === 'PAGADO';
+            $isPaidB = strtoupper($b->estado) === 'PAGADO';
+
+            if ($isPaidA !== $isPaidB) {
+                return $isPaidA ? 1 : -1;
+            }
+
+            if ($a->es_ruta_actual !== $b->es_ruta_actual) {
+                return $a->es_ruta_actual ? -1 : 1;
+            }
+            if ($a->es_zona_actual !== $b->es_zona_actual) {
+                return $a->es_zona_actual ? -1 : 1;
+            }
+            if ($a->zona_nombre !== $b->zona_nombre) {
+                return strcmp($a->zona_nombre, $b->zona_nombre);
+            }
+            if ($a->ruta_nombre !== $b->ruta_nombre) {
+                return strcmp($a->ruta_nombre, $b->ruta_nombre);
+            }
+
+            $fechaA = $a->venta_fecha;
+            $fechaB = $b->venta_fecha;
+            if ($fechaA !== $fechaB) {
+                return strcmp($fechaA, $fechaB);
+            }
+            return $a->id - $b->id;
+        })->values();
+
+        $totalSaldo = $sorted->where('estado', '!=', 'PAGADO')->sum('saldo');
 
         return [
-            'total_saldo' => (float) $cuentas->sum('saldo'),
-            'cuentas'     => $cuentas,
+            'total_saldo' => (float) $totalSaldo,
+            'cuentas'     => $sorted,
         ];
     }
 

@@ -797,26 +797,40 @@ const Dashboard = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                          {creditosPendientes.map((item: any) => (
-                            <tr key={item.id} className="hover:bg-muted/50 transition-colors">
-                              <td className="p-2.5 font-medium">
-                                <div className="font-semibold">{item.cliente_nombre}</div>
-                                <span className="text-[10px] text-muted-foreground font-mono">{item.codigo_cliente}</span>
-                              </td>
-                              <td className="p-2.5">
-                                <div className="text-xs font-bold text-primary">{item.ruta_nombre || 'Ruta'}</div>
-                                <div className="text-[11px] text-muted-foreground">{item.venta_codigo || `Venta #${item.venta_id}`}</div>
-                              </td>
-                              <td className="p-2.5 whitespace-nowrap">
-                                <Badge variant="outline" className="text-xs font-mono">
-                                  {item.fecha_vencimiento}
-                                </Badge>
-                              </td>
-                              <td className="p-2.5 text-right font-bold text-amber-600 dark:text-amber-400">
-                                S/ {Number(item.saldo).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          ))}
+                          {creditosPendientes.map((item: any) => {
+                            const isPaid = (item.estado || '').toUpperCase() === 'PAGADO';
+                            return (
+                              <tr key={item.id} className={`hover:bg-muted/50 transition-colors ${isPaid ? 'opacity-60 bg-muted/20' : ''}`}>
+                                <td className="p-2.5 font-medium">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-semibold">{item.cliente_nombre || item.cliente?.razon_social}</span>
+                                    {item.es_ruta_actual ? (
+                                      <Badge variant="default" className="bg-emerald-600 text-[9px] py-0 px-1 h-3.5">Ruta Actual</Badge>
+                                    ) : item.es_zona_actual ? (
+                                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 text-[9px] py-0 px-1 h-3.5">Zona Actual</Badge>
+                                    ) : null}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground font-mono">{item.codigo_cliente || item.cliente?.codigo_cliente || '-'}</span>
+                                </td>
+                                <td className="p-2.5">
+                                  <div className="text-xs font-bold text-primary">{item.ruta_nombre || 'Ruta'}</div>
+                                  <div className="text-[11px] text-muted-foreground">{item.venta_codigo || (item.venta?.codigo ? item.venta.codigo : `Venta #${item.venta_id}`)}</div>
+                                </td>
+                                <td className="p-2.5 whitespace-nowrap">
+                                  <Badge variant="outline" className="text-xs font-mono">
+                                    {item.fecha_vencimiento ? (typeof item.fecha_vencimiento === 'string' ? item.fecha_vencimiento.substring(0, 10) : item.fecha_vencimiento) : '-'}
+                                  </Badge>
+                                </td>
+                                <td className="p-2.5 text-right font-bold">
+                                  {isPaid ? (
+                                    <span className="text-emerald-600 text-xs font-semibold">PAGADO</span>
+                                  ) : (
+                                    <span className="text-amber-600 dark:text-amber-400">S/ {Number(item.saldo).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

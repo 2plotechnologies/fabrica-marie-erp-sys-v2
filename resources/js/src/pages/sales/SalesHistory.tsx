@@ -310,72 +310,56 @@ const SalesHistory = () => {
             Ventas Realizadas
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="text-center">Productos</TableHead>
-                <TableHead>Tipo Pago</TableHead>
-                <TableHead>Nota Pedido</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedSales.map((sale) => (
-                <TableRow key={sale.id} className="hover:bg-muted/50">
-                  <TableCell>
-                    <code className="text-xs bg-muted px-2 py-1 rounded">
-                      #{sale.codigo?.padStart(6, '0')}
-                    </code>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {format(sale.fecha, "dd MMM yyyy, HH:mm", { locale: es })}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {sale.cliente?.razon_social}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge variant="outline">{sale.items.length} items</Badge>
-                  </TableCell>
-                  <TableCell>{getPaymentBadge(sale.tipo_pago)}</TableCell>
-                  <TableCell>
-                    {sale.nota_pedido ? (
-                      <span className="font-mono text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-1 rounded border border-amber-200/50 dark:border-amber-800/30">
-                        {sale.nota_pedido}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(sale.estado)}</TableCell>
-                  <TableCell className="text-right font-bold">
-                    S/ {Number(sale.total_neto).toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
+        <CardContent className="p-2 sm:p-6">
+          {/* Mobile Card View */}
+          <div className="space-y-3 sm:hidden">
+            {paginatedSales.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No se encontraron ventas
+              </div>
+            ) : (
+              paginatedSales.map((sale) => (
+                <div key={sale.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <code className="text-[11px] bg-muted px-1.5 py-0.5 rounded font-mono shrink-0">
+                        #{sale.codigo?.padStart(6, '0')}
+                      </code>
+                      <span className="font-bold text-sm text-foreground truncate">{sale.cliente?.razon_social}</span>
+                    </div>
+                    {getStatusBadge(sale.estado)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
+                    <div>📅 <strong className="text-foreground">{format(sale.fecha, "dd/MM/yyyy HH:mm", { locale: es })}</strong></div>
+                    {sale.vendedor?.usuario?.nombre && <div>👤 <strong className="text-foreground truncate">{sale.vendedor.usuario.nombre}</strong></div>}
+                    <div>💳 {getPaymentBadge(sale.tipo_pago)}</div>
+                    <div>📦 <Badge variant="outline" className="text-[10px] py-0">{sale.items.length} items</Badge></div>
+                  </div>
+                  {sale.nota_pedido && (
+                    <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-1.5 rounded border border-amber-200/50">
+                      Nota de Pedido: <strong>{sale.nota_pedido}</strong>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block">Total Venta</span>
+                      <span className="text-base font-bold text-foreground">S/ {Number(sale.total_neto).toFixed(2)}</span>
+                    </div>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedSale(sale)}
-                        >
-                          <Eye className="h-4 w-4" />
+                        <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1.5" onClick={() => setSelectedSale(sale)}>
+                          <Eye className="h-3.5 w-3.5" /> Ver Detalle
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg">
+                      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
                         <DialogHeader>
-                          <DialogTitle>Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
-                          <DialogDescription>
+                          <DialogTitle className="text-lg">Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
+                          <DialogDescription className="text-xs">
                             {sale.cliente?.razon_social} - {format(sale.fecha, "dd/MM/yyyy HH:mm")}
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4 pb-4 border-b text-sm">
+                        <div className="space-y-4 pt-2">
+                          <div className="grid grid-cols-2 gap-3 pb-3 border-b text-xs sm:text-sm">
                             <div>
                               <p className="text-xs text-muted-foreground">Tipo de Pago</p>
                               <p className="font-semibold">{sale.tipo_pago === 'CONTADO' ? 'Contado' : 'Crédito'}</p>
@@ -389,27 +373,27 @@ const SalesHistory = () => {
                               </div>
                             )}
                           </div>
-                          <div className="border rounded-lg divide-y">
-                            {sale.items.map((item) => (
-                              <div key={item.id} className="p-3 flex justify-between items-center">
-                                <div>
-                                  <p className="font-medium">{item.producto?.nombre}</p>
-                                  <p className="text-sm text-muted-foreground">
+                          <div className="border rounded-lg divide-y text-xs sm:text-sm max-h-60 overflow-y-auto">
+                            {sale.items.map((item: any) => (
+                              <div key={item.id} className="p-2.5 flex justify-between items-center">
+                                <div className="min-w-0 pr-2">
+                                  <p className="font-medium truncate">{item.producto?.nombre}</p>
+                                  <p className="text-xs text-muted-foreground">
                                     {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
                                   </p>
                                 </div>
-                                <p className="font-semibold">S/ {Number(item.subtotal).toFixed(2)}</p>
+                                <p className="font-semibold shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
                               </div>
                             ))}
                           </div>
-                          <div className="space-y-2 pt-4 border-t">
+                          <div className="space-y-2 pt-3 border-t text-sm">
                             {sale.descuento > 0 && (
-                              <div className="flex justify-between text-red-500">
+                              <div className="flex justify-between text-red-500 text-xs sm:text-sm">
                                 <span>Descuento</span>
                                 <span>- S/ {Number(sale.descuento).toFixed(2)}</span>
                               </div>
                             )}
-                            <div className="flex justify-between text-lg font-bold">
+                            <div className="flex justify-between text-base sm:text-lg font-bold">
                               <span>Total</span>
                               <span>S/ {Number(sale.total_neto).toFixed(2)}</span>
                             </div>
@@ -417,7 +401,7 @@ const SalesHistory = () => {
                             {sale.estado === "BORRADOR" && (
                               <Button
                                 onClick={() => handleConfirmSale(sale.id)}
-                                className="w-full mt-4 bg-green-500 hover:bg-green-600"
+                                className="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-medium"
                                 size="sm"
                               >
                                 <Check className="h-4 w-4 mr-2" />
@@ -428,7 +412,7 @@ const SalesHistory = () => {
                             {(sale.estado === "BORRADOR") && (
                               <Button
                                 onClick={() => handleDeleteSale(sale.id)}
-                                className="w-full mt-4 bg-red-500 hover:bg-red-600"
+                                className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium"
                                 size="sm"
                               >
                                 <Trash className="h-4 w-4 mr-2" />
@@ -439,25 +423,177 @@ const SalesHistory = () => {
                             {sale.estado === "CONFIRMADA" && (
                               <Button
                                 onClick={() => handleCancelSale(sale.id)}
-                                className="w-full mt-4 bg-red-500 hover:bg-red-600"
+                                className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white font-medium"
                                 size="sm"
                               >
                                 <X className="h-4 w-4 mr-2" />
                                 Anular Venta
                               </Button>
                             )}
-
-                            <div className="flex justify-between text-muted-foreground">
-                            </div>
                           </div>
                         </div>
                       </DialogContent>
                     </Dialog>
-                  </TableCell>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+            <Table className="w-full min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead className="text-center">Productos</TableHead>
+                  <TableHead>Tipo Pago</TableHead>
+                  <TableHead>Nota Pedido</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {paginatedSales.map((sale) => (
+                  <TableRow key={sale.id} className="hover:bg-muted/50">
+                    <TableCell>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">
+                        #{sale.codigo?.padStart(6, '0')}
+                      </code>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {format(sale.fecha, "dd MMM yyyy, HH:mm", { locale: es })}
+                    </TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {sale.vendedor?.usuario?.nombre}
+                    </TableCell>
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {sale.cliente?.razon_social}
+                    </TableCell>
+                    <TableCell className="text-center whitespace-nowrap">
+                      <Badge variant="outline">{sale.items.length} items</Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{getPaymentBadge(sale.tipo_pago)}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {sale.nota_pedido ? (
+                        <span className="font-mono text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 px-2 py-1 rounded border border-amber-200/50 dark:border-amber-800/30">
+                          {sale.nota_pedido}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{getStatusBadge(sale.estado)}</TableCell>
+                    <TableCell className="text-right font-bold whitespace-nowrap">
+                      S/ {Number(sale.total_neto).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedSale(sale)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+                          <DialogHeader>
+                            <DialogTitle>Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
+                            <DialogDescription>
+                              {sale.cliente?.razon_social} - {format(sale.fecha, "dd/MM/yyyy HH:mm")}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4 pb-4 border-b text-sm">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Tipo de Pago</p>
+                                <p className="font-semibold">{sale.tipo_pago === 'CONTADO' ? 'Contado' : 'Crédito'}</p>
+                              </div>
+                              {sale.tipo_pago === 'CREDITO' && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Nota de Pedido</p>
+                                  <p className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                                    {sale.nota_pedido || '-'}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="border rounded-lg divide-y max-h-60 overflow-y-auto">
+                              {sale.items.map((item) => (
+                                <div key={item.id} className="p-3 flex justify-between items-center">
+                                  <div>
+                                    <p className="font-medium">{item.producto?.nombre}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
+                                    </p>
+                                  </div>
+                                  <p className="font-semibold">S/ {Number(item.subtotal).toFixed(2)}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="space-y-2 pt-4 border-t">
+                              {sale.descuento > 0 && (
+                                <div className="flex justify-between text-red-500">
+                                  <span>Descuento</span>
+                                  <span>- S/ {Number(sale.descuento).toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-lg font-bold">
+                                <span>Total</span>
+                                <span>S/ {Number(sale.total_neto).toFixed(2)}</span>
+                              </div>
+
+                              {sale.estado === "BORRADOR" && (
+                                <Button
+                                  onClick={() => handleConfirmSale(sale.id)}
+                                  className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-medium"
+                                  size="sm"
+                                >
+                                  <Check className="h-4 w-4 mr-2" />
+                                  Confirmar Venta
+                                </Button>
+                              )}
+
+                              {(sale.estado === "BORRADOR") && (
+                                <Button
+                                  onClick={() => handleDeleteSale(sale.id)}
+                                  className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white font-medium"
+                                  size="sm"
+                                >
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  Eliminar Venta
+                                </Button>
+                              )}
+
+                              {sale.estado === "CONFIRMADA" && (
+                                <Button
+                                  onClick={() => handleCancelSale(sale.id)}
+                                  className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white font-medium"
+                                  size="sm"
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Anular Venta
+                                </Button>
+                              )}
+
+                              <div className="flex justify-between text-muted-foreground">
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
           {totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-4">
               <Button

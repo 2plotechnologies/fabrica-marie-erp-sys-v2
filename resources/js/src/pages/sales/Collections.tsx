@@ -196,11 +196,14 @@ const CollectionsPage = () => {
   const filteredCuentas = cuentas.filter(c => {
     const matchesSearch =
       (c.cliente?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-      (c.venta?.nota_pedido?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    const matchesVendedor = filterVendedor === 'all' || c.venta.vendedor_id === filterVendedor;
+      (c.cliente?.codigo_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (c.venta?.nota_pedido?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (c.zona_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
+      (c.ruta_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+    const matchesVendedor = filterVendedor === 'all' || String(c.venta?.vendedor_id) === String(filterVendedor);
     return matchesSearch && matchesVendedor;
   });
-  const itemsPerPage = 4;
+  const itemsPerPage = 10;
   const [page, setPage] = useState(1);
   const totalPages = Math.ceil(filteredCuentas.length / itemsPerPage);
   const paginatedCuentas = filteredCuentas.slice(
@@ -209,15 +212,18 @@ const CollectionsPage = () => {
   );
   const totalDeuda = filteredCuentas.reduce((acc, c) => acc + Number(c.saldo), 0);
   const totalCobrado = filteredCuentas.reduce((acc, c) => acc + Number(c.monto_pagado), 0);
-  const cuentasActivas = filteredCuentas.filter(c => c.estado !== 'PAGADO').length;
+  const cuentasActivas = filteredCuentas.filter(c => (c.estado || '').toUpperCase() !== 'PAGADO').length;
   const getEstadoBadge = (estado: string) => {
+    const normalized = (estado || '').toUpperCase();
     const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
-      pendiente: { variant: 'secondary', label: 'PENDIENTE' },
-      parcial: { variant: 'outline', label: 'PARCIAL' },
-      pagado: { variant: 'default', label: 'PAGADO' },
-      vencido: { variant: 'destructive', label: 'VENCIDO' },
+      PENDIENTE: { variant: 'secondary', label: 'PENDIENTE' },
+      PARCIAL: { variant: 'outline', label: 'PARCIAL' },
+      PAGADO: { variant: 'default', label: 'PAGADO' },
+      PAGADA: { variant: 'default', label: 'PAGADO' },
+      VENCIDO: { variant: 'destructive', label: 'VENCIDO' },
+      VENCIDA: { variant: 'destructive', label: 'VENCIDO' },
     };
-    const config = variants[estado] || { variant: 'outline', label: estado };
+    const config = variants[normalized] || { variant: 'outline', label: normalized };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
   if (isLoading) {
@@ -265,13 +271,13 @@ const CollectionsPage = () => {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar por cliente o nota de venta..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+              <Input placeholder="Buscar por cliente, nota de pedido, zona o ruta..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
-            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+            <Select value={filterVendedor} onValueChange={(val) => { setFilterVendedor(val); setPage(1); }}>
               <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Vendedor" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {vendedores.map(v => (<SelectItem key={v.id} value={v.id}>{v.usuario.nombre}</SelectItem>))}
+                {vendedores.map(v => (<SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
@@ -288,107 +294,214 @@ const CollectionsPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5 text-primary" />Cuentas y Pagos</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Nota Pedido</TableHead>
-                    <TableHead className="text-right">Monto Original</TableHead>
-                    <TableHead className="text-right">Pagado</TableHead>
-                    <TableHead className="text-right">Saldo</TableHead>
-                    <TableHead>Vencimiento</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCuentas.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay cobranzas registradas</TableCell></TableRow>
-                  ) : (
-                    paginatedCuentas.map((cuenta) => (
-                      <TableRow key={cuenta.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <p className="font-medium">{cuenta.cliente?.razon_social}</p>
-                          <p className="text-xs text-muted-foreground">{cuenta.cliente?.codigo_cliente}</p>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-xs text-muted-foreground">{cuenta.venta.nota_pedido ? cuenta.venta.nota_pedido : '-'}</p>
-                        </TableCell>
-                        <TableCell className="text-right">S/ {Number(cuenta.monto_total).toLocaleString()}</TableCell>
-                        <TableCell className="text-right text-emerald-600 font-medium">S/ {Number(cuenta.monto_pagado).toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-bold">S/ {Number(cuenta.saldo).toLocaleString()}</TableCell>
-                        <TableCell>
-                          {(() => {
-                            const { diasPlazo, textRestantes, isOverdue } = calculateAmortizationDays(cuenta);
-                            return (
-                              <div>
-                                {cuenta.fecha_vencimiento ? (
-                                  <p className="text-sm font-medium">{format(new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy")}</p>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">Sin fecha establecida</p>
-                                )}
-                                <div className="flex flex-col gap-0.5 mt-0.5">
-                                  {diasPlazo > 0 && (
-                                    <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
-                                      Plazo: {diasPlazo} días
-                                    </span>
-                                  )}
-                                  {cuenta.fecha_vencimiento && cuenta.estado !== 'PAGADO' && textRestantes && (
-                                    <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
-                                      {textRestantes}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell>{getEstadoBadge(cuenta.estado)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex gap-1 justify-end flex-wrap">
-                            <Button
-                              size="sm"
-                              className="bg-gradient-warm hover:opacity-90 h-8 px-2 text-xs"
-                              disabled={cuenta.estado === 'PAGADO'}
-                              onClick={() => {
-                                const { diasPlazo } = calculateAmortizationDays(cuenta);
-                                setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
-                              }}
-                            >
-                              <DollarSign className="h-3 w-3 mr-1" />Pagar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-2 text-xs"
-                              disabled={cuenta.estado === 'PAGADO'}
-                              onClick={() => {
-                                const { diasPlazo } = calculateAmortizationDays(cuenta);
-                                setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
-                              }}
-                            >
-                              <Coins className="h-3 w-3 mr-1" />Amortizar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-2 text-xs"
-                              disabled={cuenta.estado === 'PAGADO'}
-                              onClick={() => setExtendDialog({ cuentaId: cuenta.id, currentDate: cuenta.fecha_vencimiento ? cuenta.fecha_vencimiento.substring(0, 10) : format(new Date(), "yyyy-MM-dd") })}
-                            >
-                              <CalendarPlus className="h-3 w-3 mr-1" />Extender
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setSelectedCuentaId(selectedCuentaId === cuenta.id ? null : cuenta.id)}>
-                              Ver Pagos
-                            </Button>
+            <CardContent className="p-2 sm:p-6">
+              {/* Mobile Card View */}
+              <div className="space-y-3 sm:hidden">
+                {filteredCuentas.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No hay cobranzas registradas
+                  </div>
+                ) : (
+                  paginatedCuentas.map((cuenta) => {
+                    const isPaid = (cuenta.estado || '').toUpperCase() === 'PAGADO';
+                    const { diasPlazo, textRestantes, isOverdue } = calculateAmortizationDays(cuenta);
+                    return (
+                      <div key={cuenta.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-sm text-foreground truncate">{cuenta.cliente?.razon_social}</span>
+                              {cuenta.es_ruta_actual ? (
+                                <Badge variant="default" className="bg-emerald-600 text-[10px] py-0 px-1.5 h-4">Ruta Actual</Badge>
+                              ) : cuenta.es_zona_actual ? (
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-[10px] py-0 px-1.5 h-4">Zona Actual</Badge>
+                              ) : null}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">{cuenta.cliente?.codigo_cliente || '-'} {cuenta.zona_nombre ? `• ${cuenta.zona_nombre}` : ''}</p>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                          {getEstadoBadge(cuenta.estado)}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-border/50 text-center">
+                          <div className="bg-muted/40 p-1.5 rounded border">
+                            <span className="text-[10px] text-muted-foreground block">Monto Orig.</span>
+                            <span className="font-semibold text-foreground">S/ {Number(cuenta.monto_total).toLocaleString()}</span>
+                          </div>
+                          <div className="bg-emerald-50 dark:bg-emerald-950/30 p-1.5 rounded border border-emerald-200">
+                            <span className="text-[10px] text-muted-foreground block">Pagado</span>
+                            <span className="font-bold text-emerald-600">S/ {Number(cuenta.monto_pagado).toLocaleString()}</span>
+                          </div>
+                          <div className="bg-amber-50 dark:bg-amber-950/30 p-1.5 rounded border border-amber-200">
+                            <span className="text-[10px] text-muted-foreground block">Saldo</span>
+                            <span className="font-bold text-amber-600">S/ {Number(cuenta.saldo).toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t border-border/50">
+                          <div>
+                            📅 Venc: <strong>{cuenta.fecha_vencimiento ? format(new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy") : 'Sin fecha'}</strong>
+                            {textRestantes && !isPaid && (
+                              <span className={`block text-[10px] ${isOverdue ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>{textRestantes}</span>
+                            )}
+                          </div>
+                          {cuenta.venta?.nota_pedido && (
+                            <span className="font-mono text-[10px] bg-amber-50 dark:bg-amber-900/20 text-amber-700 px-1.5 py-0.5 rounded border">
+                              {cuenta.venta.nota_pedido}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5 pt-1.5">
+                          <Button
+                            size="sm"
+                            className="bg-gradient-warm hover:opacity-90 h-8 text-xs font-semibold"
+                            disabled={isPaid}
+                            onClick={() => {
+                              const { diasPlazo } = calculateAmortizationDays(cuenta);
+                              setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
+                            }}
+                          >
+                            <DollarSign className="h-3.5 w-3.5 mr-1" /> Pagar / Amortizar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs font-medium"
+                            disabled={isPaid}
+                            onClick={() => setExtendDialog({ cuentaId: cuenta.id, currentDate: cuenta.fecha_vencimiento ? cuenta.fecha_vencimiento.substring(0, 10) : format(new Date(), "yyyy-MM-dd") })}
+                          >
+                            <CalendarPlus className="h-3.5 w-3.5 mr-1" /> Extender
+                          </Button>
+                        </div>
+                        <Button size="sm" variant="ghost" className="w-full h-7 text-xs text-muted-foreground hover:text-foreground" onClick={() => setSelectedCuentaId(selectedCuentaId === cuenta.id ? null : cuenta.id)}>
+                          Ver Pagos ({selectedCuentaId === cuenta.id ? 'Ocultar' : 'Mostrar'})
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+                <Table className="w-full min-w-[850px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente / Ubicación</TableHead>
+                      <TableHead>Nota Pedido</TableHead>
+                      <TableHead className="text-right">Monto Original</TableHead>
+                      <TableHead className="text-right">Pagado</TableHead>
+                      <TableHead className="text-right">Saldo</TableHead>
+                      <TableHead>Vencimiento</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCuentas.length === 0 ? (
+                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay cobranzas registradas</TableCell></TableRow>
+                    ) : (
+                      paginatedCuentas.map((cuenta) => {
+                        const isPaid = (cuenta.estado || '').toUpperCase() === 'PAGADO';
+                        return (
+                          <TableRow key={cuenta.id} className="hover:bg-muted/50">
+                            <TableCell className="whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="font-medium">{cuenta.cliente?.razon_social}</p>
+                                {cuenta.es_ruta_actual ? (
+                                  <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-[10px] py-0 px-1.5 h-4">Ruta Actual</Badge>
+                                ) : cuenta.es_zona_actual ? (
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-[10px] py-0 px-1.5 h-4">Zona Actual</Badge>
+                                ) : null}
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span>{cuenta.cliente?.codigo_cliente || '-'}</span>
+                                {(cuenta.zona_nombre || cuenta.ruta_nombre) && (
+                                  <span className="text-[11px] text-muted-foreground/80">
+                                    • {cuenta.zona_nombre} ({cuenta.ruta_nombre})
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              <p className="text-xs text-muted-foreground">{cuenta.venta?.nota_pedido ? cuenta.venta.nota_pedido : '-'}</p>
+                            </TableCell>
+                            <TableCell className="text-right whitespace-nowrap">S/ {Number(cuenta.monto_total).toLocaleString()}</TableCell>
+                            <TableCell className="text-right text-emerald-600 font-medium whitespace-nowrap">S/ {Number(cuenta.monto_pagado).toLocaleString()}</TableCell>
+                            <TableCell className="text-right font-bold whitespace-nowrap">S/ {Number(cuenta.saldo).toLocaleString()}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {(() => {
+                                const { diasPlazo, textRestantes, isOverdue } = calculateAmortizationDays(cuenta);
+                                return (
+                                  <div>
+                                    {cuenta.fecha_vencimiento ? (
+                                      <p className="text-sm font-medium">{format(new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy")}</p>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground">Sin fecha establecida</p>
+                                    )}
+                                    <div className="flex flex-col gap-0.5 mt-0.5">
+                                      {diasPlazo > 0 && (
+                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                                          Plazo: {diasPlazo} días
+                                        </span>
+                                      )}
+                                      {cuenta.fecha_vencimiento && !isPaid && textRestantes && (
+                                        <span className={`text-xs ${isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'}`}>
+                                          {textRestantes}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">{getEstadoBadge(cuenta.estado)}</TableCell>
+                            <TableCell className="text-right whitespace-nowrap">
+                              <div className="flex gap-1 justify-end flex-wrap">
+                                <Button
+                                  size="sm"
+                                  className="bg-gradient-warm hover:opacity-90 h-8 px-2 text-xs"
+                                  disabled={isPaid}
+                                  onClick={() => {
+                                    const { diasPlazo } = calculateAmortizationDays(cuenta);
+                                    setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
+                                  }}
+                                >
+                                  <DollarSign className="h-3 w-3 mr-1" />Pagar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-xs"
+                                  disabled={isPaid}
+                                  onClick={() => {
+                                    const { diasPlazo } = calculateAmortizationDays(cuenta);
+                                    setPayDialog({ cuentaId: cuenta.id, saldo: Number(cuenta.saldo), clienteName: cuenta.cliente?.razon_social || '', diasPlazo });
+                                  }}
+                                >
+                                  <Coins className="h-3 w-3 mr-1" />Amortizar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-xs"
+                                  disabled={isPaid}
+                                  onClick={() => setExtendDialog({ cuentaId: cuenta.id, currentDate: cuenta.fecha_vencimiento ? cuenta.fecha_vencimiento.substring(0, 10) : format(new Date(), "yyyy-MM-dd") })}
+                                >
+                                  <CalendarPlus className="h-3 w-3 mr-1" />Extender
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setSelectedCuentaId(selectedCuentaId === cuenta.id ? null : cuenta.id)}>
+                                  Ver Pagos
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
               {totalPages > 1 && (
                 <div className="flex justify-center gap-2 mt-4">
                   <Button
@@ -489,12 +602,12 @@ const CollectionsPage = () => {
       </Tabs>
       {/* Pay / Amortize Dialog */}
       <Dialog open={!!payDialog} onOpenChange={() => setPayDialog(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>Registrar Pago / Amortización</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Registrar Pago / Amortización</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Cliente: {payDialog?.clienteName} — Saldo: S/ {payDialog?.saldo.toLocaleString()}
-              {payDialog?.diasPlazo && payDialog.diasPlazo > 0 ? ` — Plazo de amortización: ${payDialog.diasPlazo} días` : ''}
+              {payDialog?.diasPlazo && payDialog.diasPlazo > 0 ? ` — Plazo: ${payDialog.diasPlazo} días` : ''}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end pt-1">
@@ -658,10 +771,10 @@ const CollectionsPage = () => {
               </Button>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayDialog(null)}>Cancelar</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setPayDialog(null)}>Cancelar</Button>
             <Button
-              className="bg-gradient-warm hover:opacity-90"
+              className="bg-gradient-warm hover:opacity-90 w-full sm:w-auto"
               onClick={handlePay}
               disabled={
                 isSplitPay
@@ -676,11 +789,10 @@ const CollectionsPage = () => {
       </Dialog>
       {/* Extend Date Dialog */}
       <Dialog open={!!extendDialog} onOpenChange={() => setExtendDialog(null)}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>Extender Fecha de Vencimiento</DialogTitle>
-            <DialogDescription>
-              {/* Si no existe un valor en extendDialog.currentDate, mostrar la fecha actual */}
+            <DialogTitle className="text-lg sm:text-xl">Extender Fecha de Vencimiento</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Fecha actual: {extendDialog ? format(new Date(extendDialog.currentDate.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy") : format(new Date(), "dd/MM/yyyy")}
             </DialogDescription>
           </DialogHeader>
@@ -690,20 +802,20 @@ const CollectionsPage = () => {
               <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} min={extendDialog?.currentDate || format(new Date(), "yyyy-MM-dd")} />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExtendDialog(null)}>Cancelar</Button>
-            <Button onClick={handleExtendDate} disabled={!newDate}>Confirmar</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setExtendDialog(null)}>Cancelar</Button>
+            <Button className="w-full sm:w-auto" onClick={handleExtendDate} disabled={!newDate}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Annul Abono Confirmation Dialog */}
       <Dialog open={!!anularDialog} onOpenChange={(open) => { if (!open) setAnularDialog(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2">
+            <DialogTitle className="text-destructive text-lg flex items-center gap-2">
               <Ban className="h-5 w-5" /> Confirmar Anulación de Abono
             </DialogTitle>
-            <DialogDescription className="pt-2 space-y-2">
+            <DialogDescription className="pt-2 space-y-2 text-xs sm:text-sm">
               ¿Estás seguro de que deseas anular este abono de <strong>S/ {Number(anularDialog?.monto || 0).toFixed(2)}</strong> ({anularDialog?.metodo_pago})?
               <br /><br />
               <span className="text-xs text-muted-foreground block">
@@ -711,11 +823,11 @@ const CollectionsPage = () => {
               </span>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setAnularDialog(null)} disabled={isAnulling}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setAnularDialog(null)} disabled={isAnulling}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleAnularAbono} disabled={isAnulling}>
+            <Button variant="destructive" className="w-full sm:w-auto" onClick={handleAnularAbono} disabled={isAnulling}>
               {isAnulling ? 'Anulando...' : 'Anular Abono'}
             </Button>
           </DialogFooter>

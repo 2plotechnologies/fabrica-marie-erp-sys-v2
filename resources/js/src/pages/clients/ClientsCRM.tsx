@@ -308,9 +308,59 @@ const ClientsCRM = () => {
           <CardTitle>Clientes ({filteredClients.length})</CardTitle>
           <CardDescription>Click en un cliente para ver detalles y gestionar interacciones</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
+        <CardContent className="p-2 sm:p-6">
+          {/* Mobile Card View */}
+          <div className="space-y-3 sm:hidden">
+            {filteredClients.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No se encontraron clientes
+              </div>
+            ) : (
+              paginatedClients.map((client) => (
+                <div
+                  key={client.id}
+                  className={`p-3.5 rounded-xl border shadow-sm space-y-2.5 text-xs cursor-pointer transition-colors ${client.compro_hoy
+                    ? 'bg-green-50/50 dark:bg-green-900/10 border-green-200'
+                    : 'bg-card'
+                    }`}
+                  onClick={() => setSelectedClient(client)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-foreground truncate">{client.razon_social}</span>
+                    {client.compro_hoy ? (
+                      <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /> Compró
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-amber-500" /> Pendiente
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
+                    <div>📍 <strong className="text-foreground truncate">{client.direccion}</strong></div>
+                    <div>📞 <strong className="text-foreground">{client.phone}</strong></div>
+                    <div>🗺️ <Badge variant="outline" className="text-[10px] py-0">{client.ruta?.nombre}</Badge></div>
+                    <div>🗓️ Ult: <strong className="text-foreground">{formatShortDate(client.fecha_ultima_venta)}</strong></div>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground block">Ticket Prom.</span>
+                      <span className="text-sm font-bold text-foreground">S/ {Number(client.ticket_promocional).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-600 font-bold text-xs bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+                      <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                      {Number(client.puntos).toLocaleString()} pts
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-x-auto w-full border rounded-lg">
+            <Table className="w-full min-w-[800px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Estado</TableHead>
@@ -333,7 +383,7 @@ const ClientsCRM = () => {
                       }`}
                     onClick={() => setSelectedClient(client)}
                   >
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {client.compro_hoy ? (
                           <div className="flex items-center gap-1">
@@ -348,13 +398,13 @@ const ClientsCRM = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div>
                         <p className="font-medium text-foreground">{client.razon_social}</p>
                         <p className="text-sm text-muted-foreground">{client.direccion}</p>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1 text-sm">
                           <Phone className="h-3 w-3 text-muted-foreground" />
@@ -368,24 +418,24 @@ const ClientsCRM = () => {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{client.ruta.nombre}</Badge>
+                    <TableCell className="whitespace-nowrap">
+                      <Badge variant="outline">{client.ruta?.nombre}</Badge>
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-right font-medium whitespace-nowrap">
                       S/ {Number(client.ticket_promocional).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="font-medium">{Number(client.puntos).toLocaleString()}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <span className={client.compro_hoy ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'}>
                         {formatShortDate(client.fecha_ultima_venta) || 'Nunca'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap">
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); }}>
                           <Phone className="h-4 w-4" />
@@ -399,40 +449,40 @@ const ClientsCRM = () => {
                 ))}
               </TableBody>
             </Table>
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-4">
-                <Button
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
-                >
-                  Anterior
-                </Button>
-
-                <span className="px-3 py-2 text-sm">
-                  Página {page} de {totalPages}
-                </span>
-
-                <Button
-                  disabled={page === totalPages}
-                  onClick={() => setPage(page + 1)}
-                >
-                  Siguiente
-                </Button>
-              </div>
-            )}
           </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-4">
+              <Button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </Button>
+
+              <span className="px-3 py-2 text-sm">
+                Página {page} de {totalPages}
+              </span>
+
+              <Button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Client Detail Dialog */}
       <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-4xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           {selectedClient && (
             <>
               <DialogHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <DialogTitle className="flex items-center gap-2">
+                    <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
                       {selectedClient.razon_social}
                       {selectedClient.compro_hoy ? (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
@@ -446,58 +496,58 @@ const ClientsCRM = () => {
                         </Badge>
                       )}
                     </DialogTitle>
-                    <DialogDescription>{selectedClient.telefono} • {selectedClient.ruta.nombre}</DialogDescription>
+                    <DialogDescription className="text-xs sm:text-sm">{selectedClient.telefono} • {selectedClient.ruta?.nombre}</DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
 
               {/* Client Stats */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-4">
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <p className="text-2xl font-bold text-foreground">{selectedClient.total_ventas}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{selectedClient.total_ventas}</p>
                   <p className="text-xs text-muted-foreground">Compras Totales</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <p className="text-2xl font-bold text-foreground">S/ {selectedClient.ticket_promocional}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">S/ {selectedClient.ticket_promocional}</p>
                   <p className="text-xs text-muted-foreground">Ticket Promedio</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
-                  <p className="text-2xl font-bold text-foreground">{selectedClient.frecuencia_ventas}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{selectedClient.frecuencia_ventas}</p>
                   <p className="text-xs text-muted-foreground">Frecuencia</p>
                 </div>
                 <div className="text-center p-3 bg-muted/30 rounded-lg">
                   <div className="flex items-center justify-center gap-1">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    <p className="text-2xl font-bold text-foreground">{selectedClient.puntos}</p>
+                    <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{selectedClient.puntos}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">Puntos Fidelización</p>
                 </div>
               </div>
 
               {/* Contact & Credit Info */}
-              <div className="grid md:grid-cols-2 gap-4 py-4 border-y border-border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 border-y border-border">
                 <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Información de Contacto</h4>
-                  <div className="space-y-1 text-sm">
+                  <h4 className="font-medium text-foreground text-sm">Información de Contacto</h4>
+                  <div className="space-y-1 text-xs sm:text-sm">
                     <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>{selectedClient.telefono}</span>
                     </div>
                     {selectedClient.email && (
                       <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span>{selectedClient.email}</span>
+                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate">{selectedClient.email}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>{selectedClient.direccion}</span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h4 className="font-medium text-foreground">Información de Crédito</h4>
-                  <div className="space-y-1 text-sm">
+                  <h4 className="font-medium text-foreground text-sm">Información de Crédito</h4>
+                  <div className="space-y-1 text-xs sm:text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Límite de Crédito:</span>
                       <span className="font-medium">S/ {Number(selectedClient.limite_credito).toLocaleString()}</span>
@@ -521,16 +571,16 @@ const ClientsCRM = () => {
               {/* Tabs for Interactions and Tasks */}
               <Tabs defaultValue="interactions" className="mt-4">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="interactions">
-                    <History className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="interactions" className="text-xs sm:text-sm">
+                    <History className="h-4 w-4 mr-1 sm:mr-2" />
                     Historial
                   </TabsTrigger>
-                  <TabsTrigger value="tasks">
-                    <Target className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="tasks" className="text-xs sm:text-sm">
+                    <Target className="h-4 w-4 mr-1 sm:mr-2" />
                     Tareas
                   </TabsTrigger>
-                  <TabsTrigger value="notes">
-                    <MessageSquare className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="notes" className="text-xs sm:text-sm">
+                    <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
                     Nueva Nota
                   </TabsTrigger>
                 </TabsList>
@@ -540,23 +590,23 @@ const ClientsCRM = () => {
                     {getClientInteractions(selectedClient.id).length > 0 ? (
                       getClientInteractions(selectedClient.id).map((interaction) => (
                         <div key={interaction.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
-                          <div className={`p-2 rounded-full ${getInteractionBadgeClass(interaction.tipo)}`}>
+                          <div className={`p-2 rounded-full shrink-0 ${getInteractionBadgeClass(interaction.tipo)}`}>
                             {getInteractionIcon(interaction.tipo)}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Badge className={getInteractionBadgeClass(interaction.tipo)}>
                                 {interaction.tipo}
                               </Badge>
                               <span className="text-xs text-muted-foreground">{formatDate(interaction.fecha)}</span>
                             </div>
-                            <p className="text-sm mt-1">{interaction.descripcion}</p>
-                            <p className="text-xs text-muted-foreground mt-1">Por: {interaction.usuario.nombre}</p>
+                            <p className="text-xs sm:text-sm mt-1">{interaction.descripcion}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1">Por: {interaction.usuario?.nombre}</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-center text-muted-foreground py-8">No hay interacciones registradas</p>
+                      <p className="text-center text-muted-foreground py-8 text-sm">No hay interacciones registradas</p>
                     )}
                   </div>
                 </TabsContent>
@@ -565,28 +615,28 @@ const ClientsCRM = () => {
                   <div className="space-y-3 max-h-[300px] overflow-y-auto">
                     {getClientTasks(selectedClient.id).length > 0 ? (
                       getClientTasks(selectedClient.id).map((task) => (
-                        <div key={task.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{task.titulo}</span>
+                        <div key={task.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg items-start">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-xs sm:text-sm">{task.titulo}</span>
                               <Badge className={getPriorityBadge(task.prioridad)}>{task.prioridad}</Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">{task.descripcion}</p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground mt-1">{task.descripcion}</p>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 Vence: {formatShortDate(task.fecha_limite)}
                               </span>
-                              <span>Asignado a: {task.usuario.nombre}</span>
+                              <span>Asignado: {task.usuario?.nombre}</span>
                             </div>
                           </div>
                           {task.estado === 'PENDIENTE' && (
-                            <Button variant="outline" size="sm" onClick={() => handleCompleteTask(task.id)}>Completar</Button>
+                            <Button variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={() => handleCompleteTask(task.id)}>Completar</Button>
                           )}
                         </div>
                       ))
                     ) : (
-                      <p className="text-center text-muted-foreground py-8">No hay tareas pendientes</p>
+                      <p className="text-center text-muted-foreground py-8 text-sm">No hay tareas pendientes</p>
                     )}
                   </div>
                   <Button className="w-full mt-4" variant="outline" onClick={handleOpenTaskModal}>
@@ -635,10 +685,10 @@ const ClientsCRM = () => {
         </DialogContent>
 
         <Dialog open={openTaskModal} onOpenChange={setOpenTaskModal}>
-          <DialogContent>
+          <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
-              <DialogTitle>Nueva Tarea</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-lg sm:text-xl">Nueva Tarea</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Crea una nueva tarea para el cliente {selectedClient?.razon_social}
               </DialogDescription>
             </DialogHeader>
