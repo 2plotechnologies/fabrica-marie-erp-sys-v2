@@ -194,37 +194,55 @@ const AppRoutes = () => {
           </ErrorBoundary>
         } />
         <Route path="/ventas/cobranzas" element={
-          <ErrorBoundary key={location.pathname}>
-            <Collections />
-          </ErrorBoundary>
+          currentRole === 'ALMACENERO' ? <Navigate to="/ventas/historial" replace /> : (
+            <ErrorBoundary key={location.pathname}>
+              <Collections />
+            </ErrorBoundary>
+          )
         } />
         <Route path="/ventas/resumen-diario" element={
-          <ErrorBoundary key={location.pathname}>
-            <DailySummary />
-          </ErrorBoundary>
+          currentRole === 'ALMACENERO' ? <Navigate to="/ventas/historial" replace /> : (
+            <ErrorBoundary key={location.pathname}>
+              <DailySummary />
+            </ErrorBoundary>
+          )
         } />
         <Route path="/ventas/gastos" element={
           <ErrorBoundary key={location.pathname}>
             <ExpenseList />
           </ErrorBoundary>
         } />
-        <Route path="/ventas/validacion-egresos" element={<ExpenseValidation />} />
+        <Route path="/ventas/validacion-egresos" element={
+          currentRole === 'ALMACENERO' ? <Navigate to="/ventas/historial" replace /> : <ExpenseValidation />
+        } />
         <Route path="/ventas/resumen-vendedor" element={
-          <ErrorBoundary key={location.pathname}>
-            <SalesByVendor />
-          </ErrorBoundary>
+          currentRole === 'ALMACENERO' ? <Navigate to="/ventas/historial" replace /> : (
+            <ErrorBoundary key={location.pathname}>
+              <SalesByVendor />
+            </ErrorBoundary>
+          )
         } />
         <Route path="/ventas/reportes" element={<ComingSoon />} />
-        <Route path="/ventas/caja-chica" element={<ViaticosPage />} />
+        <Route path="/ventas/caja-chica" element={
+          currentRole === 'ALMACENERO' ? <Navigate to="/ventas/historial" replace /> : <ViaticosPage />
+        } />
 
         {/* Clientes */}
         <Route path="/clientes" element={<ClientsList />} />
         <Route path="/clientes/lista" element={<ClientsList />} />
-        <Route path="/clientes/crm" element={<ClientsCRM />} />
+        <Route path="/clientes/crm" element={
+          currentRole === 'ALMACENERO' ? <Navigate to="/clientes/lista" replace /> : <ClientsCRM />
+        } />
         <Route path="/clientes/nuevo" element={<NewClient />} />
-        <Route path="/clientes/deudas" element={<AccountsReceivable />} />
-        <Route path="/clientes/morosos" element={<DelinquentClients />} />
-        <Route path="/clientes/cobrar" element={<AccountsReceivable />} />
+        <Route path="/clientes/deudas" element={
+          currentRole === 'ALMACENERO' ? <Navigate to="/clientes/lista" replace /> : <AccountsReceivable />
+        } />
+        <Route path="/clientes/morosos" element={
+          currentRole === 'ALMACENERO' ? <Navigate to="/clientes/lista" replace /> : <DelinquentClients />
+        } />
+        <Route path="/clientes/cobrar" element={
+          currentRole === 'ALMACENERO' ? <Navigate to="/clientes/lista" replace /> : <AccountsReceivable />
+        } />
 
         {/* Caja */}
         <Route path="/caja" element={

@@ -16,7 +16,7 @@ class MovimientoStockController extends Controller
     {
         return response()->json(
             MovimientoStock::with(['producto', 'ruma'])
-                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->get()
         );
     }
@@ -165,8 +165,27 @@ class MovimientoStockController extends Controller
     {
         return DB::transaction(function () use ($id) {
 
+            $movimiento = MovimientoStock::findOrFail($id);
+
             if ($movimiento->estado === 'ANULADO') {
                 throw new Exception('El movimiento ya se encuentra anulado');
+            }
+
+            if ($movimiento->referencia_tipo === 'ANULACION_MOVIMIENTO') {
+                throw new Exception('No se puede revertir un movimiento de anulación');
+            }
+
+            // Validar que sea el último movimiento registrado activo
+            $ultimoMovimiento = MovimientoStock::where('estado', '!=', 'ANULADO')
+                ->where(function ($q) {
+                    $q->whereNull('referencia_tipo')
+                      ->orWhere('referencia_tipo', '!=', 'ANULACION_MOVIMIENTO');
+                })
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if ($ultimoMovimiento && (int)$ultimoMovimiento->id !== (int)$movimiento->id) {
+                throw new Exception('Solo se permite revertir el último movimiento registrado.');
             }
 
             $stock = StockActual::where('producto_id', $movimiento->producto_id)

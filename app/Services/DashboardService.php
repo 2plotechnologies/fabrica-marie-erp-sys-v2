@@ -686,7 +686,7 @@ class DashboardService
         ];
     }
 
-    // Créditos pendientes / cobranzas de la salida vigente y zonas/rutas para vendedor
+    // Créditos pendientes / cobranzas ÚNICAMENTE de las rutas asignadas a la salida vigente del vendedor.
     public function getCreditosPendientesRutasVendedor($vendedorId, $activeSalida = null)
     {
         if (!$activeSalida) {
@@ -703,7 +703,6 @@ class DashboardService
             ];
         }
 
-        $activeZona = $activeSalida->zona;
         $activeRutaIds = collect();
         if ($activeSalida->ruta_id) {
             $activeRutaIds->push((int)$activeSalida->ruta_id);
@@ -715,20 +714,43 @@ class DashboardService
         }
         $activeRutaIds = $activeRutaIds->filter()->unique()->values()->toArray();
 
+        if (empty($activeRutaIds)) {
+            return [
+                'total_saldo' => 0,
+                'cuentas'     => [],
+            ];
+        }
+
+        // Obtener exclusivamente los cliente_id que pertenecen a las rutas asignadas a esta salida activa
+        $clientIds = DB::table('clientes')
+            ->whereIn('ruta_id', $activeRutaIds)
+            ->pluck('id')
+            ->merge(
+                DB::table('ruta_cliente')
+                    ->whereIn('ruta_id', $activeRutaIds)
+                    ->pluck('cliente_id')
+            )
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($clientIds)) {
+            return [
+                'total_saldo' => 0,
+                'cuentas'     => [],
+            ];
+        }
+
         $cuentas = \App\Models\CuentaPorCobrar::with([
             'cliente.ruta',
             'cliente.rutas',
             'venta',
             'abonos'
         ])
-        ->withSum(['abonos as monto_pagado_abonos' => function ($q) {
-            $q->where(function ($sq) {
-                $sq->whereNull('estado')->orWhere('estado', '!=', 'ANULADO');
-            });
-        }], 'monto')
+        ->whereIn('cliente_id', $clientIds)
         ->get();
 
-        $cuentas->each(function($cuenta) use ($activeZona, $activeRutaIds) {
+        $cuentas->each(function($cuenta) {
             $adelanto = $cuenta->venta ? (float)$cuenta->venta->adelanto : 0;
             $monto_pagado_abonos = $cuenta->abonos ? (float)$cuenta->abonos->filter(function($abono) {
                 return empty($abono->estado) || strtoupper($abono->estado) !== 'ANULADO';
@@ -743,23 +765,8 @@ class DashboardService
                 $cuentaZona = $clienteRutas->first()->zona;
             }
 
-            $cuentaRutaId = $cuenta->cliente?->ruta_id;
-            if (!$cuentaRutaId && $clienteRutas && $clienteRutas->count() > 0) {
-                $cuentaRutaId = $clienteRutas->first()->id;
-            }
-
-            $esZonaActual = false;
-            if ($activeZona && $cuentaZona && strtoupper(trim($cuentaZona)) === strtoupper(trim($activeZona))) {
-                $esZonaActual = true;
-            }
-
-            $esRutaActual = false;
-            if (!empty($activeRutaIds) && $cuentaRutaId && in_array((int)$cuentaRutaId, $activeRutaIds)) {
-                $esRutaActual = true;
-            }
-
-            $cuenta->es_zona_actual = $esZonaActual;
-            $cuenta->es_ruta_actual = $esRutaActual;
+            $cuenta->es_zona_actual = true;
+            $cuenta->es_ruta_actual = true;
             $cuenta->zona_nombre = $cuentaZona ?? 'Sin Zona';
             $cuenta->ruta_nombre = $clienteRuta?->nombre ?? ($clienteRutas && $clienteRutas->count() > 0 ? $clienteRutas->first()->nombre : 'Sin Ruta');
             $cuenta->cliente_nombre = $cuenta->cliente?->razon_social ?? 'Cliente';
@@ -768,25 +775,15 @@ class DashboardService
             $cuenta->venta_fecha = $cuenta->venta?->fecha ?? '';
         });
 
+        // Ordenar por antigüedad:
+        // 1. Cuentas activas (PENDIENTE, PARCIAL, VENCIDO) primero, pagadas al final
+        // 2. Por fecha de venta ascendente (del más antiguo al más reciente)
         $sorted = $cuentas->sort(function($a, $b) {
             $isPaidA = strtoupper($a->estado) === 'PAGADO';
             $isPaidB = strtoupper($b->estado) === 'PAGADO';
 
             if ($isPaidA !== $isPaidB) {
                 return $isPaidA ? 1 : -1;
-            }
-
-            if ($a->es_ruta_actual !== $b->es_ruta_actual) {
-                return $a->es_ruta_actual ? -1 : 1;
-            }
-            if ($a->es_zona_actual !== $b->es_zona_actual) {
-                return $a->es_zona_actual ? -1 : 1;
-            }
-            if ($a->zona_nombre !== $b->zona_nombre) {
-                return strcmp($a->zona_nombre, $b->zona_nombre);
-            }
-            if ($a->ruta_nombre !== $b->ruta_nombre) {
-                return strcmp($a->ruta_nombre, $b->ruta_nombre);
             }
 
             $fechaA = $a->venta_fecha;

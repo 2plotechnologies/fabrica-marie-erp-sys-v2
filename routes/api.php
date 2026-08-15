@@ -165,7 +165,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('clientes')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,CAJERO,FIDELIZACION')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,ALMACENERO,VENDEDOR,CAJERO,FIDELIZACION')
         ->group(function () {
         Route::get('/', [ClienteController::class, 'index']);
         Route::get('/morosos', [ClienteController::class, 'morosos']);
@@ -359,7 +359,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
 
     // Resumen Diario
     Route::prefix('resumen-diario')
-        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR')
+        ->middleware('role:ADMIN,GERENTE,SUPERVISOR,VENDEDOR,ALMACENERO')
         ->group(function () {
             Route::get('/', [ResumenDiarioController::class, 'index']);
             Route::get('/salidas', [ResumenDiarioController::class, 'getSalidas']);

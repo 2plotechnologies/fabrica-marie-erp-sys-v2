@@ -226,6 +226,16 @@ class VentaController extends Controller
             'pagos.*.numero_operacion' => ['nullable', 'string'],
         ]);
 
+        // Si la venta es de un almacenero, no permitir ventas en ruta (con salida_id)
+        $user = auth()->user();
+        if ($user && $user->roles()->where('nombre', 'ALMACENERO')->exists()) {
+            foreach ($validated['items'] as $item) {
+                if (!empty($item['salida_id'])) {
+                    throw new Exception('El almacenero solo tiene permitido realizar ventas de fábrica.');
+                }
+            }
+        }
+
         //Si la venta es al credito, NO permitir vende a cliente con documento 000000 (Cliente Varios)
         if($validated['tipo_pago'] === 'CREDITO'){
             $cliente = Cliente::findOrFail($validated['cliente_id']);
@@ -515,6 +525,15 @@ class VentaController extends Controller
 
             if ($venta->estado !== 'BORRADOR') {
                 throw new Exception('Solo se pueden editar ventas en borrador');
+            }
+
+            $user = auth()->user();
+            if ($user && $user->roles()->where('nombre', 'ALMACENERO')->exists()) {
+                foreach ($request->items as $item) {
+                    if (!empty($item['salida_id'])) {
+                        throw new Exception('El almacenero solo tiene permitido realizar ventas de fábrica.');
+                    }
+                }
             }
 
             // 🔁 Actualizar datos principales

@@ -399,7 +399,7 @@ const FactoryOutput = () => {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={form.fecha} onChange={e => setForm({ ...form, fecha: e.target.value })} /></div>
                 <div className="space-y-2"><Label>Vendedor *</Label><Select value={form.vendedor_id} onValueChange={v => setForm({ ...form, vendedor_id: v })}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.usuario.nombre}</SelectItem>)}</SelectContent></Select></div>
-                <div className="space-y-2"><Label>Vehiculo *</Label><Select value={form.vehiculo_id} onValueChange={handleVehiculoChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa} - {v.chofer} - {v.marca} {v.modelo} {v.estado}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-2"><Label>Vehiculo *</Label><Select value={form.vehiculo_id} onValueChange={handleVehiculoChange}><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger><SelectContent>{vehiculos.map(v => <SelectItem key={v.id} value={v.id}>{v.placa} - {v.marca} {v.modelo} {v.estado}</SelectItem>)}</SelectContent></Select></div>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2"><Label>Conductor</Label><Input value={form.conductor} onChange={e => setForm({ ...form, conductor: e.target.value })} /></div>
@@ -471,7 +471,7 @@ const FactoryOutput = () => {
                         {productos.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} ({p.sku})</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    
+
                     <Input type="number" step={productos.find(p => p.id.toString() === tempItem.producto_id)?.tipo_venta === 'GRANEL' ? '0.01' : '1'} placeholder="Cantidad" value={tempItem.cantidad} onChange={e => {
                       let val = e.target.value;
                       if (val && productos.find(p => p.id.toString() === tempItem.producto_id)?.tipo_venta === 'UNIDAD' && val.includes('.')) {
@@ -479,7 +479,7 @@ const FactoryOutput = () => {
                       }
                       setTempItem({ ...tempItem, cantidad: val });
                     }} />
-                    
+
                     <Select value={tempItem.ruma_id} onValueChange={v => setTempItem({ ...tempItem, ruma_id: v })}>
                       <SelectTrigger><SelectValue placeholder="Ruma origen" /></SelectTrigger>
                       <SelectContent>
@@ -678,15 +678,15 @@ const FactoryOutput = () => {
                       {productos.map(p => <SelectItem key={p.id} value={p.id.toString()}>{p.nombre} ({p.sku})</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  
+
                   <Input type="number" step={productos.find(p => p.id.toString() === tempItem.producto_id)?.tipo_venta === 'GRANEL' ? '0.01' : '1'} placeholder="Cantidad" value={tempItem.cantidad} onChange={e => {
-                      let val = e.target.value;
-                      if (val && productos.find(p => p.id.toString() === tempItem.producto_id)?.tipo_venta === 'UNIDAD' && val.includes('.')) {
-                        val = val.split('.')[0];
-                      }
-                      setTempItem({ ...tempItem, cantidad: val });
+                    let val = e.target.value;
+                    if (val && productos.find(p => p.id.toString() === tempItem.producto_id)?.tipo_venta === 'UNIDAD' && val.includes('.')) {
+                      val = val.split('.')[0];
+                    }
+                    setTempItem({ ...tempItem, cantidad: val });
                   }} />
-                  
+
                   <Select value={tempItem.ruma_id} onValueChange={v => setTempItem({ ...tempItem, ruma_id: v })}>
                     <SelectTrigger><SelectValue placeholder="Ruma origen" /></SelectTrigger>
                     <SelectContent>
@@ -723,11 +723,11 @@ const FactoryOutput = () => {
                         </TableCell>
                         <TableCell>{ruma?.codigo || '-'}</TableCell>
                         <TableCell className="text-right font-semibold">
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             step={prod?.tipo_venta === 'GRANEL' ? '0.01' : '1'}
-                            className="w-24 text-right inline-block" 
-                            value={item.cantidad} 
+                            className="w-24 text-right inline-block"
+                            value={item.cantidad}
                             onChange={e => {
                               let newCantStr = e.target.value;
                               if (newCantStr && prod?.tipo_venta === 'UNIDAD' && newCantStr.includes('.')) {

@@ -30,9 +30,10 @@ const NewSale = () => {
   const { currentRole } = useRole();
   const { user } = useAuth();
   const isVendedor = currentRole === "VENDEDOR";
+  const isAlmacenero = currentRole === "ALMACENERO";
   const navigate = useNavigate();
   const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
-  const [tipoOrigen, setTipoOrigen] = useState<'RUTA' | 'FABRICA'>('RUTA');
+  const [tipoOrigen, setTipoOrigen] = useState<'RUTA' | 'FABRICA'>(currentRole === 'ALMACENERO' ? 'FABRICA' : 'RUTA');
   const [productos, setProductos] = useState<any[]>([]);
   const [clientes, setClientes] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
@@ -144,8 +145,8 @@ const NewSale = () => {
   const selectedVendedorObj = vendedores.find(v => String(v.id) === selectedVendedor);
   const targetVendedor = isVendedor ? vendedorActual : selectedVendedorObj;
 
-  const allowRuta = targetVendedor ? (targetVendedor.venta_en_ruta ?? true) : true;
-  const allowFabrica = targetVendedor ? (targetVendedor.venta_directa ?? false) : true;
+  const allowRuta = isAlmacenero ? false : (targetVendedor ? (targetVendedor.venta_en_ruta ?? true) : true);
+  const allowFabrica = isAlmacenero ? true : (targetVendedor ? (targetVendedor.venta_directa ?? false) : true);
 
   useEffect(() => {
     fetchClientes();
@@ -169,7 +170,11 @@ const NewSale = () => {
   }, [isVendedor, vendedorActual]);
 
   useEffect(() => {
-    if (targetVendedor) {
+    if (isAlmacenero) {
+      if (tipoOrigen !== 'FABRICA') {
+        setTipoOrigen('FABRICA');
+      }
+    } else if (targetVendedor) {
       const canRuta = targetVendedor.venta_en_ruta ?? true;
       const canFabrica = targetVendedor.venta_directa ?? false;
       if (!canRuta && canFabrica && tipoOrigen === 'RUTA') {
@@ -178,7 +183,7 @@ const NewSale = () => {
         setTipoOrigen('RUTA');
       }
     }
-  }, [targetVendedor, tipoOrigen]);
+  }, [targetVendedor, tipoOrigen, isAlmacenero]);
 
 
   // Credit limit warning
@@ -528,7 +533,7 @@ const NewSale = () => {
                       <SelectValue placeholder="Seleccionar vendedor / responsable..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {vendedores.map(v => (
+                      {(isAlmacenero ? vendedores.filter(v => Boolean(v.venta_directa)) : vendedores).map(v => (
                         <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre} ({v.id})</SelectItem>
                       ))}
                     </SelectContent>
@@ -644,7 +649,7 @@ const NewSale = () => {
           </DialogHeader>
 
           <div className="py-2 text-center">
-            {isVendedor ? (
+            {isVendedor || isAlmacenero ? (
               <div className="bg-muted p-4 rounded-lg text-sm font-medium border border-border text-left">
                 Por favor, solicite a un <span className="text-primary font-bold">administrador, gerente, supervisor o cajero</span> que aperture la caja para continuar con la venta.
               </div>
@@ -656,7 +661,7 @@ const NewSale = () => {
           </div>
 
           <DialogFooter className="flex sm:justify-center gap-2">
-            {isVendedor ? (
+            {isVendedor || isAlmacenero ? (
               <Button
                 variant="outline"
                 className="w-full"

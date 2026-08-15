@@ -143,10 +143,12 @@ const SalesDetailPage = () => {
 
   // Filtrar ventas
   const filteredVentas = ventas.filter(venta => {
-    const matchesSearch = venta.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      venta.notaPedido.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesVendedor = filterVendedor === 'all' || venta.vendedorId === filterVendedor;
-    const matchesCliente = filterCliente === 'all' || venta.clienteId === filterCliente;
+    const searchLower = (searchTerm || '').toLowerCase();
+    const matchesSearch = (venta.cliente || '').toLowerCase().includes(searchLower) ||
+      (venta.notaPedido || '').toLowerCase().includes(searchLower) ||
+      (venta.vendedor || '').toLowerCase().includes(searchLower);
+    const matchesVendedor = filterVendedor === 'all' || String(venta.vendedorId) === String(filterVendedor);
+    const matchesCliente = filterCliente === 'all' || String(venta.clienteId) === String(filterCliente);
     const matchesCondicion = filterCondicion === 'all' ||
       (filterCondicion === 'DEPOSITO' ? isVentaDeposito(venta) : venta.condicionVenta === filterCondicion);
     const matchesTipo = filterTipoCliente === 'all' || venta.tipoCliente === filterTipoCliente;
@@ -303,7 +305,7 @@ const SalesDetailPage = () => {
               <SelectContent>
                 <SelectItem value="all">Todos los vendedores</SelectItem>
                 {vendedores.map(v => (
-                  <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre}</SelectItem>
+                  <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre || v.nombre || `Vendedor #${v.id}`}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

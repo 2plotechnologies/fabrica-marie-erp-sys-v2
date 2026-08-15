@@ -150,6 +150,7 @@ const navigation: NavItemConfig[] = [
     module: 'clientes',
     subItems: [
       { to: '/clientes/lista', label: 'Lista de Clientes' },
+      { to: '/clientes/nuevo', label: 'Nuevo Cliente' },
       { to: '/clientes/crm', label: 'CRM Seguimiento' },
       { to: '/clientes/deudas', label: 'Cuentas por Cobrar' },
       { to: '/clientes/morosos', label: 'Morosos' },
@@ -220,6 +221,23 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const filteredNavigation = navigation
     .filter(item => rolePermissions[currentRole]?.includes(item.module))
     .map(item => {
+      if (item.module === 'clientes' && currentRole === 'ALMACENERO') {
+        return {
+          ...item,
+          subItems: item.subItems?.filter(sub => sub.to === '/clientes/lista' || sub.to === '/clientes/nuevo')
+        };
+      }
+      if (item.module === 'ventas' && currentRole === 'ALMACENERO') {
+        return {
+          ...item,
+          subItems: item.subItems?.filter(sub => 
+            sub.to === '/ventas/nueva' || 
+            sub.to === '/ventas/historial' || 
+            sub.to === '/ventas/detalle' || 
+            sub.to === '/ventas/gastos'
+          )
+        };
+      }
       if (item.module === 'almacen' && currentRole === 'VENDEDOR') {
         return {
           ...item,

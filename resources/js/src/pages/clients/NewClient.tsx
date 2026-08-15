@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clienteService } from '@/services/clienteService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Phone, CreditCard, Save, ArrowLeft } from 'lucide-react';
+import { Building2, Phone, CreditCard, Save, ArrowLeft, MapPin } from 'lucide-react';
 import { getErrorMessage } from '@/lib/axios-error';
 
 interface Ruta {
@@ -30,6 +29,7 @@ const NewClient = () => {
   const [loading, setLoading] = useState(false);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [rutas, setRutas] = useState<Ruta[]>([]);
+  const [selectedZona, setSelectedZona] = useState<string>('');
   const [formErrors, setFormErrors] = useState<any>({});
 
   const [formData, setFormData] = useState({
@@ -49,6 +49,38 @@ const NewClient = () => {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 🔹 Extraer zonas únicas de las rutas
+  const zonas = useMemo(() => {
+    const zoneSet = new Set<string>();
+    rutas.forEach((r) => {
+      if (r.zona && typeof r.zona === 'string' && r.zona.trim() !== '') {
+        zoneSet.add(r.zona.trim());
+      }
+    });
+    return Array.from(zoneSet).sort();
+  }, [rutas]);
+
+  // 🔹 Rutas filtradas por la zona seleccionada
+  const filteredRutas = useMemo(() => {
+    if (!selectedZona) return rutas;
+    return rutas.filter((r) => r.zona === selectedZona);
+  }, [rutas, selectedZona]);
+
+  // 🔹 Manejar cambio de zona
+  const handleZonaChange = (value: string) => {
+    const newZona = value === 'ALL_ZONAS' ? '' : value;
+    setSelectedZona(newZona);
+
+    if (formData.ruta_id) {
+      const belongsToZona = rutas.some(
+        (r) => String(r.id) === String(formData.ruta_id) && (!newZona || r.zona === newZona)
+      );
+      if (!belongsToZona) {
+        handleInputChange('ruta_id', '');
+      }
+    }
   };
 
   // 🔹 Cargar rutas
@@ -249,8 +281,40 @@ const NewClient = () => {
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="grid gap-4 sm:grid-cols-2">
+            <CardContent className="grid gap-4 sm:grid-cols-3">
 
+              {/* Selector de Zona */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  Zona
+                </Label>
+                <Select
+                  value={selectedZona || "ALL_ZONAS"}
+                  onValueChange={handleZonaChange}
+                  disabled={loadingRoutes}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        loadingRoutes
+                          ? "Cargando..."
+                          : "Todas las zonas"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_ZONAS">Todas las zonas</SelectItem>
+                    {zonas.map((zona) => (
+                      <SelectItem key={zona} value={zona}>
+                        {zona}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Selector de Ruta */}
               <div className="space-y-2">
                 <Label>Ruta</Label>
                 <Select
@@ -270,18 +334,25 @@ const NewClient = () => {
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {rutas.map((ruta) => (
-                      <SelectItem
-                        key={ruta.id}
-                        value={ruta.id.toString()}
-                      >
-                        {ruta.nombre}
+                    {filteredRutas.length === 0 ? (
+                      <SelectItem value="NONE" disabled>
+                        No hay rutas disponibles
                       </SelectItem>
-                    ))}
+                    ) : (
+                      filteredRutas.map((ruta) => (
+                        <SelectItem
+                          key={ruta.id}
+                          value={ruta.id.toString()}
+                        >
+                          {ruta.nombre} {ruta.zona && !selectedZona ? `(${ruta.zona})` : ''}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Condición de Pago */}
               <div className="space-y-2">
                 <Label>Condición de Pago *</Label>
                 <Select

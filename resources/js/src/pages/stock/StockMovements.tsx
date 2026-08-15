@@ -138,6 +138,10 @@ const StockMovements = () => {
   });
   */
 
+  const ultimoMovimientoValido = movimientos.find(
+    (m) => m.estado !== 'ANULADO' && m.referencia_tipo !== 'ANULACION_MOVIMIENTO'
+  );
+
   const filteredMovements = movimientos.filter((m) =>
     m.producto?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -289,10 +293,10 @@ const StockMovements = () => {
                   <TableCell className={`text-center font-medium ${m.estado === 'ANULADO' ? 'line-through text-muted-foreground' : ''}`}>{Number(m.stock_post_mov)}</TableCell>
                   <TableCell className={`text-sm text-muted-foreground max-w-[150px] truncate ${m.estado === 'ANULADO' ? 'line-through' : ''}`}>{m.motivo || '-'}</TableCell>
                   <TableCell className="text-center">
-                    {m.estado !== 'ANULADO' && (
+                    {m.estado !== 'ANULADO' && ultimoMovimientoValido?.id === m.id && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Revertir movimiento">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Revertir último movimiento">
                             <RotateCcw className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
