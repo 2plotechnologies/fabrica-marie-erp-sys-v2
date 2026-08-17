@@ -228,6 +228,7 @@ const NewClient = () => {
                   <SelectContent>
                     <SelectItem value="TIENDA">TIENDA</SelectItem>
                     <SelectItem value="DISTRIBUIDOR">DISTRIBUIDOR</SelectItem>
+                    <SelectItem value="MINORISTA">MINORISTA</SelectItem>
                     <SelectItem value="MAYORISTA">MAYORISTA</SelectItem>
                     <SelectItem value="CONSUMIDOR">CONSUMIDOR</SelectItem>
                   </SelectContent>

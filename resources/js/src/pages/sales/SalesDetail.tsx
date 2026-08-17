@@ -26,7 +26,7 @@ interface SaleDetailItem {
   degustacion: boolean;
   condicionVenta: 'CONTADO' | 'CREDITO' | 'DEPOSITO';
   notaPedido: string;
-  tipoCliente: 'DISTRIBUIDOR' | 'MAYORISTA' | 'SUPER_MAYORISTA' | 'TIENDA' | 'MINIMARKET';
+  tipoCliente: 'DISTRIBUIDOR' | 'MAYORISTA' | 'SUPER_MAYORISTA' | 'TIENDA' | 'MINIMARKET' | 'MINORISTA';
 }
 
 interface AbonoDetailItem {
@@ -872,8 +872,8 @@ const SalesDetailPage = () => {
                     {selectedVenta.cuenta?.estado && (
                       <Badge className={
                         selectedVenta.cuenta.estado === 'PAGADO' ? 'bg-emerald-500/10 text-emerald-500' :
-                        selectedVenta.cuenta.estado === 'PARCIAL' ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-rose-500/10 text-rose-500'
+                          selectedVenta.cuenta.estado === 'PARCIAL' ? 'bg-amber-500/10 text-amber-500' :
+                            'bg-rose-500/10 text-rose-500'
                       }>
                         {selectedVenta.cuenta.estado}
                       </Badge>
@@ -932,7 +932,7 @@ const SalesDetailPage = () => {
                               <TableCell className="font-medium">{abono.referencia || 'Abono a cuenta'}</TableCell>
                               <TableCell className="capitalize">{abono.metodoPago || '-'}</TableCell>
                               <TableCell>
-                                {abono.banco && abono.banco !== '-' ? abono.banco : ''} 
+                                {abono.banco && abono.banco !== '-' ? abono.banco : ''}
                                 {abono.numeroOperacion && abono.numeroOperacion !== '-' ? ` (Op: ${abono.numeroOperacion})` : '-'}
                               </TableCell>
                               <TableCell className="text-right font-bold text-emerald-600 dark:text-emerald-400">
@@ -943,13 +943,13 @@ const SalesDetailPage = () => {
                         ) : null}
 
                         {(!selectedVenta.adelanto || selectedVenta.adelanto <= 0) &&
-                         (!selectedVenta.cuenta?.abonos || selectedVenta.cuenta.abonos.length === 0) && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                              No hay adelantos ni abonos registrados para esta venta.
-                            </TableCell>
-                          </TableRow>
-                        )}
+                          (!selectedVenta.cuenta?.abonos || selectedVenta.cuenta.abonos.length === 0) && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                                No hay adelantos ni abonos registrados para esta venta.
+                              </TableCell>
+                            </TableRow>
+                          )}
                       </TableBody>
                     </Table>
                   </div>

@@ -8,6 +8,7 @@ export interface DevolucionPayload {
   fecha: string,
   vendedor_id: number,
   tipo: string,
+  origen_stock?: string,
   motivo: string,
   observaciones: string,
   estado: string,

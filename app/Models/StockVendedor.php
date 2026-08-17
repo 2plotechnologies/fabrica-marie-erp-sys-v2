@@ -18,6 +18,7 @@ class StockVendedor extends Model
         'stock_reservado',
         'vendido',
         'devuelto',
+        'defectuosos',
         'fecha_ultimo_mov'
     ];
 
@@ -27,6 +28,7 @@ class StockVendedor extends Model
         'stock_reservado' => 'float',
         'vendido' => 'float',
         'devuelto' => 'float',
+        'defectuosos' => 'float',
     ];
 
     public $timestamps = false;

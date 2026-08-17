@@ -14,6 +14,7 @@ class Devolucion extends Model
         'fecha',
         'vendedor_id',
         'tipo',
+        'origen_stock',
         'motivo',
         'observaciones',
         'estado',

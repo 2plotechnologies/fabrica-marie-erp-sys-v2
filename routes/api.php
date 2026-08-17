@@ -226,6 +226,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('/{id}', [VentaController::class, 'show']);
         // Confirmar
         Route::post('/{id}/confirmar', [VentaController::class, 'confirmar']);
+        // Canje por defectuoso
+        Route::post('/{id}/canje-defectuoso', [VentaController::class, 'canjeDefectuoso']);
         //Reporte Detalle
         Route::get('/reportes/detalle-ventas', [ReporteDetalleVentaController::class, 'detalleVentas']);
     });

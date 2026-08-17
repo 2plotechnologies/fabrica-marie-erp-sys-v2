@@ -1,15 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Plus,
-  Filter,
   MoreHorizontal,
   Phone,
   MapPin,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Map
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +35,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { clienteService } from '@/services/clienteService';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +57,15 @@ interface ClientUI {
   creditLimit: number;
   currentDebt: number;
   status: string;
+  ruta_id?: number | null;
+  ruta_nombre?: string;
+  zona?: string;
+}
+
+interface RutaOption {
+  id: number;
+  nombre: string;
+  zona?: string;
 }
 
 interface ClientDetail {
@@ -61,6 +76,7 @@ interface ClientDetail {
   direccion?: string;
   telefono?: string;
   ruta_id?: number | null;
+  ruta?: { id: number; nombre: string; zona?: string } | null;
   condicion_pago: string;
   limite_credito: number;
   dias_credito: number;
@@ -74,10 +90,14 @@ const ClientsList = () => {
   const { toast } = useToast();
 
   const [clients, setClients] = useState<ClientUI[]>([]);
+  const [rutas, setRutas] = useState<RutaOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [selectedZona, setSelectedZona] = useState<string>('ALL');
+  const [selectedRuta, setSelectedRuta] = useState<string>('ALL');
+
   const [detailClient, setDetailClient] = useState<ClientDetail | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -87,23 +107,20 @@ const ClientsList = () => {
   const [editClientId, setEditClientId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<ClientDetail | null>(null);
 
-  // 🔹 Obtener clientes desde backend
+  // 🔹 Obtener clientes y rutas desde backend
   useEffect(() => {
-    const fetchClientes = async () => {
+    const fetchData = async () => {
       try {
-        const data = await clienteService.getAll();
+        setLoading(true);
+        const [clientesData, rutasData] = await Promise.all([
+          clienteService.getAll(),
+          clienteService.getRutas(),
+        ]);
+
+        setRutas(rutasData || []);
 
         // Mapear datos backend → formato UI actual
-        const mappedClients: ClientUI[] = data.map((c: any) => ({
-          id: c.id,
-          razon_social: c.razon_social,
-          codigo: c.codigo_cliente,
-          phone: c.telefono || '',
-          address: c.direccion || '',
-          creditLimit: Number(c.limite_credito || 0),
-          currentDebt: Number(c.deuda_actual || 0),
-          status: c.status || 'ACTIVO',
-        }));
+        const mappedClients: ClientUI[] = (clientesData || []).map((c: any) => mapToUIClient(c));
 
         setClients(mappedClients);
 
@@ -118,16 +135,67 @@ const ClientsList = () => {
       }
     };
 
-    fetchClientes();
+    fetchData();
   }, []);
 
-  // 🔹 Filtros (NO modificados)
+  const mapToUIClient = (c: any): ClientUI => ({
+    id: c.id,
+    razon_social: c.razon_social,
+    codigo: c.codigo_cliente,
+    phone: c.telefono || '',
+    address: c.direccion || '',
+    creditLimit: Number(c.limite_credito || 0),
+    currentDebt: Number(c.deuda_actual || 0),
+    status: c.status || 'ACTIVO',
+    ruta_id: c.ruta_id || c.ruta?.id || null,
+    ruta_nombre: c.ruta?.nombre || '',
+    zona: c.ruta?.zona || '',
+  });
+
+  // Lista única de zonas
+  const zonasList = useMemo(() => {
+    const set = new Set<string>();
+    rutas.forEach((r) => {
+      if (r.zona && r.zona.trim()) set.add(r.zona.trim());
+    });
+    clients.forEach((c) => {
+      if (c.zona && c.zona.trim()) set.add(c.zona.trim());
+    });
+    return Array.from(set).sort();
+  }, [rutas, clients]);
+
+  // Lista de rutas filtradas según la zona seleccionada
+  const rutasListFiltered = useMemo(() => {
+    if (selectedZona === 'ALL') return rutas;
+    return rutas.filter((r) => r.zona === selectedZona);
+  }, [rutas, selectedZona]);
+
+  const handleZonaChange = (val: string) => {
+    setSelectedZona(val);
+    setPage(1);
+    if (val !== 'ALL' && selectedRuta !== 'ALL') {
+      const routeObj = rutas.find((r) => String(r.id) === selectedRuta);
+      if (!routeObj || routeObj.zona !== val) {
+        setSelectedRuta('ALL');
+      }
+    }
+  };
+
+  const handleRutaChange = (val: string) => {
+    setSelectedRuta(val);
+    setPage(1);
+  };
+
+  // 🔹 Filtros
   const filteredClients = clients.filter(client => {
     const matchesSearch =
       client.razon_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.codigo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || client.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesZona = selectedZona === 'ALL' || client.zona === selectedZona;
+    const matchesRuta = selectedRuta === 'ALL' || String(client.ruta_id) === selectedRuta;
+
+    return matchesSearch && matchesStatus && matchesZona && matchesRuta;
   });
 
   const itemsPerPage = 6;
@@ -147,17 +215,6 @@ const ClientsList = () => {
     };
     return styles[status as keyof typeof styles] || styles.INACTIVO;
   };
-
-  const mapToUIClient = (c: any): ClientUI => ({
-    id: c.id,
-    razon_social: c.razon_social,
-    codigo: c.codigo_cliente,
-    phone: c.telefono || '',
-    address: c.direccion || '',
-    creditLimit: Number(c.limite_credito || 0),
-    currentDebt: Number(c.deuda_actual || 0),
-    status: c.status || 'ACTIVO',
-  });
 
   const getClientById = async (clientId: number): Promise<ClientDetail | null> => {
     try {
@@ -326,29 +383,75 @@ const ClientsList = () => {
         </div>
       </div>
 
-      {/* Filters (SIN CAMBIOS) */}
-      <div className="flex flex-col sm:flex-row gap-4 animate-slide-up">
-        <div className="relative flex-1">
+      {/* Filters */}
+      <div className="flex flex-col lg:flex-row gap-4 animate-slide-up">
+        {/* Búsqueda por texto */}
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nombre o razón social..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
+
+        {/* Filtro Zona */}
+        <div className="w-full lg:w-48">
+          <Select value={selectedZona} onValueChange={handleZonaChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todas las zonas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todas las zonas</SelectItem>
+              {zonasList.map((zona) => (
+                <SelectItem key={zona} value={zona}>
+                  {zona}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filtro Ruta */}
+        <div className="w-full lg:w-48">
+          <Select value={selectedRuta} onValueChange={handleRutaChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todas las rutas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todas las rutas</SelectItem>
+              {rutasListFiltered.map((ruta) => (
+                <SelectItem key={ruta.id} value={String(ruta.id)}>
+                  {ruta.nombre} {ruta.zona && selectedZona === 'ALL' ? `(${ruta.zona})` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Estado Filter Buttons */}
+        <div className="flex gap-2 shrink-0">
           <Button
             variant={statusFilter === null ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setStatusFilter(null)}
+            onClick={() => {
+              setStatusFilter(null);
+              setPage(1);
+            }}
           >
             Todos
           </Button>
           <Button
             variant={statusFilter === 'ACTIVO' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setStatusFilter('ACTIVO')}
+            onClick={() => {
+              setStatusFilter('ACTIVO');
+              setPage(1);
+            }}
           >
             <CheckCircle className="h-4 w-4 mr-1" />
             Activos
@@ -356,7 +459,10 @@ const ClientsList = () => {
           <Button
             variant={statusFilter === 'MOROSO' ? 'destructive' : 'outline'}
             size="sm"
-            onClick={() => setStatusFilter('MOROSO')}
+            onClick={() => {
+              setStatusFilter('MOROSO');
+              setPage(1);
+            }}
           >
             <AlertCircle className="h-4 w-4 mr-1" />
             Morosos
@@ -364,7 +470,7 @@ const ClientsList = () => {
         </div>
       </div>
 
-      {/* Tabla (SIN CAMBIOS VISUALES) */}
+      {/* Tabla */}
       <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up">
         <div className="overflow-x-auto">
           <Table>
@@ -384,7 +490,15 @@ const ClientsList = () => {
                   <TableCell>
                     <div>
                       <p className="font-medium">{client.razon_social}</p>
-                      <p className="text-sm text-muted-foreground">{client.codigo}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-muted-foreground">{client.codigo}</span>
+                        {client.ruta_nombre && (
+                          <Badge variant="outline" className="text-[10px] py-0 h-5 bg-muted/40 font-normal">
+                            <Map className="h-3 w-3 mr-1 text-muted-foreground" />
+                            {client.ruta_nombre} {client.zona ? `(${client.zona})` : ''}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -474,6 +588,8 @@ const ClientsList = () => {
               <p><strong>Tipo:</strong> {detailClient.tipo_cliente || '-'}</p>
               <p><strong>Teléfono:</strong> {detailClient.telefono || '-'}</p>
               <p className="sm:col-span-2"><strong>Dirección:</strong> {detailClient.direccion || '-'}</p>
+              <p><strong>Ruta:</strong> {detailClient.ruta?.nombre || '-'}</p>
+              <p><strong>Zona:</strong> {detailClient.ruta?.zona || '-'}</p>
               <p><strong>Condición:</strong> {detailClient.condicion_pago}</p>
               <p><strong>Días crédito:</strong> {detailClient.dias_credito}</p>
               <p><strong>Límite crédito:</strong> S/ {detailClient.limite_credito.toLocaleString('es-PE')}</p>

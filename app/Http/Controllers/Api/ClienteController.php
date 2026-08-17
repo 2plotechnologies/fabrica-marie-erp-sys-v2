@@ -24,7 +24,7 @@ class ClienteController extends Controller
         $validated = $request->validate([
             'codigo_cliente' => 'required|string|unique:clientes',
             'razon_social' => 'required|string',
-            'tipo_cliente' => 'nullable|in:TIENDA,DISTRIBUIDOR,MAYORISTA,CONSUMIDOR',
+            'tipo_cliente' => 'nullable|in:TIENDA,DISTRIBUIDOR,MINORISTA,MAYORISTA,CONSUMIDOR',
             'direccion' => 'nullable|string',
             'telefono' => 'nullable|string',
             'ruta_id' => 'nullable|exists:rutas,id',

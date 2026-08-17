@@ -25,6 +25,15 @@ const WarehouseReturns = () => {
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
 
+  const [formData, setFormData] = useState({
+    fecha: format(new Date(), 'yyyy-MM-dd'),
+    vendedor_id: '',
+    tipo_devolucion: 'BUENA',
+    origen_stock: 'REGULAR',
+    motivo: '',
+    observaciones: '',
+  });
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<string>('all');
   const [filterEstado, setFilterEstado] = useState<string>('all');
@@ -52,12 +61,24 @@ const WarehouseReturns = () => {
   const fetchProductos = async () => {
     try {
       let data;
-      if (isVendedor && vendedorActual) {
-        const rawStock = await devolucionService.getProductosVendedor(vendedorActual.id);
-        data = rawStock.map((sv: any) => ({
-          ...sv.producto,
-          stockActual: sv.cantidad,
-        }));
+      const targetVendedorId = formData.vendedor_id || (isVendedor && vendedorActual ? vendedorActual.id : null);
+      if (targetVendedorId) {
+        const rawStock = await devolucionService.getProductosVendedor(Number(targetVendedorId));
+        const map: Record<number, any> = {};
+        (rawStock || []).forEach((sv: any) => {
+          const p = sv.producto;
+          if (!p) return;
+          if (!map[p.id]) {
+            map[p.id] = {
+              ...p,
+              stockActual: 0,
+              stockDefectuoso: 0
+            };
+          }
+          map[p.id].stockActual += Number(sv.cantidad || 0);
+          map[p.id].stockDefectuoso += Number(sv.defectuosos || 0);
+        });
+        data = Object.values(map);
       } else {
         data = await devolucionService.getProductos();
       }
@@ -82,18 +103,8 @@ const WarehouseReturns = () => {
   }, []);
 
   useEffect(() => {
-    if (vendedores.length > 0) {
-      fetchProductos();
-    }
-  }, [vendedores, currentRole]);
-
-  const [formData, setFormData] = useState({
-    fecha: format(new Date(), 'yyyy-MM-dd'),
-    vendedor_id: '',
-    tipo_devolucion: 'BUENA',
-    motivo: '',
-    observaciones: '',
-  });
+    fetchProductos();
+  }, [formData.vendedor_id, currentRole]);
 
   useEffect(() => {
     if (isVendedor && vendedorActual) {
@@ -102,7 +113,7 @@ const WarehouseReturns = () => {
   }, [isVendedor, vendedorActual]);
 
   const [formItems, setFormItems] = useState<{
-    producto_id: number; cantidad: number; motivo: string | null;
+    producto_id: number; cantidad: number | string; motivo: string | null;
   }[]>([]);
   const [selectedProduct, setSelectedProduct] = useState('');
 
@@ -122,13 +133,23 @@ const WarehouseReturns = () => {
     page * itemsPerPage
   );
 
+  const getStockDisponible = (prod: any) => {
+    if (!prod) return Infinity;
+    if (formData.tipo_devolucion === 'MALA' && formData.origen_stock === 'DEFECTUOSOS') {
+      return prod.stockDefectuoso !== undefined ? prod.stockDefectuoso : Infinity;
+    }
+    return prod.stockActual !== undefined ? prod.stockActual : Infinity;
+  };
+
   const handleAddProduct = () => {
     if (!selectedProduct) { toast.error('Selecciona un producto'); return; }
     const product = productos.find(p => String(p.id) === selectedProduct);
     if (!product) return;
     if (formItems.some(item => item.producto_id === product.id)) { toast.error('Ya está en la lista'); return; }
-    if (isVendedor && product.stockActual !== undefined && product.stockActual <= 0) {
-      toast.error('No tienes stock de este producto');
+    
+    const stockDisp = getStockDisponible(product);
+    if (isVendedor && stockDisp !== Infinity && stockDisp <= 0) {
+      toast.error('No tienes stock suficiente de este producto para el origen seleccionado');
       return;
     }
     setFormItems([...formItems, {
@@ -140,15 +161,32 @@ const WarehouseReturns = () => {
   const handleSubmit = async () => {
     if (!formData.vendedor_id) { toast.error('Selecciona un vendedor'); return; }
     if (formItems.length === 0) { toast.error('Agrega al menos un producto'); return; }
+
+    for (const item of formItems) {
+      const prod = productos.find(p => p.id === item.producto_id);
+      const maxVal = getStockDisponible(prod);
+      const numVal = parseFloat(String(item.cantidad));
+
+      if (isNaN(numVal) || numVal <= 0) {
+        toast.error(`La cantidad para ${prod?.nombre || 'el producto'} debe ser mayor a 0`);
+        return;
+      }
+      if (numVal > maxVal) {
+        toast.error(`La cantidad para ${prod?.nombre || 'el producto'} (${numVal}) excede el stock disponible (${maxVal})`);
+        return;
+      }
+    }
+
     try {
       await devolucionService.create({
         fecha: formData.fecha,
         vendedor_id: Number(formData.vendedor_id),
         tipo: formData.tipo_devolucion,
+        origen_stock: formData.tipo_devolucion === 'MALA' ? formData.origen_stock : 'REGULAR',
         motivo: formData.motivo,
         observaciones: formData.observaciones,
         estado: "PENDIENTE",
-        items: formItems
+        items: formItems.map(it => ({ ...it, cantidad: Number(it.cantidad) }))
       });
 
       toast.success("Devolución creada correctamente");
@@ -160,6 +198,7 @@ const WarehouseReturns = () => {
         fecha: format(new Date(), 'yyyy-MM-dd'),
         vendedor_id: isVendedor && vendedorActual ? String(vendedorActual.id) : '',
         tipo_devolucion: 'BUENA',
+        origen_stock: 'REGULAR',
         motivo: '',
         observaciones: ''
       });
@@ -317,6 +356,31 @@ const WarehouseReturns = () => {
                 <Button type="button" variant={formData.tipo_devolucion === 'MALA' ? 'destructive' : 'outline'} className="gap-2" onClick={() => setFormData({ ...formData, tipo_devolucion: 'MALA' })}><PackageX className="h-4 w-4" />Mala (Dañada → Desecho)</Button>
               </div>
             </div>
+
+            {formData.tipo_devolucion === 'MALA' && (
+              <div className="space-y-2 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200/50">
+                <Label className="font-semibold text-amber-800 dark:text-amber-300">Origen de Productos Defectuosos</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={formData.origen_stock === 'DEFECTUOSOS' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, origen_stock: 'DEFECTUOSOS' })}
+                  >
+                    🔄 Stock Defectuoso (Canjes)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={formData.origen_stock === 'REGULAR' ? 'default' : 'outline'}
+                    onClick={() => setFormData({ ...formData, origen_stock: 'REGULAR' })}
+                  >
+                    🚚 Stock Regular (Vehículo)
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2"><Label>Motivo</Label><Input value={formData.motivo} onChange={(e) => setFormData({ ...formData, motivo: e.target.value })} /></div>
             <div className="space-y-3 border-t pt-4">
               <Label className="text-base font-semibold">Productos a Devolver</Label>
@@ -326,11 +390,14 @@ const WarehouseReturns = () => {
                     <SelectValue placeholder="Seleccionar producto..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {productos.map(p => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.nombre} - {p.marca} ({p.presentacion}){p.stockActual !== undefined ? ` - Stock: ${p.stockActual}` : ''}
-                      </SelectItem>
-                    ))}
+                    {productos.map(p => {
+                      const stockDisp = getStockDisponible(p);
+                      return (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.nombre} - {p.marca} ({p.presentacion}){stockDisp !== Infinity ? ` - Stock disponible: ${stockDisp}` : ''}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 <Button type="button" onClick={handleAddProduct}><Plus className="h-4 w-4" /></Button>
@@ -339,6 +406,7 @@ const WarehouseReturns = () => {
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {formItems.map((item, index) => {
                     const prod = productos.find(p => p.id === item.producto_id);
+                    const stockDisp = getStockDisponible(prod);
                     return (
                       <div key={index} className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg">
                         <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{prod?.nombre}</p><p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p></div>
@@ -346,21 +414,40 @@ const WarehouseReturns = () => {
                           type="number"
                           step={prod?.tipo_venta === 'GRANEL' ? '0.01' : '1'}
                           min={prod?.tipo_venta === 'GRANEL' ? "0.01" : "1"}
-                          max={prod?.stockActual !== undefined ? prod.stockActual : undefined}
+                          max={stockDisp !== Infinity ? stockDisp : undefined}
                           value={item.cantidad}
                           onChange={(e) => {
                             let valStr = e.target.value;
                             if (valStr && prod?.tipo_venta === 'UNIDAD' && valStr.includes('.')) {
                               valStr = valStr.split('.')[0];
                             }
-                            const val = parseFloat(valStr) || 1;
-                            const maxVal = prod?.stockActual !== undefined ? prod.stockActual : Infinity;
                             setFormItems(formItems.map((it, i) => i === index ? {
                               ...it,
-                              cantidad: Math.max(0, Math.min(maxVal, val))
+                              cantidad: valStr
                             } : it));
                           }}
-                          className="w-20"
+                          onBlur={() => {
+                            const maxVal = getStockDisponible(prod);
+                            const isGranel = prod?.tipo_venta === 'GRANEL';
+                            const minVal = isGranel ? 0.01 : 1;
+                            let numVal = parseFloat(String(item.cantidad));
+
+                            if (isNaN(numVal) || numVal < minVal) {
+                              toast.error(`La cantidad mínima es ${minVal}`);
+                              numVal = minVal;
+                            } else if (numVal > maxVal) {
+                              toast.error(`La cantidad no puede superar el stock disponible (${maxVal})`);
+                              numVal = maxVal;
+                            } else if (!isGranel) {
+                              numVal = Math.floor(numVal);
+                            }
+
+                            setFormItems(formItems.map((it, i) => i === index ? {
+                              ...it,
+                              cantidad: numVal
+                            } : it));
+                          }}
+                          className="w-24"
                         />
                         <Input placeholder="Motivo" value={item.motivo || ''} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, motivo: e.target.value || null } : it))} className="w-40" />
                         <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setFormItems(formItems.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>

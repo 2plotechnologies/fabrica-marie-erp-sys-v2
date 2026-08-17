@@ -8,12 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, ArrowUpCircle, ArrowDownCircle, RotateCcw, Settings2, Calendar, Filter, Plus } from 'lucide-react';
+import { Search, ArrowUpCircle, ArrowDownCircle, RotateCcw, Settings2, Calendar, Filter, Plus, Eye, Package, Layers, FileText, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { movimientoService } from '@/services/movimientoStockService';
 import { toast } from '@/hooks/use-toast';
-import { setFips } from 'crypto';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,11 +29,18 @@ const StockMovements = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [detailMovement, setDetailMovement] = useState<any | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [movimientos, setMovimientos] = useState<any[]>([]);
   const [productos, setProductos] = useState<any[]>([]);
   const [rumas, setRumas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleViewDetail = (mov: any) => {
+    setDetailMovement(mov);
+    setIsDetailOpen(true);
+  };
 
   const fetchMovimientos = async () => {
     try {
@@ -254,6 +260,126 @@ const StockMovements = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Detalle de Movimiento */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              Detalle del Movimiento #{detailMovement?.id}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailMovement && (
+            <div className="space-y-4 py-2 text-sm">
+              {/* Encabezado con tipo y estado */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border">
+                <div className="flex items-center gap-2">
+                  {getTypeIcon(detailMovement.tipo)}
+                  {getTypeBadge(detailMovement.tipo)}
+                </div>
+                {detailMovement.estado === 'ANULADO' ? (
+                  <Badge variant="outline" className="border-red-200 text-red-500 bg-red-50">
+                    Anulado
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="border-emerald-200 text-emerald-600 bg-emerald-50">
+                    Registrado
+                  </Badge>
+                )}
+              </div>
+
+              {/* Grid de Datos */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 border rounded-lg bg-card space-y-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" /> Fecha y Hora
+                  </span>
+                  <p className="font-medium">
+                    {format(new Date(detailMovement.created_at), "dd MMM yyyy, HH:mm", { locale: es })}
+                  </p>
+                </div>
+
+                <div className="p-3 border rounded-lg bg-card space-y-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Package className="h-3.5 w-3.5" /> Producto
+                  </span>
+                  <p className="font-medium truncate">{detailMovement.producto?.nombre || '-'}</p>
+                  {detailMovement.producto?.sku && (
+                    <p className="text-xs text-muted-foreground">SKU: {detailMovement.producto.sku}</p>
+                  )}
+                </div>
+
+                <div className="p-3 border rounded-lg bg-card space-y-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Layers className="h-3.5 w-3.5" /> Ruma / Ubicación
+                  </span>
+                  <p className="font-medium">
+                    {detailMovement.ruma
+                      ? `${detailMovement.ruma.codigo} ${detailMovement.ruma.nombre ? `- ${detailMovement.ruma.nombre}` : ''}`
+                      : 'Sin ruma asignada'}
+                  </p>
+                </div>
+
+                <div className="p-3 border rounded-lg bg-card space-y-1">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <FileText className="h-3.5 w-3.5" /> Tipo Venta
+                  </span>
+                  <p className="font-medium">{detailMovement.producto?.tipo_venta || '-'}</p>
+                </div>
+              </div>
+
+              {/* Resumen de Stock */}
+              <div className="p-4 border rounded-lg bg-muted/20 space-y-2">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Auditoría de Stock
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Stock Anterior</p>
+                    <p className="text-base font-semibold">{Number(detailMovement.stock_anterior)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cantidad</p>
+                    <p className={`text-base font-bold ${
+                      detailMovement.tipo === 'SALIDA' || detailMovement.tipo === 'DESECHO' || detailMovement.tipo === 'DEVOLUCION_MALA'
+                        ? 'text-red-500'
+                        : 'text-emerald-600'
+                    }`}>
+                      {detailMovement.tipo === 'SALIDA' || detailMovement.tipo === 'DESECHO' ? '-' : '+'}
+                      {Number(detailMovement.cantidad)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Stock Nuevo</p>
+                    <p className="text-base font-semibold">{Number(detailMovement.stock_post_mov)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Motivo */}
+              <div className="p-3 border rounded-lg bg-card space-y-1">
+                <span className="text-xs text-muted-foreground">Motivo / Observación</span>
+                <p className="text-sm font-medium">{detailMovement.motivo || 'Sin motivo especificado'}</p>
+              </div>
+
+              {detailMovement.referencia_tipo && (
+                <div className="p-3 border rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 space-y-1 text-xs text-amber-800 dark:text-amber-300">
+                  <span className="font-semibold">Referencia Auditoría:</span>{' '}
+                  {detailMovement.referencia_tipo} #{detailMovement.referencia_id}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="shadow-card"><CardContent className="pt-6"><div className="flex items-center gap-4"><div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center"><ArrowDownCircle className="h-6 w-6 text-emerald-600" /></div><div><p className="text-sm text-muted-foreground">Entradas</p><p className="text-2xl font-bold">{stats.entradas}</p></div></div></CardContent></Card>
         <Card className="shadow-card"><CardContent className="pt-6"><div className="flex items-center gap-4"><div className="h-12 w-12 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center"><ArrowUpCircle className="h-6 w-6 text-red-600" /></div><div><p className="text-sm text-muted-foreground">Salidas</p><p className="text-2xl font-bold">{stats.salidas}</p></div></div></CardContent></Card>
@@ -293,29 +419,40 @@ const StockMovements = () => {
                   <TableCell className={`text-center font-medium ${m.estado === 'ANULADO' ? 'line-through text-muted-foreground' : ''}`}>{Number(m.stock_post_mov)}</TableCell>
                   <TableCell className={`text-sm text-muted-foreground max-w-[150px] truncate ${m.estado === 'ANULADO' ? 'line-through' : ''}`}>{m.motivo || '-'}</TableCell>
                   <TableCell className="text-center">
-                    {m.estado !== 'ANULADO' && ultimoMovimientoValido?.id === m.id && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Revertir último movimiento">
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Revertir movimiento?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción revertirá el stock de este movimiento y lo marcará como anulado. ¿Estás seguro?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleRevertir(m.id)} className="bg-red-500 hover:bg-red-600 text-white">
-                              Sí, revertir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
+                    <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary"
+                        title="Ver detalle del movimiento"
+                        onClick={() => handleViewDetail(m)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {m.estado !== 'ANULADO' && ultimoMovimientoValido?.id === m.id && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" title="Revertir último movimiento">
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Revertir movimiento?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción revertirá el stock de este movimiento y lo marcará como anulado. ¿Estás seguro?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleRevertir(m.id)} className="bg-red-500 hover:bg-red-600 text-white">
+                                Sí, revertir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

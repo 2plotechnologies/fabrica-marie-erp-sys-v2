@@ -25,14 +25,29 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check, X, Trash } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check, X, Trash, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Sale } from '@/types';
 import { ventaService } from '@/services/ventaService';
 import { toast } from 'sonner';
 import { formatErrorMessage } from '@/lib/axios-error';
+
+interface CanjeItemState {
+  item_id: number;
+  producto_id: number;
+  producto_nombre: string;
+  tipo_item: 'VENTA' | 'BONIFICACIÓN' | 'DEGUSTACIÓN';
+  cantidad_original: number;
+  cantidad_canje: number;
+  stock_disponible: number;
+  max_posible: number;
+  motivo: string;
+}
 
 const SalesHistory = () => {
   const [ventas, setVentas] = useState<any[]>([]);
@@ -42,6 +57,116 @@ const SalesHistory = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+
+  const [isCanjeModalOpen, setIsCanjeModalOpen] = useState(false);
+  const [canjeSale, setCanjeSale] = useState<any | null>(null);
+  const [canjeItems, setCanjeItems] = useState<CanjeItemState[]>([]);
+  const [canjeObservaciones, setCanjeObservaciones] = useState('');
+  const [isLoadingStock, setIsLoadingStock] = useState(false);
+  const [isSubmittingCanje, setIsSubmittingCanje] = useState(false);
+
+  const handleOpenCanjeModal = async (sale: any) => {
+    setCanjeSale(sale);
+    setIsCanjeModalOpen(true);
+    setIsLoadingStock(true);
+    setCanjeObservaciones('');
+
+    try {
+      const isRoute = sale.items?.some((i: any) => i.salida_id != null);
+      let stockData: any[] = [];
+      const vId = sale.vendedor_id || sale.vendedor?.id;
+      if (isRoute && vId) {
+        stockData = await ventaService.getProductosByVendedor(String(vId));
+      } else {
+        stockData = await ventaService.getProductosFabrica();
+      }
+
+      // Mapear stock disponible acumulado por producto_id
+      const stockMap: Record<number, number> = {};
+      stockData.forEach((st: any) => {
+        const pId = st.producto_id || st.producto?.id;
+        const disp = st.cantidad !== undefined ? st.cantidad : (st.stock !== undefined ? st.stock : 0);
+        if (pId) {
+          stockMap[pId] = (stockMap[pId] || 0) + Number(disp || 0);
+        }
+      });
+
+      const itemsState: CanjeItemState[] = (sale.items || []).map((item: any) => {
+        const tipoItem = item.es_bonificacion
+          ? 'BONIFICACIÓN'
+          : item.es_degustacion
+          ? 'DEGUSTACIÓN'
+          : 'VENTA';
+        const stockDisp = stockMap[item.producto_id] ?? 0;
+        const maxPosible = Math.max(0, Math.min(Number(item.cantidad), Number(stockDisp)));
+
+        return {
+          item_id: item.id,
+          producto_id: item.producto_id,
+          producto_nombre: item.producto?.nombre || 'Producto',
+          tipo_item: tipoItem,
+          cantidad_original: Number(item.cantidad),
+          cantidad_canje: 0,
+          stock_disponible: stockDisp,
+          max_posible: maxPosible,
+          motivo: 'Producto defectuoso reportado por cliente',
+        };
+      });
+
+      setCanjeItems(itemsState);
+    } catch (error) {
+      console.error('Error al verificar stock disponible:', error);
+      toast.error('No se pudo cargar el stock disponible para reposición.');
+    } finally {
+      setIsLoadingStock(false);
+    }
+  };
+
+  const handleCanjeSubmit = async () => {
+    if (!canjeSale) return;
+    const activeItems = canjeItems.filter(i => Number(i.cantidad_canje) > 0);
+
+    if (activeItems.length === 0) {
+      toast.error('Indica una cantidad mayor a 0 en al menos un producto a canjear.');
+      return;
+    }
+
+    for (const item of activeItems) {
+      if (item.cantidad_canje > item.max_posible) {
+        if (item.cantidad_canje > item.cantidad_original) {
+          toast.error(`La cantidad para '${item.producto_nombre}' excede la cantidad entregada en la venta (${item.cantidad_original}).`);
+        } else {
+          toast.error(`No hay stock suficiente para reponer '${item.producto_nombre}'. Disponible: ${item.stock_disponible}.`);
+        }
+        return;
+      }
+    }
+
+    setIsSubmittingCanje(true);
+    try {
+      const payloadItems = activeItems.map(i => ({
+        venta_item_id: i.item_id,
+        producto_id: i.producto_id,
+        cantidad: Number(i.cantidad_canje),
+        motivo: i.motivo,
+      }));
+
+      await ventaService.canjeDefectuoso(canjeSale.id, {
+        items_defectuosos: payloadItems,
+        items_reposicion: payloadItems,
+        observaciones: canjeObservaciones
+      });
+
+      toast.success('Canje por productos defectuosos registrado correctamente');
+      setIsCanjeModalOpen(false);
+      setCanjeSale(null);
+    } catch (error: any) {
+      console.error('Error al realizar canje:', error);
+      toast.error(formatErrorMessage('Error en el canje', error, 'No se pudo procesar el canje'));
+    } finally {
+      setIsSubmittingCanje(false);
+    }
+  };
 
   const handleConfirmSale = async (saleId: number) => {
     try {
@@ -373,19 +498,29 @@ const SalesHistory = () => {
                               </div>
                             )}
                           </div>
-                          <div className="border rounded-lg divide-y text-xs sm:text-sm max-h-60 overflow-y-auto">
-                            {sale.items.map((item: any) => (
-                              <div key={item.id} className="p-2.5 flex justify-between items-center">
-                                <div className="min-w-0 pr-2">
-                                  <p className="font-medium truncate">{item.producto?.nombre}</p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
-                                  </p>
+                              {sale.items.map((item: any) => (
+                                <div key={item.id} className="p-2.5 flex justify-between items-center">
+                                  <div className="min-w-0 pr-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-medium truncate">{item.producto?.nombre}</span>
+                                      {Boolean(item.es_bonificacion) && (
+                                        <Badge variant="outline" className="text-[10px] py-0 bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                          BONIFICACIÓN
+                                        </Badge>
+                                      )}
+                                      {Boolean(item.es_degustacion) && (
+                                        <Badge variant="outline" className="text-[10px] py-0 bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200">
+                                          DEGUSTACIÓN
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
+                                    </p>
+                                  </div>
+                                  <p className="font-semibold shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
                                 </div>
-                                <p className="font-semibold shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
                           <div className="space-y-2 pt-3 border-t text-sm">
                             {sale.descuento > 0 && (
                               <div className="flex justify-between text-red-500 text-xs sm:text-sm">
@@ -420,16 +555,26 @@ const SalesHistory = () => {
                               </Button>
                             )}
 
-                            {sale.estado === "CONFIRMADA" && (
-                              <Button
-                                onClick={() => handleCancelSale(sale.id)}
-                                className="w-full mt-3 bg-red-500 hover:bg-red-600 text-white font-medium"
-                                size="sm"
-                              >
-                                <X className="h-4 w-4 mr-2" />
-                                Anular Venta
-                              </Button>
-                            )}
+                              {sale.estado === "CONFIRMADA" && (
+                                <>
+                                  <Button
+                                    onClick={() => handleOpenCanjeModal(sale)}
+                                    className="w-full mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2"
+                                    size="sm"
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Canje por Producto Defectuoso
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleCancelSale(sale.id)}
+                                    className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2"
+                                    size="sm"
+                                  >
+                                    <X className="h-4 w-4" />
+                                    Anular Venta
+                                  </Button>
+                                </>
+                              )}
                           </div>
                         </div>
                       </DialogContent>
@@ -528,7 +673,19 @@ const SalesHistory = () => {
                               {sale.items.map((item) => (
                                 <div key={item.id} className="p-3 flex justify-between items-center">
                                   <div>
-                                    <p className="font-medium">{item.producto?.nombre}</p>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-medium">{item.producto?.nombre}</span>
+                                      {Boolean(item.es_bonificacion) && (
+                                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                          BONIFICACIÓN
+                                        </Badge>
+                                      )}
+                                      {Boolean(item.es_degustacion) && (
+                                        <Badge variant="outline" className="text-xs bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200">
+                                          DEGUSTACIÓN
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <p className="text-sm text-muted-foreground">
                                       {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
                                     </p>
@@ -572,14 +729,24 @@ const SalesHistory = () => {
                               )}
 
                               {sale.estado === "CONFIRMADA" && (
-                                <Button
-                                  onClick={() => handleCancelSale(sale.id)}
-                                  className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white font-medium"
-                                  size="sm"
-                                >
-                                  <X className="h-4 w-4 mr-2" />
-                                  Anular Venta
-                                </Button>
+                                <>
+                                  <Button
+                                    onClick={() => handleOpenCanjeModal(sale)}
+                                    className="w-full mt-4 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2"
+                                    size="sm"
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Canje por Producto Defectuoso
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleCancelSale(sale.id)}
+                                    className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2"
+                                    size="sm"
+                                  >
+                                    <X className="h-4 w-4" />
+                                    Anular Venta
+                                  </Button>
+                                </>
                               )}
 
                               <div className="flex justify-between text-muted-foreground">
@@ -617,6 +784,134 @@ const SalesHistory = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de Canje por Productos Defectuosos */}
+      <Dialog open={isCanjeModalOpen} onOpenChange={setIsCanjeModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <RefreshCw className="h-5 w-5 text-amber-500" />
+              Canje por Productos Defectuosos (Venta #{canjeSale?.codigo?.padStart(6, '0')})
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Los productos defectuosos retornados serán reemplazados 1-a-1 por unidades de reposición.
+            </DialogDescription>
+          </DialogHeader>
+
+          {canjeSale && (
+            <div className="space-y-4 py-2 text-xs">
+              <div className="bg-muted/50 p-3 rounded-lg space-y-1">
+                <p><strong>Cliente:</strong> {canjeSale.cliente?.razon_social}</p>
+                <p><strong>Vendedor:</strong> {canjeSale.vendedor?.usuario?.nombre}</p>
+                <p>
+                  <strong>Origen Reposición:</strong>{' '}
+                  {canjeSale.items?.some((i: any) => i.salida_id)
+                    ? '🚚 Stock de Ruta del Vendedor'
+                    : '🏢 Stock Central de Fábrica'}
+                </p>
+              </div>
+
+              {isLoadingStock ? (
+                <div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                  <span>Verificando stock disponible para reposición...</span>
+                </div>
+              ) : (
+                <div className="space-y-3 border p-3 rounded-lg bg-card">
+                  <Label className="font-semibold text-foreground text-xs block">
+                    Productos a Canjear (Retorno Defectuoso ➔ Reposición 1-a-1)
+                  </Label>
+                  <div className="space-y-2">
+                    {canjeItems.map((item) => {
+                      const isSinStock = item.stock_disponible <= 0;
+                      return (
+                        <div
+                          key={`canje-item-${item.item_id}`}
+                          className="p-3 rounded-lg border bg-background space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-bold text-sm truncate">{item.producto_nombre}</span>
+                              {item.tipo_item === 'VENTA' && (
+                                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 text-[10px]">
+                                  VENDIDO
+                                </Badge>
+                              )}
+                              {item.tipo_item === 'BONIFICACIÓN' && (
+                                <Badge variant="outline" className="bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 text-[10px]">
+                                  BONIFICACIÓN
+                                </Badge>
+                              )}
+                              {item.tipo_item === 'DEGUSTACIÓN' && (
+                                <Badge variant="outline" className="bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200 text-[10px]">
+                                  DEGUSTACIÓN
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="text-right text-[11px] text-muted-foreground">
+                              <span>Entregado: <strong className="text-foreground">{item.cantidad_original} uds</strong></span>
+                              <span className="mx-1.5">•</span>
+                              <span>Stock disponible: <strong className={item.stock_disponible > 0 ? "text-blue-600 font-bold" : "text-red-600 font-bold"}>{item.stock_disponible} uds</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/50">
+                            {isSinStock ? (
+                              <div className="w-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-2 rounded text-xs font-semibold">
+                                ⚠️ No hay stock disponible de este producto para entregar reposición.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="text-[11px] text-muted-foreground">
+                                  <span>Cantidad a canjear (Máx: {item.max_posible}):</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max={item.max_posible}
+                                    value={item.cantidad_canje}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, Math.min(item.max_posible, Number(e.target.value)));
+                                      setCanjeItems(prev => prev.map(ci => ci.item_id === item.item_id ? { ...ci, cantidad_canje: val } : ci));
+                                    }}
+                                    className="w-24 h-8 text-xs font-bold"
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-xs">Observaciones / Motivo del Canje</Label>
+                <Textarea
+                  placeholder="Detalla el motivo del cambio (ej: empaque dañado, fecha corta, etc.)"
+                  value={canjeObservaciones}
+                  onChange={(e) => setCanjeObservaciones(e.target.value)}
+                  className="text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCanjeModalOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleCanjeSubmit}
+              disabled={isSubmittingCanje || isLoadingStock || canjeItems.every(i => i.cantidad_canje <= 0)}
+              className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
+            >
+              {isSubmittingCanje ? 'Procesando...' : 'Confirmar Canje Defectuoso'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

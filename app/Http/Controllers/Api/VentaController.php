@@ -10,6 +10,7 @@ use App\Models\StockActual;
 use App\Models\StockVendedor;
 use App\Models\MovimientoStock;
 use App\Models\Salida;
+use App\Models\SalidaItem;
 use App\Models\Cliente;
 use App\Services\VentaService;
 use App\Services\CajaService;
@@ -239,7 +240,7 @@ class VentaController extends Controller
         //Si la venta es al credito, NO permitir vende a cliente con documento 000000 (Cliente Varios)
         if($validated['tipo_pago'] === 'CREDITO'){
             $cliente = Cliente::findOrFail($validated['cliente_id']);
-            if($cliente->codigo_cliente === '000000'){
+            if($cliente->codigo_cliente === '000000' || $cliente->codigo_cliente === '0000000'){
                 throw new Exception('No se puede vender al credito a cliente varios. Por favor, seleccione un cliente registrado.');
             }
             if ($validated['total_neto'] <= 0) {
@@ -624,5 +625,202 @@ class VentaController extends Controller
     public function anular($id, VentaService $service)
     {
         return $service->anular($id, auth()->id());
+    }
+
+    public function canjeDefectuoso(Request $request, $id, StockService $stockService)
+    {
+        $itemsDefectuosos = $request->input('items_defectuosos', $request->input('items', []));
+        $itemsReposicion = $request->input('items_reposicion', $request->input('items', []));
+
+        if (empty($itemsDefectuosos) || empty($itemsReposicion)) {
+            return response()->json(['message' => 'Debes especificar al menos un producto a canjear.'], 422);
+        }
+
+        return DB::transaction(function () use ($request, $id, $stockService, $itemsDefectuosos, $itemsReposicion) {
+            $venta = Venta::with(['items.producto'])->lockForUpdate()->findOrFail($id);
+
+            if ($venta->estado !== 'CONFIRMADA') {
+                throw new Exception('Solo se pueden realizar canjes por productos defectuosos en ventas confirmadas.');
+            }
+
+            // 1. Validar que las cantidades a canjear no superen la cantidad original de cada item de la venta
+            foreach ($itemsDefectuosos as $defItem) {
+                $cant = (float)($defItem['cantidad'] ?? 0);
+                if ($cant <= 0) continue;
+
+                $ventaItemId = $defItem['venta_item_id'] ?? null;
+                if ($ventaItemId) {
+                    $vItem = $venta->items->firstWhere('id', $ventaItemId);
+                } else {
+                    $vItem = $venta->items->firstWhere('producto_id', $defItem['producto_id']);
+                }
+
+                if (!$vItem) {
+                    throw new Exception("El producto ID {$defItem['producto_id']} no pertenece a esta venta.");
+                }
+
+                if ($cant > (float)$vItem->cantidad) {
+                    throw new Exception("La cantidad a canjear ({$cant}) excede la cantidad entregada ({$vItem->cantidad}) para '{$vItem->producto->nombre}'.");
+                }
+            }
+
+            // Determine if factory sale or route sale
+            $isFactorySale = true;
+            foreach ($venta->items as $item) {
+                if (!empty($item->salida_id)) {
+                    $isFactorySale = false;
+                    break;
+                }
+            }
+
+            $userId = auth()->id() ?? $venta->vendedor_id;
+
+            if ($isFactorySale) {
+                // Pre-check factory stock for replacement items
+                foreach ($itemsReposicion as $repItem) {
+                    $cant = (float)($repItem['cantidad'] ?? 0);
+                    if ($cant <= 0) continue;
+                    $prodId = (int)$repItem['producto_id'];
+                    $disponible = StockActual::where('producto_id', $prodId)->sum('cantidad');
+                    if ($disponible < $cant) {
+                        $prod = \App\Models\Producto::find($prodId);
+                        $nombreProd = $prod ? $prod->nombre : "ID: {$prodId}";
+                        throw new Exception("Stock insuficiente en fábrica para reponer '{$nombreProd}'. Disponible: {$disponible}.");
+                    }
+                }
+
+                // Apply replacements (deduct from central stock)
+                foreach ($itemsReposicion as $repItem) {
+                    $cant = (float)($repItem['cantidad'] ?? 0);
+                    if ($cant <= 0) continue;
+                    $stockService->descontarStock(
+                        (int)$repItem['producto_id'],
+                        $cant,
+                        (int)$venta->id,
+                        (int)$userId
+                    );
+                }
+
+                // Register defective items movement
+                foreach ($itemsDefectuosos as $defItem) {
+                    $cant = (float)($defItem['cantidad'] ?? 0);
+                    if ($cant <= 0) continue;
+                    $prodId = (int)$defItem['producto_id'];
+                    $rumaId = MovimientoStock::obtenerUltimaRumaSalida($prodId);
+                    if (!$rumaId) {
+                        $stockFirst = StockActual::where('producto_id', $prodId)->first();
+                        $rumaId = $stockFirst ? $stockFirst->ruma_id : 1;
+                    }
+
+                    $stockService->registrarMovimiento([
+                        'tipo' => 'DEVOLUCION_MALA',
+                        'producto_id' => $prodId,
+                        'ruma_id' => $rumaId,
+                        'cantidad' => $cant,
+                        'referencia_tipo' => 'VENTA_CANJE',
+                        'referencia_id' => $venta->id,
+                        'user_id' => $userId,
+                        'motivo' => $defItem['motivo'] ?? ($request->observaciones ?? 'Canje por producto defectuoso - Venta Fábrica #' . $venta->codigo)
+                    ]);
+                }
+            } else {
+                // Route Sale (Vendedor en Ruta):
+                // Pre-check seller route stock for replacement items
+                foreach ($itemsReposicion as $repItem) {
+                    $cant = (float)($repItem['cantidad'] ?? 0);
+                    if ($cant <= 0) continue;
+                    $prodId = (int)$repItem['producto_id'];
+
+                    $stocksVendedor = StockVendedor::where('producto_id', $prodId)
+                        ->where('vendedor_id', $venta->vendedor_id)
+                        ->where('cantidad', '>', 0)
+                        ->whereHas('salida', function ($query) {
+                            $query->where('estado', 'EN_RUTA');
+                        })
+                        ->get();
+
+                    $totalDisponible = $stocksVendedor->sum('cantidad');
+                    if ($totalDisponible < $cant) {
+                        $prod = \App\Models\Producto::find($prodId);
+                        $nombreProd = $prod ? $prod->nombre : "ID: {$prodId}";
+                        throw new Exception("El vendedor no cuenta con stock suficiente en su vehículo para reponer '{$nombreProd}'. Disponible: {$totalDisponible}.");
+                    }
+                }
+
+                // Deduct replacement items from StockVendedor.cantidad
+                foreach ($itemsReposicion as $repItem) {
+                    $cant = (float)($repItem['cantidad'] ?? 0);
+                    if ($cant <= 0) continue;
+                    $prodId = (int)$repItem['producto_id'];
+
+                    $stocksVendedor = StockVendedor::where('producto_id', $prodId)
+                        ->where('vendedor_id', $venta->vendedor_id)
+                        ->where('cantidad', '>', 0)
+                        ->whereHas('salida', function ($query) {
+                            $query->where('estado', 'EN_RUTA');
+                        })
+                        ->orderBy('id', 'desc')
+                        ->get();
+
+                    $faltante = $cant;
+                    foreach ($stocksVendedor as $stock) {
+                        if ($faltante <= 0) break;
+                        $descontar = min($stock->cantidad, $faltante);
+                        $stock->cantidad -= $descontar;
+                        $stock->fecha_ultimo_mov = now();
+                        $stock->save();
+
+                        if ($stock->salida_id) {
+                            $salidaItem = SalidaItem::where('salida_id', $stock->salida_id)
+                                ->where('producto_id', $prodId)
+                                ->first();
+                            if ($salidaItem) {
+                                $salidaItem->cantidad -= $descontar;
+                                $salidaItem->save();
+                            }
+                        }
+
+                        $faltante -= $descontar;
+                    }
+                }
+
+                // Increment StockVendedor.defectuosos for returned bad items
+                foreach ($itemsDefectuosos as $defItem) {
+                    $cant = (float)($defItem['cantidad'] ?? 0);
+                    if ($cant <= 0) continue;
+                    $prodId = (int)$defItem['producto_id'];
+
+                    $stockVendedor = StockVendedor::where('producto_id', $prodId)
+                        ->where('vendedor_id', $venta->vendedor_id)
+                        ->whereHas('salida', function ($query) {
+                            $query->where('estado', 'EN_RUTA');
+                        })
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+                    if (!$stockVendedor) {
+                        $stockVendedor = StockVendedor::where('producto_id', $prodId)
+                            ->where('vendedor_id', $venta->vendedor_id)
+                            ->orderBy('id', 'desc')
+                            ->first();
+                    }
+
+                    if (!$stockVendedor) {
+                        $prod = \App\Models\Producto::find($prodId);
+                        $nombreProd = $prod ? $prod->nombre : "ID: {$prodId}";
+                        throw new Exception("No se encontró registro de stock asignado para '{$nombreProd}'.");
+                    }
+
+                    $stockVendedor->defectuosos = ($stockVendedor->defectuosos ?? 0) + $cant;
+                    $stockVendedor->fecha_ultimo_mov = now();
+                    $stockVendedor->save();
+                }
+            }
+
+            return response()->json([
+                'message' => 'Canje por productos defectuosos registrado correctamente',
+                'venta_id' => $venta->id
+            ]);
+        });
     }
 }

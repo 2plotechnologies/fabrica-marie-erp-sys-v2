@@ -144,4 +144,14 @@ export const ventaService = {
     return response.data;
   },
 
+  // Canje por defectuoso
+  async canjeDefectuoso(id: number, payload: {
+    items_defectuosos: { producto_id: number; cantidad: number; motivo?: string }[];
+    items_reposicion: { producto_id: number; cantidad: number }[];
+    observaciones?: string;
+  }) {
+    const response = await api.post(`/ventas/${id}/canje-defectuoso`, payload);
+    return response.data;
+  },
+
 };

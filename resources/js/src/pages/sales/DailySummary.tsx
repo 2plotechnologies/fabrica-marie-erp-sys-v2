@@ -1156,9 +1156,9 @@ const DailySummaryPage = () => {
 
               {/* Filtros */}
               <Card>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className={`relative ${isVendedor ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
+                <CardContent className="p-4 sm:p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+                    <div className={`relative ${isVendedor ? 'xl:col-span-3' : 'xl:col-span-2'}`}>
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder={isVendedor ? "Buscar por conductor o zona..." : "Buscar por vendedor, conductor o zona..."}
@@ -1197,9 +1197,9 @@ const DailySummaryPage = () => {
 
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className="justify-start text-left font-normal">
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {format(dateRange.from, 'dd/MM')} - {format(dateRange.to, 'dd/MM')}
+                        <Button variant="outline" className="justify-start text-left font-normal min-w-0 w-full">
+                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                          <span className="truncate">{format(dateRange.from, 'dd/MM')} - {format(dateRange.to, 'dd/MM')}</span>
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="end">

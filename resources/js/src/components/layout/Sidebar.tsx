@@ -280,7 +280,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-64 bg-gradient-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static",
+          "fixed left-0 top-0 z-50 h-screen w-64 bg-gradient-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 lg:translate-x-0 lg:static shrink-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

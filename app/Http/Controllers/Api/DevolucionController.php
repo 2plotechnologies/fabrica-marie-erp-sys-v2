@@ -53,6 +53,7 @@ class DevolucionController
             'fecha' => 'required|date',
             'vendedor_id' => 'required|exists:vendedores,id',
             'tipo' => 'required|in:BUENA,MALA',
+            'origen_stock' => 'nullable|in:DEFECTUOSOS,REGULAR',
             'items' => 'required|array|min:1',
             'items.*.producto_id' => 'required|exists:productos,id',
             'items.*.cantidad' => [
@@ -80,19 +81,33 @@ class DevolucionController
         if ($vendedor) {
             $data['vendedor_id'] = $vendedor->id;
 
-            // Validar que el vendedor tenga stock asignado suficiente en rutas EN_RUTA
-            foreach ($data['items'] as $item) {
-                $totalDisponible = StockVendedor::where('producto_id', $item['producto_id'])
-                    ->where('vendedor_id', $vendedor->id)
-                    ->whereHas('salida', function ($query) {
-                        $query->where('estado', 'EN_RUTA');
-                    })
-                    ->sum('cantidad');
+            $esDefectuoso = ($data['tipo'] ?? '') === 'MALA' && ($data['origen_stock'] ?? 'REGULAR') === 'DEFECTUOSOS';
 
-                if ($totalDisponible < $item['cantidad']) {
-                    return response()->json([
-                        'message' => "No tienes stock suficiente del producto ID: {$item['producto_id']}. Disponible: {$totalDisponible}."
-                    ], 422);
+            // Validar que el vendedor tenga stock asignado suficiente
+            foreach ($data['items'] as $item) {
+                if ($esDefectuoso) {
+                    $totalDisponible = StockVendedor::where('producto_id', $item['producto_id'])
+                        ->where('vendedor_id', $vendedor->id)
+                        ->sum('defectuosos');
+
+                    if ($totalDisponible < $item['cantidad']) {
+                        return response()->json([
+                            'message' => "No tienes stock defectuoso acumulado suficiente del producto ID: {$item['producto_id']}. Disponible: {$totalDisponible}."
+                        ], 422);
+                    }
+                } else {
+                    $totalDisponible = StockVendedor::where('producto_id', $item['producto_id'])
+                        ->where('vendedor_id', $vendedor->id)
+                        ->whereHas('salida', function ($query) {
+                            $query->where('estado', 'EN_RUTA');
+                        })
+                        ->sum('cantidad');
+
+                    if ($totalDisponible < $item['cantidad']) {
+                        return response()->json([
+                            'message' => "No tienes stock suficiente del producto ID: {$item['producto_id']}. Disponible: {$totalDisponible}."
+                        ], 422);
+                    }
                 }
             }
         }
@@ -123,7 +138,7 @@ class DevolucionController
 
             $devolucion = Devolucion::with('items')->findOrFail($id);
 
-            // Si ya está procesada, evitar reprocesar
+            // Si ya está procesada, evitar reprocesar.
             if ($devolucion->estado !== 'PENDIENTE') {
                 throw new \Exception("La devolución ya fue procesada.");
             }
@@ -131,7 +146,7 @@ class DevolucionController
             $devolucion->estado = $request->estado;
             $devolucion->save();
 
-            // 🔥 SOLO SI ES ACEPTADA SE MUEVE STOCK
+            // 🔥 SOLO SI ES ACEPTADA SE MUEVE STOCK.
             if ($request->estado === 'ACEPTADA') {
 
                 foreach ($devolucion->items as $item) {
@@ -142,38 +157,71 @@ class DevolucionController
                         throw new \Exception("No se encontró ruma previa para el producto {$item->producto_id}");
                     }
 
-                    $stocksVendedor = StockVendedor::where('producto_id', $item->producto_id)
-                        ->where('vendedor_id', $devolucion->vendedor_id)
-                        ->where('cantidad', '>', 0)
-                        ->whereHas('salida', function ($query) {
-                            $query->where('estado', 'EN_RUTA');
-                        })
-                        ->orderBy('id', 'desc')
-                        ->get();
+                    $esDefectuoso = $devolucion->tipo === 'MALA' && $devolucion->origen_stock === 'DEFECTUOSOS';
 
-                    $faltante = $item->cantidad;
-                    $totalDisponible = $stocksVendedor->sum('cantidad');
+                    if ($esDefectuoso) {
+                        $stocksVendedor = StockVendedor::where('producto_id', $item->producto_id)
+                            ->where('vendedor_id', $devolucion->vendedor_id)
+                            ->where('defectuosos', '>', 0)
+                            ->orderBy('id', 'desc')
+                            ->get();
 
-                    if ($totalDisponible < $faltante) {
-                        throw new \Exception("No se encontró stock suficiente asignado para el producto {$item->producto_id} en salidas EN_RUTA");
-                    }
+                        $faltante = $item->cantidad;
+                        $totalDisponible = $stocksVendedor->sum('defectuosos');
 
-                    foreach ($stocksVendedor as $stock) {
-                        if ($faltante <= 0) break;
+                        if ($totalDisponible < $faltante) {
+                            throw new \Exception("No se encontró stock defectuoso suficiente asignado para el producto {$item->producto_id}");
+                        }
 
-                        $descontar = min($stock->cantidad, $faltante);
+                        foreach ($stocksVendedor as $stock) {
+                            if ($faltante <= 0) break;
 
-                        $stock->devuelto += $descontar;
-                        $stock->cantidad -= $descontar;
-                        $stock->save();
+                            $descontar = min($stock->defectuosos, $faltante);
 
-                        $faltante -= $descontar;
+                            $stock->defectuosos -= $descontar;
+                            $stock->devuelto += $descontar;
+                            $stock->save();
 
-                        //Actualizar cantidad en salida_item
-                        $salida = Salida::where('vendedor_id', $devolucion->vendedor_id)->where('estado', 'EN_RUTA')->first();
-                        $salidaItem = SalidaItem::where('salida_id', $salida->id)->where('producto_id', $item->producto_id)->first();
-                        $salidaItem->cantidad -= $descontar;
-                        $salidaItem->save();
+                            $faltante -= $descontar;
+                        }
+                    } else {
+                        $stocksVendedor = StockVendedor::where('producto_id', $item->producto_id)
+                            ->where('vendedor_id', $devolucion->vendedor_id)
+                            ->where('cantidad', '>', 0)
+                            ->whereHas('salida', function ($query) {
+                                $query->where('estado', 'EN_RUTA');
+                            })
+                            ->orderBy('id', 'desc')
+                            ->get();
+
+                        $faltante = $item->cantidad;
+                        $totalDisponible = $stocksVendedor->sum('cantidad');
+
+                        if ($totalDisponible < $faltante) {
+                            throw new \Exception("No se encontró stock suficiente asignado para el producto {$item->producto_id} en salidas EN_RUTA");
+                        }
+
+                        foreach ($stocksVendedor as $stock) {
+                            if ($faltante <= 0) break;
+
+                            $descontar = min($stock->cantidad, $faltante);
+
+                            $stock->devuelto += $descontar;
+                            $stock->cantidad -= $descontar;
+                            $stock->save();
+
+                            $faltante -= $descontar;
+
+                            //Actualizar cantidad en salida_item
+                            $salida = Salida::where('vendedor_id', $devolucion->vendedor_id)->where('estado', 'EN_RUTA')->first();
+                            if ($salida) {
+                                $salidaItem = SalidaItem::where('salida_id', $salida->id)->where('producto_id', $item->producto_id)->first();
+                                if ($salidaItem) {
+                                    $salidaItem->cantidad -= $descontar;
+                                    $salidaItem->save();
+                                }
+                            }
+                        }
                     }
 
                     if ($devolucion->tipo === 'BUENA') {

@@ -523,17 +523,17 @@ class ResumenDiarioController extends Controller
                     })
                     ->get();
 
-                $totalContado = (float)$resumenes->sum('contado');
-                $totalCredito = (float)$resumenes->sum('credito');
-                $totalCobranza = (float)$resumenes->sum('cobranza');
-                $totalAdelanto = (float)$resumenes->sum('adelanto');
-                $totalDepositos = (float)$resumenes->sum('depositos');
-                $totalGastos = (float)$resumenes->sum('total_gastos');
-                $totalViaticos = (float)$resumenes->sum('viaticos');
+                $totalContado = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('contado');
+                $totalCredito = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('credito');
+                $totalCobranza = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('cobranza');
+                $totalAdelanto = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('adelanto');
+                $totalDepositos = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('depositos');
+                $totalGastos = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('total_gastos');
+                $totalViaticos = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('viaticos');
                 if ($totalViaticos == 0 && $viaticosSalida->isNotEmpty()) {
                     $totalViaticos = (float)$viaticosSalida->sum('monto');
                 }
-                $totalEntregado = (float)$resumenes->sum('saldo_entregado');
+                $totalEntregado = (float)$resumenes->where('estado', 'CONFIRMADO')->sum('saldo_entregado');
 
                 $saldoAcumuladoEntregar = $totalContado + $totalCobranza + $totalAdelanto + $totalViaticos - $totalGastos - $totalDepositos;
                 if ($saldoAcumuladoEntregar < 0) {
@@ -608,13 +608,13 @@ class ResumenDiarioController extends Controller
                     $viaticosSalida = collect();
                     $totalViaticos = 0;
 
-                    $totalContado = (float)$resumenesGrupo->sum('contado');
-                    $totalCredito = (float)$resumenesGrupo->sum('credito');
-                    $totalCobranza = (float)$resumenesGrupo->sum('cobranza');
-                    $totalAdelanto = (float)$resumenesGrupo->sum('adelanto');
-                    $totalDepositos = (float)$resumenesGrupo->sum('depositos');
-                    $totalGastos = (float)$resumenesGrupo->sum('total_gastos');
-                    $totalEntregado = (float)$resumenesGrupo->sum('saldo_entregado');
+                    $totalContado = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('contado');
+                    $totalCredito = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('credito');
+                    $totalCobranza = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('cobranza');
+                    $totalAdelanto = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('adelanto');
+                    $totalDepositos = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('depositos');
+                    $totalGastos = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('total_gastos');
+                    $totalEntregado = (float)$resumenesGrupo->where('estado', 'CONFIRMADO')->sum('saldo_entregado');
 
                     $saldoAcumuladoEntregar = $totalContado + $totalCobranza + $totalAdelanto + $totalViaticos - $totalGastos - $totalDepositos;
                     if ($saldoAcumuladoEntregar < 0) {

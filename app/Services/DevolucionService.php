@@ -25,6 +25,7 @@ class DevolucionService
                 'fecha' => $data['fecha'],
                 'vendedor_id' => $data['vendedor_id'],
                 'tipo' => $data['tipo'],
+                'origen_stock' => $data['origen_stock'] ?? 'REGULAR',
                 'motivo' => $data['motivo'] ?? null,
                 'observaciones'=> $data['observaciones'] ?? null,
                 'estado' => 'PENDIENTE',
