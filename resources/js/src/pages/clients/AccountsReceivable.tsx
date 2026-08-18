@@ -44,6 +44,7 @@ const AccountsReceivable = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [payMethod, setPayMethod] = useState('EFECTIVO');
   const [bank, setBank] = useState('');
   const [operationNumber, setOperationNumber] = useState('');
@@ -184,6 +185,7 @@ const AccountsReceivable = () => {
   };
 
   const handlePayment = async (id: string) => {
+    const selectedFecha = paymentDate || format(new Date(), 'yyyy-MM-dd');
     if (isSplitPay) {
       const totalSplit = splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
       if (totalSplit <= 0) {
@@ -196,6 +198,7 @@ const AccountsReceivable = () => {
       }
       try {
         await cobranzasService.registrarAbono(id, {
+          fecha: selectedFecha,
           pagos: splitPayRows
         });
         toast.success('Pagos registrados exitosamente');
@@ -203,6 +206,7 @@ const AccountsReceivable = () => {
         setIsDialogOpen(false);
         setIsSplitPay(false);
         setSplitPayRows([]);
+        setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
       } catch (error: any) {
         console.log("ERROR COMPLETO:", error);
         console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
@@ -219,7 +223,7 @@ const AccountsReceivable = () => {
     }
     try {
       await cobranzasService.registrarAbono(id, {
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: selectedFecha,
         monto: Number(paymentAmount),
         metodo_pago: payMethod,
         banco: payMethod === 'DEPOSITO' ? bank : undefined,
@@ -231,6 +235,7 @@ const AccountsReceivable = () => {
       setPaymentAmount('');
       setBank('');
       setOperationNumber('');
+      setPaymentDate(format(new Date(), 'yyyy-MM-dd'));
     } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
@@ -446,6 +451,7 @@ const AccountsReceivable = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente / Ubicación</TableHead>
+                  <TableHead>Fecha de Venta</TableHead>
                   <TableHead className="text-right">Monto Original</TableHead>
                   <TableHead className="text-right">Pagado</TableHead>
                   <TableHead className="text-right">Saldo Actual</TableHead>
@@ -479,6 +485,11 @@ const AccountsReceivable = () => {
                             )}
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <p className="text-xs font-medium">
+                          {account.venta?.fecha ? format(new Date(typeof account.venta.fecha === 'string' ? account.venta.fecha.substring(0, 10) + "T00:00:00" : account.venta.fecha), "dd/MM/yyyy") : '-'}
+                        </p>
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground whitespace-nowrap">
                         S/ {Number(account.monto_total).toLocaleString()}
@@ -575,6 +586,16 @@ const AccountsReceivable = () => {
               })()}
             </DialogDescription>
           </DialogHeader>
+
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="payment-date">Fecha de Pago / Cobranza</Label>
+            <Input
+              id="payment-date"
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+            />
+          </div>
 
           <div className="flex justify-end pt-1">
             <Button

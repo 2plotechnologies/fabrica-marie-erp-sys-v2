@@ -26,6 +26,7 @@ const CollectionsPage = () => {
   const [payDialog, setPayDialog] = useState<{ cuentaId: string; saldo: number; clienteName: string; diasPlazo?: number } | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('EFECTIVO');
+  const [payDate, setPayDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [bank, setBank] = useState('');
   const [operationNumber, setOperationNumber] = useState('');
   const [isSplitPay, setIsSplitPay] = useState(false);
@@ -124,6 +125,7 @@ const CollectionsPage = () => {
   };
   const handlePay = async () => {
     if (!payDialog) return;
+    const selectedFecha = payDate || format(new Date(), 'yyyy-MM-dd');
     if (isSplitPay) {
       const totalSplit = splitPayRows.reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
       if (totalSplit <= 0) {
@@ -136,12 +138,14 @@ const CollectionsPage = () => {
       }
       try {
         await cobranzasService.registrarAbono(payDialog.cuentaId, {
+          fecha: selectedFecha,
           pagos: splitPayRows
         });
         toast.success('Abonos registrados correctamente');
         setPayDialog(null);
         setIsSplitPay(false);
         setSplitPayRows([]);
+        setPayDate(format(new Date(), 'yyyy-MM-dd'));
         fetchCuentas();
         fetchPagos();
       } catch (error: any) {
@@ -160,7 +164,7 @@ const CollectionsPage = () => {
     }
     try {
       await cobranzasService.registrarAbono(payDialog.cuentaId, {
-        fecha: format(new Date(), 'yyyy-MM-dd'),
+        fecha: selectedFecha,
         monto: parseFloat(payAmount),
         metodo_pago: payMethod,
         banco: payMethod === 'DEPOSITO' ? bank : undefined,
@@ -173,6 +177,7 @@ const CollectionsPage = () => {
       setPayAmount('');
       setBank('');
       setOperationNumber('');
+      setPayDate(format(new Date(), 'yyyy-MM-dd'));
     } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
@@ -389,6 +394,7 @@ const CollectionsPage = () => {
                     <TableRow>
                       <TableHead>Cliente / Ubicación</TableHead>
                       <TableHead>Nota Pedido</TableHead>
+                      <TableHead>Fecha de Venta</TableHead>
                       <TableHead className="text-right">Monto Original</TableHead>
                       <TableHead className="text-right">Pagado</TableHead>
                       <TableHead className="text-right">Saldo</TableHead>
@@ -399,7 +405,7 @@ const CollectionsPage = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredCuentas.length === 0 ? (
-                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No hay cobranzas registradas</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay cobranzas registradas</TableCell></TableRow>
                     ) : (
                       paginatedCuentas.map((cuenta) => {
                         const isPaid = (cuenta.estado || '').toUpperCase() === 'PAGADO';
@@ -425,6 +431,11 @@ const CollectionsPage = () => {
                             </TableCell>
                             <TableCell className="whitespace-nowrap">
                               <p className="text-xs text-muted-foreground">{cuenta.venta?.nota_pedido ? cuenta.venta.nota_pedido : '-'}</p>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              <p className="text-xs font-medium">
+                                {cuenta.venta?.fecha ? format(new Date(typeof cuenta.venta.fecha === 'string' ? cuenta.venta.fecha.substring(0, 10) + "T00:00:00" : cuenta.venta.fecha), "dd/MM/yyyy") : '-'}
+                              </p>
                             </TableCell>
                             <TableCell className="text-right whitespace-nowrap">S/ {Number(cuenta.monto_total).toLocaleString()}</TableCell>
                             <TableCell className="text-right text-emerald-600 font-medium whitespace-nowrap">S/ {Number(cuenta.monto_pagado).toLocaleString()}</TableCell>
@@ -610,6 +621,15 @@ const CollectionsPage = () => {
               {payDialog?.diasPlazo && payDialog.diasPlazo > 0 ? ` — Plazo: ${payDialog.diasPlazo} días` : ''}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="pay-date">Fecha de Pago / Cobranza</Label>
+            <Input
+              id="pay-date"
+              type="date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+            />
+          </div>
           <div className="flex justify-end pt-1">
             <Button
               type="button"

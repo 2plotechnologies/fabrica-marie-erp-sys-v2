@@ -49,6 +49,7 @@ const MoneyDelivery = () => {
     // Form state
     const [nombreReceptor, setNombreReceptor] = useState('');
     const [observaciones, setObservaciones] = useState('');
+    const [fechaEntrega, setFechaEntrega] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [items, setItems] = useState<DeliveryItem[]>([{
         id: crypto.randomUUID(),
         metodo_pago: '',
@@ -145,6 +146,7 @@ const MoneyDelivery = () => {
     const resetForm = () => {
         setNombreReceptor('');
         setObservaciones('');
+        setFechaEntrega(format(new Date(), 'yyyy-MM-dd'));
         setItems([{
             id: crypto.randomUUID(),
             metodo_pago: '',
@@ -195,6 +197,7 @@ const MoneyDelivery = () => {
 
         const formData = new FormData();
         formData.append('usuario_id', String(user.id));
+        formData.append('fecha', fechaEntrega || format(new Date(), 'yyyy-MM-dd'));
         if (nombreReceptor.trim()) {
             formData.append('nombre_receptor', nombreReceptor.trim());
         }
@@ -304,14 +307,25 @@ const MoneyDelivery = () => {
                                     </div>
                                 </div>
                             )}
-                            <div className="space-y-2">
-                                <Label htmlFor="nombre_receptor">Nombre del receptor</Label>
-                                <Input
-                                    id="nombre_receptor"
-                                    placeholder="Nombre de la persona que recibe el dinero"
-                                    value={nombreReceptor}
-                                    onChange={(e) => setNombreReceptor(e.target.value)}
-                                />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="fecha_entrega">Fecha de Entrega</Label>
+                                    <Input
+                                        id="fecha_entrega"
+                                        type="date"
+                                        value={fechaEntrega}
+                                        onChange={(e) => setFechaEntrega(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="nombre_receptor">Nombre del receptor</Label>
+                                    <Input
+                                        id="nombre_receptor"
+                                        placeholder="Nombre de la persona que recibe el dinero"
+                                        value={nombreReceptor}
+                                        onChange={(e) => setNombreReceptor(e.target.value)}
+                                    />
+                                </div>
                             </div>
 
                             <div className="space-y-4">

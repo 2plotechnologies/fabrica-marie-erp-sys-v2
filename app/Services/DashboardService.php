@@ -187,23 +187,31 @@ class DashboardService
         $startOfMonth = Carbon::now()->startOfMonth();
 
         $ventasHoy = DB::table('ventas')
-            ->whereDate('fecha', $today)
-            ->where('estado', 'CONFIRMADA')
-            ->sum('total_neto');
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->whereDate('ventas.fecha', $today)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->sum('ventas.total_neto');
 
         $ventasSemana = DB::table('ventas')
-            ->where('fecha', '>=', $startOfWeek)
-            ->where('estado', 'CONFIRMADA')
-            ->sum('total_neto');
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->where('ventas.fecha', '>=', $startOfWeek)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->sum('ventas.total_neto');
 
         $ventasMes = DB::table('ventas')
-            ->where('fecha', '>=', $startOfMonth)
-            ->where('estado', 'CONFIRMADA')
-            ->sum('total_neto');
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->where('ventas.fecha', '>=', $startOfMonth)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->sum('ventas.total_neto');
 
         $transaccionesHoy = DB::table('ventas')
-            ->whereDate('fecha', $today)
-            ->where('estado', 'CONFIRMADA')
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->whereDate('ventas.fecha', $today)
+            ->where('ventas.estado', 'CONFIRMADA')
             ->count();
 
         return [
@@ -224,18 +232,40 @@ class DashboardService
         $today = Carbon::today();
 
         $cobrosHoy = DB::table('abonos')
-            ->whereDate('fecha', $today)
-            ->where('estado', 'ACTIVO')
-            ->sum('monto');
+            ->leftJoin('cuentas_por_cobrar', 'abonos.cuenta_id', '=', 'cuentas_por_cobrar.id')
+            ->leftJoin('clientes', 'cuentas_por_cobrar.cliente_id', '=', 'clientes.id')
+            ->whereDate('abonos.fecha', $today)
+            ->where('abonos.estado', 'ACTIVO')
+            ->where(function($q) {
+                $q->whereNull('clientes.id')
+                  ->orWhere('clientes.activo', 1);
+            })
+            ->sum('abonos.monto');
 
         $pendientes = DB::table('cuentas_por_cobrar')
-            ->whereIn('estado', ['PENDIENTE', 'PARCIAL'])
-            ->sum('saldo');
+            ->join('clientes', 'cuentas_por_cobrar.cliente_id', '=', 'clientes.id')
+            ->leftJoin('ventas', 'cuentas_por_cobrar.venta_id', '=', 'ventas.id')
+            ->where('clientes.activo', 1)
+            ->where(function($q) {
+                $q->whereNull('cuentas_por_cobrar.venta_id')
+                  ->orWhere('ventas.estado', 'CONFIRMADA');
+            })
+            ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
+            ->where('cuentas_por_cobrar.saldo', '>', 0)
+            ->sum('cuentas_por_cobrar.saldo');
 
         $vencido = DB::table('cuentas_por_cobrar')
-            ->where('fecha_vencimiento', '<', $today)
-            ->whereIn('estado', ['PENDIENTE', 'PARCIAL'])
-            ->sum('saldo');
+            ->join('clientes', 'cuentas_por_cobrar.cliente_id', '=', 'clientes.id')
+            ->leftJoin('ventas', 'cuentas_por_cobrar.venta_id', '=', 'ventas.id')
+            ->where('clientes.activo', 1)
+            ->where(function($q) {
+                $q->whereNull('cuentas_por_cobrar.venta_id')
+                  ->orWhere('ventas.estado', 'CONFIRMADA');
+            })
+            ->where('cuentas_por_cobrar.fecha_vencimiento', '<', $today)
+            ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
+            ->where('cuentas_por_cobrar.saldo', '>', 0)
+            ->sum('cuentas_por_cobrar.saldo');
 
         return [
             'hoy'        => (float) $cobrosHoy,
@@ -253,14 +283,18 @@ class DashboardService
     {
         $productosBajoStock = DB::table('stock_actual')
             ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->whereColumn('stock_actual.cantidad', '<', 'productos.stock_minimo')
             ->distinct()
             ->count('productos.id');
 
-        $totalProductos = DB::table('productos')->count();
+        $totalProductos = DB::table('productos')
+            ->where('activo', 1)
+            ->count();
 
         $valorTotal = DB::table('stock_actual')
             ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->select(DB::raw('SUM(stock_actual.cantidad * productos.precio_base) as total'))
             ->value('total');
 
@@ -280,16 +314,23 @@ class DashboardService
     {
         $today = Carbon::today();
 
-        $totalClientes = DB::table('clientes')->count();
+        $totalClientes = DB::table('clientes')->where('activo', 1)->count();
 
         $clientesMorosos = DB::table('clientes')
             ->join('cuentas_por_cobrar', 'clientes.id', '=', 'cuentas_por_cobrar.cliente_id')
+            ->leftJoin('ventas', 'cuentas_por_cobrar.venta_id', '=', 'ventas.id')
+            ->where('clientes.activo', 1)
+            ->where(function($q) {
+                $q->whereNull('cuentas_por_cobrar.venta_id')
+                  ->orWhere('ventas.estado', 'CONFIRMADA');
+            })
             ->where('cuentas_por_cobrar.fecha_vencimiento', '<', $today)
-            ->where('cuentas_por_cobrar.estado', 'pendiente')
+            ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
+            ->where('cuentas_por_cobrar.saldo', '>', 0)
             ->distinct()
             ->count('clientes.id');
 
-        $clientesActivos = $totalClientes - $clientesMorosos;
+        $clientesActivos = max(0, $totalClientes - $clientesMorosos);
 
         return [
             'total'   => (int) $totalClientes,
@@ -308,17 +349,22 @@ class DashboardService
         $today = Carbon::today();
 
         $clientesVisitados = DB::table('ventas')
-            ->whereDate('fecha', $today)
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->whereDate('ventas.fecha', $today)
             ->distinct()
-            ->count('cliente_id');
+            ->count('ventas.cliente_id');
 
         $rutasVisitadas = DB::table('ventas')
             ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->where('ventas.estado', 'CONFIRMADA')
             ->whereDate('ventas.fecha', $today)
             ->distinct()
             ->count('clientes.ruta_id');
 
-        $clientesTotalesRutas = DB::table('clientes')->count();
+        $clientesTotalesRutas = DB::table('clientes')->where('activo', 1)->count();
 
         $eficiencia = 0;
 
@@ -337,8 +383,9 @@ class DashboardService
     public function getUltimasVentas()
     {
         $ventas = DB::table('ventas')
-            ->where('estado', 'CONFIRMADA')
+            ->where('ventas.estado', 'CONFIRMADA')
             ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
             ->select('ventas.*', 'clientes.razon_social as cliente')
             ->orderBy('ventas.fecha', 'desc')
             ->limit(2)
@@ -347,6 +394,7 @@ class DashboardService
         foreach ($ventas as $venta) {
             $venta->items = DB::table('venta_items')
                 ->join('productos', 'venta_items.producto_id', '=', 'productos.id')
+                ->where('productos.activo', 1)
                 ->select('venta_items.*', 'productos.nombre as producto')
                 ->where('venta_items.venta_id', $venta->id)
                 ->get();
@@ -361,6 +409,7 @@ class DashboardService
     {
         return DB::table('stock_actual')
             ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->whereColumn('stock_actual.cantidad', '<', 'productos.stock_minimo')
             ->distinct()
             ->get();
@@ -369,7 +418,7 @@ class DashboardService
     //Obtener clientes totales
     public function getClientesTotales()
     {
-        return DB::table('clientes')->get();
+        return DB::table('clientes')->where('activo', 1)->get();
     }
 
     //Clientes morosos, estado PENDIENTE O PARCIAL, listar clientes.
@@ -377,8 +426,15 @@ class DashboardService
     {
         return DB::table('clientes')
             ->join('cuentas_por_cobrar', 'clientes.id', '=', 'cuentas_por_cobrar.cliente_id')
+            ->leftJoin('ventas', 'cuentas_por_cobrar.venta_id', '=', 'ventas.id')
+            ->where('clientes.activo', 1)
+            ->where(function($q) {
+                $q->whereNull('cuentas_por_cobrar.venta_id')
+                  ->orWhere('ventas.estado', 'CONFIRMADA');
+            })
             ->where('cuentas_por_cobrar.fecha_vencimiento', '<', Carbon::today())
             ->whereIn('cuentas_por_cobrar.estado', ['PENDIENTE', 'PARCIAL'])
+            ->where('cuentas_por_cobrar.saldo', '>', 0)
             ->select('clientes.*', 'cuentas_por_cobrar.saldo as deuda_actual')
             ->distinct()
             ->get();
@@ -465,10 +521,13 @@ class DashboardService
 
         if($vendedor){
             $clientes = DB::table('ventas')
-            ->where('vendedor_id', $vendedor->id)
-            ->whereDate('fecha', Carbon::today())
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('ventas.vendedor_id', $vendedor->id)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->where('clientes.activo', 1)
+            ->whereDate('ventas.fecha', Carbon::today())
             ->distinct()
-            ->count('cliente_id');
+            ->count('ventas.cliente_id');
         }else{
             $clientes = 0;
         }
@@ -503,10 +562,13 @@ class DashboardService
         $fechaSalida = Carbon::parse($activeSalida->fecha)->toDateString();
 
         return DB::table('ventas')
-            ->where('vendedor_id', $vendedorId)
-            ->whereDate('fecha', '>=', $fechaSalida)
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('ventas.vendedor_id', $vendedorId)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->where('clientes.activo', 1)
+            ->whereDate('ventas.fecha', '>=', $fechaSalida)
             ->distinct()
-            ->count('cliente_id');
+            ->count('ventas.cliente_id');
     }
 
     // Resumen de dinero por métodos separados acumulado en la Salida Vigente
@@ -548,6 +610,9 @@ class DashboardService
         $fechaSalida = Carbon::parse($activeSalida->fecha)->toDateString();
 
         $ventas = \App\Models\Venta::with(['pagos'])
+            ->whereHas('cliente', function($cQ) {
+                $cQ->where('activo', 1);
+            })
             ->where('vendedor_id', $vendedorId)
             ->where('estado', 'CONFIRMADA')
             ->where(function ($query) use ($activeSalida, $fechaSalida) {
@@ -721,14 +786,17 @@ class DashboardService
             ];
         }
 
-        // Obtener exclusivamente los cliente_id que pertenecen a las rutas asignadas a esta salida activa
+        // Obtener exclusivamente los cliente_id que pertenecen a las rutas asignadas a esta salida activa y que estén activos
         $clientIds = DB::table('clientes')
             ->whereIn('ruta_id', $activeRutaIds)
+            ->where('activo', 1)
             ->pluck('id')
             ->merge(
                 DB::table('ruta_cliente')
-                    ->whereIn('ruta_id', $activeRutaIds)
-                    ->pluck('cliente_id')
+                    ->join('clientes', 'ruta_cliente.cliente_id', '=', 'clientes.id')
+                    ->whereIn('ruta_cliente.ruta_id', $activeRutaIds)
+                    ->where('clientes.activo', 1)
+                    ->pluck('ruta_cliente.cliente_id')
             )
             ->unique()
             ->values()
@@ -748,6 +816,15 @@ class DashboardService
             'abonos'
         ])
         ->whereIn('cliente_id', $clientIds)
+        ->whereHas('cliente', function($cQ) {
+            $cQ->where('activo', 1);
+        })
+        ->where(function($q) {
+            $q->whereNull('venta_id')
+              ->orWhereHas('venta', function($vQ) {
+                  $vQ->where('estado', 'CONFIRMADA');
+              });
+        })
         ->get();
 
         $cuentas->each(function($cuenta) {
@@ -802,7 +879,7 @@ class DashboardService
         ];
     }
 
-    // Stock de productos disponibles en la salida vigente (cantidad > 0)
+    // Stock de productos disponibles en la salida vigente (cantidad > 0).
     public function getStockEnRutaVendedor($vendedorId, $activeSalida = null)
     {
         if (!$activeSalida) {
@@ -817,6 +894,7 @@ class DashboardService
 
         return DB::table('stock_vendedores')
             ->join('productos', 'stock_vendedores.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->where('stock_vendedores.salida_id', $activeSalida->id)
             ->where('stock_vendedores.cantidad', '>', 0)
             ->select(
@@ -844,13 +922,16 @@ class DashboardService
     //Obtener total de productos
     public function getTotalProductos()
     {
-        return DB::table('productos')->count();
+        return DB::table('productos')->where('activo', 1)->count();
     }
 
     //Obtener total de stock
     public function getTotalStock()
     {
-        return DB::table('stock_actual')->sum('cantidad');
+        return DB::table('stock_actual')
+            ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
+            ->sum('stock_actual.cantidad');
     }
 
     //Obtener cantidad de prodctos con stock bajo
@@ -858,6 +939,7 @@ class DashboardService
     {
         return DB::table('stock_actual')
             ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->whereColumn('stock_actual.cantidad', '<', 'productos.stock_minimo')
             ->distinct()
             ->count('productos.id');
@@ -868,6 +950,7 @@ class DashboardService
     {
         return DB::table('stock_actual')
             ->join('productos', 'stock_actual.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->sum(DB::raw('stock_actual.cantidad * productos.precio_base'));
     }
 
@@ -875,7 +958,9 @@ class DashboardService
     public function getTotalMovimientosHoy()
     {
         return DB::table('movimiento_stock')
-            ->whereDate('created_at', Carbon::today())
+            ->join('productos', 'movimiento_stock.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
+            ->whereDate('movimiento_stock.created_at', Carbon::today())
             ->count();
     }
 
@@ -884,8 +969,10 @@ class DashboardService
     {
         return DB::table('movimiento_stock')
             ->join('productos', 'movimiento_stock.producto_id', '=', 'productos.id')
+            ->where('productos.activo', 1)
             ->orderBy('movimiento_stock.created_at', 'desc')
             ->limit(3)
+            ->select('movimiento_stock.*', 'productos.nombre as producto')
             ->get();
     }
 
@@ -907,10 +994,12 @@ class DashboardService
      public function getTotalVentasContadoHoy()
      {
          return DB::table('ventas')
-             ->where('tipo_pago', 'CONTADO')
-             ->where('estado', 'CONFIRMADA')
-             ->whereDate('fecha', Carbon::today())
-             ->sum('total_neto');
+             ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+             ->where('clientes.activo', 1)
+             ->where('ventas.tipo_pago', 'CONTADO')
+             ->where('ventas.estado', 'CONFIRMADA')
+             ->whereDate('ventas.fecha', Carbon::today())
+             ->sum('ventas.total_neto');
      }
 
      //Total cobros hoy
@@ -918,6 +1007,7 @@ class DashboardService
      {
          return DB::table('abonos')
              ->whereDate('fecha', Carbon::today())
+             ->where('estado', 'ACTIVO')
              ->sum('monto');
      }
 
@@ -940,6 +1030,8 @@ class DashboardService
      {
          return DB::table('ventas')
              ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+             ->where('clientes.activo', 1)
+             ->where('ventas.estado', 'CONFIRMADA')
              ->select('ventas.*', 'clientes.razon_social as cliente')
              ->orderBy('ventas.fecha', 'desc')
              ->limit(5)

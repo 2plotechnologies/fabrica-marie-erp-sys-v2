@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Search,
   UserCog,
@@ -41,7 +42,10 @@ import {
   UserCheck,
   UserX,
   Eye,
+  EyeOff,
   Pencil,
+  Lock,
+  Timer,
 } from 'lucide-react';
 import { mockUsers } from '@/data/mockData';
 import { format, parse } from 'date-fns';
@@ -128,6 +132,32 @@ const EmployeesList = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showViewPassword, setShowViewPassword] = useState(false);
+  const [passwordCountdown, setPasswordCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (showViewPassword) {
+      setPasswordCountdown(30);
+      timer = setInterval(() => {
+        setPasswordCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timer);
+            setShowViewPassword(false);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setPasswordCountdown(null);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [showViewPassword]);
 
   const [form, setForm] = useState({
     username: '',
@@ -216,6 +246,7 @@ const EmployeesList = () => {
       });
 
       setIsAddDialogOpen(false);
+      setShowCreatePassword(false);
 
     } catch (err: any) {
       console.log("ERROR COMPLETO:", err);
@@ -303,6 +334,7 @@ const EmployeesList = () => {
   };
 
   const handleView = (id: number) => {
+    setShowViewPassword(false);
     setIsViewDialogOpen(true);
     setSelectedEmployee(employees.find((employee) => employee.id === id));
   };
@@ -424,12 +456,22 @@ const EmployeesList = () => {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
-              <div className="space-y-2">
                 <Label>Password</Label>
-                <Input type="password" placeholder="******"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })} />
-              </div>
+                <div className="relative">
+                  <Input type={showCreatePassword ? "text" : "password"} placeholder="******"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                </div>
+                <div className="flex items-center space-x-2 pt-1">
+                  <Checkbox
+                    id="show-create-password"
+                    checked={showCreatePassword}
+                    onCheckedChange={(checked) => setShowCreatePassword(!!checked)}
+                  />
+                  <Label htmlFor="show-create-password" className="text-sm font-normal cursor-pointer">
+                    Mostrar contraseña
+                  </Label>
+                </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Rol</Label>

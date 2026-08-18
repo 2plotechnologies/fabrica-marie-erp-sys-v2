@@ -35,14 +35,17 @@ class AbonoController extends Controller
     public function store(Request $request, $cuenta_id)
     {
         return DB::transaction(function () use ($request, $cuenta_id) {
+            $fechaBase = $request->fecha ? \Carbon\Carbon::parse($request->fecha)->setTimeFrom(now()) : now();
 
             if ($request->has('pagos') && is_array($request->pagos) && count($request->pagos) > 0) {
                 $request->validate([
+                    'fecha' => 'nullable|date',
                     'pagos' => 'required|array|min:1',
                     'pagos.*.monto' => 'required|numeric|min:0.01',
                     'pagos.*.metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,YAPE,PLIN,DEPOSITO',
                     'pagos.*.banco' => 'nullable|string',
                     'pagos.*.numero_operacion' => 'nullable|string',
+                    'pagos.*.fecha' => 'nullable|date',
                 ]);
 
                 $cuenta = CuentaPorCobrar::findOrFail($cuenta_id);
@@ -60,6 +63,7 @@ class AbonoController extends Controller
                     $metodo = strtoupper($pagoItem['metodo_pago']);
                     $banco = $pagoItem['banco'] ?? null;
                     $numOp = $pagoItem['numero_operacion'] ?? null;
+                    $fechaItem = isset($pagoItem['fecha']) ? \Carbon\Carbon::parse($pagoItem['fecha'])->setTimeFrom(now()) : $fechaBase;
 
                     $referencia = null;
                     if ($metodo === 'DEPOSITO' && $banco && $numOp) {
@@ -78,7 +82,7 @@ class AbonoController extends Controller
                         'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id . ' (' . $referencia . ')',
                         'referencia_tipo' => 'ABONO',
                         'referencia_id' => $cuenta->id,
-                        'created_at' => now()
+                        'created_at' => $fechaItem
                     ]);
 
                     $abono = Abono::create([
@@ -89,7 +93,7 @@ class AbonoController extends Controller
                         'banco' => $banco,
                         'numero_operacion' => $numOp,
                         'referencia' => $referencia,
-                        'fecha' => now(),
+                        'fecha' => $fechaItem,
                         'movimiento_caja_id' => $mov->id
                     ]);
 
@@ -112,6 +116,7 @@ class AbonoController extends Controller
             }
 
             $request->validate([
+                'fecha' => 'nullable|date',
                 'monto' => 'required|numeric|min:0',
                 'metodo_pago' => 'required|in:EFECTIVO,TRANSFERENCIA,YAPE,PLIN,DEPOSITO',
                 'banco' => 'required_if:metodo_pago,DEPOSITO|nullable|string',
@@ -143,7 +148,7 @@ class AbonoController extends Controller
                 'descripcion' => 'Abono a cuenta por cobrar, ID: ' . $cuenta->id . ' (' . $referencia . ')',
                 'referencia_tipo' => 'ABONO',
                 'referencia_id' => $cuenta->id,
-                'created_at' => now()
+                'created_at' => $fechaBase
             ]);
 
             $abono = Abono::create([
@@ -154,7 +159,7 @@ class AbonoController extends Controller
                 'banco' => $request->banco,
                 'numero_operacion' => $request->numero_operacion,
                 'referencia' => $referencia,
-                'fecha' => now(),
+                'fecha' => $fechaBase,
                 'movimiento_caja_id' => $mov->id
             ]);
 

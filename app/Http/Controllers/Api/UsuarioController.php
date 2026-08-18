@@ -33,15 +33,9 @@ class UsuarioController extends Controller
     }
 
     public function getVendedores(){
-        $user = auth()->user();
-        $isAlmacenero = $user && $user->roles()->where('nombre', 'ALMACENERO')->exists();
-
         return response()->json(
             Vendedor::with(['usuario', 'vehiculos'])
                 ->where('activo', true)
-                ->when($isAlmacenero, function ($query) {
-                    $query->where('venta_directa', true);
-                })
                 ->get()
         );
     }

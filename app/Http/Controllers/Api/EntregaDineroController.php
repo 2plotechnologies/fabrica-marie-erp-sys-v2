@@ -150,6 +150,7 @@ class EntregaDineroController
             'nombre_receptor' => 'nullable|string|max:255',
             'monto_total' => 'required|numeric|min:0',
             'observaciones' => 'nullable|string',
+            'fecha' => 'nullable|date',
             'items' => 'required|array|min:1',
 
             'items.*.metodo_pago' => 'required|string',
@@ -172,12 +173,13 @@ class EntregaDineroController
         }
 
         return DB::transaction(function () use ($request) {
+            $fechaEntrega = $request->fecha ? \Carbon\Carbon::parse($request->fecha)->setTimeFrom(now()) : now();
 
             // 🔹 Crear la entrega principal
             $entrega = EntregaDinero::create([
                 'usuario_id' => $request->usuario_id,
                 'nombre_receptor' => $request->nombre_receptor,
-                'created_at' => now(),
+                'created_at' => $fechaEntrega,
                 'monto_total' => $request->monto_total,
                 'observaciones' => $request->observaciones,
                 'estado' => 'PENDIENTE'
