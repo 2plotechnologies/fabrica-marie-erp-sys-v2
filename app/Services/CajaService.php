@@ -18,18 +18,25 @@ class CajaService
             throw new Exception('La caja ya está cerrada');
         }
 
-        $ingresos = $caja->movimientos
+        $totalIngresos = $caja->movimientos
             ->where('tipo', 'INGRESO')
+            ->where('estado', 'APROBADO')
             ->sum('monto');
 
-        $egresos = $caja->movimientos
+        $totalEgresos = $caja->movimientos
             ->where('tipo', 'EGRESO')
             ->where('estado', 'APROBADO')
             ->sum('monto');
 
-        $caja->total_ingresos = $ingresos;
-        $caja->total_egresos = $egresos;
-        $caja->saldo_actual = $caja->saldo_inicial + $ingresos - $egresos;
+        $ingresosDigitales = $caja->movimientos
+            ->where('tipo', 'INGRESO')
+            ->where('estado', 'APROBADO')
+            ->filter(fn($m) => strtoupper($m->metodo_pago ?? 'EFECTIVO') !== 'EFECTIVO')
+            ->sum('monto');
+
+        $caja->total_ingresos = $totalIngresos;
+        $caja->total_egresos = $totalEgresos;
+        $caja->saldo_actual = $caja->saldo_inicial + $totalIngresos - $totalEgresos - $ingresosDigitales;
         $caja->estado = 'CERRADA';
         $caja->cerrado_at = now();
         $caja->cerrado_by = auth()->id();
@@ -79,42 +86,52 @@ class CajaService
 
         $caja = self::obtenerCajaAbierta();
 
-        //No permitir registrar movimientos si no existe una caja abierta
         if (!$caja) {
             throw new Exception('No se puede registrar el movimiento porque no existe una caja abierta.');
         }
 
-        if (strtoupper($data['tipo']) === 'EGRESO') {
-            $ingresos = MovimientoCaja::where('caja_id', $caja->id)
+        $metodoPago = strtoupper($data['metodo_pago'] ?? 'EFECTIVO');
+
+        if (strtoupper($data['tipo']) === 'EGRESO' && $metodoPago === 'EFECTIVO') {
+            $ingresosEfectivo = MovimientoCaja::where('caja_id', $caja->id)
                 ->where('tipo', 'INGRESO')
+                ->where('estado', 'APROBADO')
+                ->where(function($q) {
+                    $q->whereNull('metodo_pago')->orWhere('metodo_pago', 'EFECTIVO');
+                })
                 ->sum('monto');
                 
-            $egresos = MovimientoCaja::where('caja_id', $caja->id)
+            $egresosEfectivo = MovimientoCaja::where('caja_id', $caja->id)
                 ->where('tipo', 'EGRESO')
                 ->where('estado', 'APROBADO')
+                ->where(function($q) {
+                    $q->whereNull('metodo_pago')->orWhere('metodo_pago', 'EFECTIVO');
+                })
                 ->sum('monto');
                 
-            $saldoActual = $caja->saldo_inicial + $ingresos - $egresos;
+            $saldoDisponible = $caja->saldo_inicial + $ingresosEfectivo - $egresosEfectivo;
 
-            if ($saldoActual <= 0) {
-                throw new Exception('No se puede registrar el egreso porque el saldo actual de la caja es 0.');
+            if ($saldoDisponible <= 0) {
+                throw new Exception('No se puede registrar el egreso en efectivo porque el saldo en efectivo actual de la caja es 0.');
             }
 
-            if ($data['monto'] > $saldoActual) {
-                throw new Exception('No se puede registrar el egreso porque el monto supera el saldo actual. Saldo disponible: ' . number_format($saldoActual, 2));
+            if ($data['monto'] > $saldoDisponible) {
+                throw new Exception('No se puede registrar el egreso en efectivo porque el monto supera el saldo disponible. Saldo disponible en efectivo: S/ ' . number_format($saldoDisponible, 2));
             }
         }
 
         $movimiento = MovimientoCaja::create([
             'caja_id' => $caja->id,
             'tipo' => strtoupper($data['tipo']),
-            'estado' => $data['estado'] ?? (strtoupper($data['tipo']) === 'EGRESO' ? 'PENDIENTE' : 'APROBADO'),
+            'estado' => $data['estado'] ?? 'PENDIENTE',
             'monto' => $data['monto'],
+            'metodo_pago' => $metodoPago,
+            'comprobante' => $data['comprobante'] ?? null,
             'categoria' => $data['categoria'],
             'descripcion' => $data['descripcion'],
             'referencia_tipo' => $data['referencia_tipo'] ?? null,
             'referencia_id' => $data['referencia_id'] ?? null,
-            'created_at' => Carbon::now()
+            'created_at' => $data['created_at'] ?? Carbon::now()
         ]);
 
         return $movimiento;
@@ -128,18 +145,24 @@ class CajaService
             ->get();
 
         foreach ($cajasAbiertas as $caja) {
-            $ingresos = $caja->movimientos
+            $ingresosEfectivo = $caja->movimientos
                 ->where('tipo', 'INGRESO')
+                ->where('estado', 'APROBADO')
+                ->filter(fn($m) => strtoupper($m->metodo_pago ?? 'EFECTIVO') === 'EFECTIVO')
                 ->sum('monto');
 
-            $egresos = $caja->movimientos
+            $egresosEfectivo = $caja->movimientos
                 ->where('tipo', 'EGRESO')
                 ->where('estado', 'APROBADO')
+                ->filter(fn($m) => strtoupper($m->metodo_pago ?? 'EFECTIVO') === 'EFECTIVO')
                 ->sum('monto');
 
-            $caja->total_ingresos = $ingresos;
-            $caja->total_egresos = $egresos;
-            $caja->saldo_actual = $caja->saldo_inicial + $ingresos - $egresos;
+            $totalIngresos = $caja->movimientos->where('tipo', 'INGRESO')->where('estado', 'APROBADO')->sum('monto');
+            $totalEgresos = $caja->movimientos->where('tipo', 'EGRESO')->where('estado', 'APROBADO')->sum('monto');
+
+            $caja->total_ingresos = $totalIngresos;
+            $caja->total_egresos = $totalEgresos;
+            $caja->saldo_actual = $caja->saldo_inicial + $ingresosEfectivo - $egresosEfectivo;
             $caja->estado = 'CERRADA';
             $caja->cerrado_at = now();
             $caja->cerrado_by = auth()->id() ?? 1;

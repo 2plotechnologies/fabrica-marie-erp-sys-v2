@@ -410,7 +410,7 @@ class VentaController extends Controller
 
                 /*
                 ============================================
-                🔒 VALIDACIÓN DE STOCK
+                🔒 VALIDACIÓN DE STOCK.
                 ============================================
                 */
 
@@ -451,26 +451,40 @@ class VentaController extends Controller
                 }
             }
 
-            if($venta->tipo_pago === 'CONTADO'){
-                if ($venta->total_neto > 0) {
-                    $movimientoCaja = CajaService::registrarMovimiento([
-                        'tipo' => 'INGRESO',
-                        'estado' => 'APROBADO',
-                        'monto' => $venta->total_neto,
-                        'categoria' => 'VENTA',
-                        'descripcion' => 'Venta confirmada, Venta #'.$venta->id,
-                        'referencia_tipo' => 'VENTA',
-                        'referencia_id' => $venta->id
-                    ]);
+            $venta->load('pagos');
+
+            if ($venta->pagos && $venta->pagos->count() > 0) {
+                foreach ($venta->pagos as $pagoItem) {
+                    if ($pagoItem->monto > 0) {
+                        $comp = $pagoItem->numero_operacion ?? $venta->codigo;
+                        if ($pagoItem->banco) {
+                            $comp .= ' (' . $pagoItem->banco . ')';
+                        }
+                        CajaService::registrarMovimiento([
+                            'tipo' => 'INGRESO',
+                            'estado' => 'PENDIENTE',
+                            'monto' => $pagoItem->monto,
+                            'metodo_pago' => strtoupper($pagoItem->metodo_pago),
+                            'comprobante' => $comp,
+                            'categoria' => 'VENTA',
+                            'descripcion' => 'Venta ' . ($venta->tipo_pago === 'CONTADO' ? 'contado' : 'crédito (adelanto)') . ' confirmada, Código: ' . $venta->codigo . ' (' . strtoupper($pagoItem->metodo_pago) . ')',
+                            'referencia_tipo' => 'VENTA',
+                            'referencia_id' => $venta->id
+                        ]);
+                    }
                 }
-            }else{
-                if ($venta->adelanto > 0) {
-                    $movimientoCaja = CajaService::registrarMovimiento([
+            } else {
+                $montoPago = $venta->tipo_pago === 'CONTADO' ? $venta->total_neto : $venta->adelanto;
+                if ($montoPago > 0) {
+                    $metodoSimple = strtoupper($venta->metodo_pago_detalle ?? 'EFECTIVO');
+                    CajaService::registrarMovimiento([
                         'tipo' => 'INGRESO',
-                        'estado' => 'APROBADO',
-                        'monto' => $venta->adelanto,
+                        'estado' => 'PENDIENTE',
+                        'monto' => $montoPago,
+                        'metodo_pago' => $metodoSimple,
+                        'comprobante' => $venta->codigo,
                         'categoria' => 'VENTA',
-                        'descripcion' => 'Venta al crédito confirmada, Venta #'.$venta->id,
+                        'descripcion' => 'Venta ' . ($venta->tipo_pago === 'CONTADO' ? 'contado' : 'crédito (adelanto)') . ' confirmada, Código: ' . $venta->codigo,
                         'referencia_tipo' => 'VENTA',
                         'referencia_id' => $venta->id
                     ]);

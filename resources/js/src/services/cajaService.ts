@@ -27,7 +27,7 @@ export const cajaService = {
     },
 
     // Crear movimiento
-    async createMovimiento(data: { caja_id: number, fecha: string, tipo: string, categoria: string, descripcion: string, monto: number }) {
+    async createMovimiento(data: { caja_id: number, fecha?: string, tipo: string, metodo_pago?: string, comprobante?: string, categoria: string, descripcion: string, monto: number }) {
         const response = await api.post('/caja/movimientos', data);
         return response.data;
     },
@@ -38,6 +38,12 @@ export const cajaService = {
         return response.data;
     },
 
+    // Conciliar movimiento (Ingreso o Egreso)
+    async conciliarMovimiento(id: number | string, data: { estado: string, motivo?: string }) {
+        const response = await api.post(`/caja/movimientos/${id}/conciliar`, data);
+        return response.data;
+    },
+
     //Obtener egresos sin validar
     async getEgresos() {
         const response = await api.get('/caja/egresos');
@@ -45,7 +51,7 @@ export const cajaService = {
     },
 
     //Actualizar estado de egreso
-    async actualizarEstadoEgreso(id: string, data: { estado: string, motivo: string }) {
+    async actualizarEstadoEgreso(id: string | number, data: { estado: string, motivo?: string }) {
         const response = await api.post(`/caja/egresos/${id}/estado`, data);
         return response.data;
     },

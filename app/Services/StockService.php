@@ -58,11 +58,15 @@ class StockService
                     $disponible = $stock->cantidad - ($stock->stock_reservado ?? 0);
 
                     if (!$permitirNegativo && $cantidadMov > $disponible) {
-                        throw new Exception("Stock insuficiente. Disponible: {$disponible}");
+                        $producto = \App\Models\Producto::find($data['producto_id']);
+                        $nombreProd = $producto ? $producto->nombre : 'ID ' . $data['producto_id'];
+                        throw new Exception("Stock insuficiente para '{$nombreProd}'. Solicitado: {$cantidadMov}, Disponible: {$disponible}.");
                     }
 
                     if ($cantidadActual < $cantidadMov) {
-                        throw new Exception('Stock insuficiente');
+                        $producto = \App\Models\Producto::find($data['producto_id']);
+                        $nombreProd = $producto ? $producto->nombre : 'ID ' . $data['producto_id'];
+                        throw new Exception("Stock insuficiente para '{$nombreProd}'. Solicitado: {$cantidadMov}, Disponible: {$cantidadActual}.");
                     }
 
                     $nuevoStock = $cantidadActual - $cantidadMov;
@@ -155,7 +159,9 @@ class StockService
         }
 
         if ($faltante > 0) {
-            throw new Exception('Stock insuficiente para el producto ID: ' . $productoId);
+            $producto = \App\Models\Producto::find($productoId);
+            $nombreProd = $producto ? $producto->nombre : 'ID ' . $productoId;
+            throw new Exception("Stock insuficiente para '{$nombreProd}'. Faltan: {$faltante}.");
         }
     }
 
@@ -196,7 +202,9 @@ class StockService
         }
 
         if ($faltante > 0) {
-            throw new Exception('Stock insuficiente para el producto ID: ' . $productoId);
+            $producto = \App\Models\Producto::find($productoId);
+            $nombreProd = $producto ? $producto->nombre : 'ID ' . $productoId;
+            throw new Exception("Stock insuficiente para '{$nombreProd}'. Faltan: {$faltante}.");
         }
     }
 }

@@ -3,6 +3,7 @@ import type { AxiosError } from "axios";
 type ErrorPayload = {
   message?: unknown;
   error?: unknown;
+  details?: unknown;
   errors?: Record<string, unknown>;
 };
 
@@ -36,6 +37,9 @@ const collectFirstNestedMessage = (value: unknown): string | null => {
 
   if (value && typeof value === "object") {
     const payload = value as ErrorPayload;
+
+    const directDetails = collectFirstNestedMessage(payload.details);
+    if (directDetails) return directDetails;
 
     const directMessage = collectFirstNestedMessage(payload.message);
     if (directMessage) return directMessage;

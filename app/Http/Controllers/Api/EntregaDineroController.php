@@ -166,9 +166,10 @@ class EntregaDineroController
             if ($vendedor) {
                 $calculo = $this->obtenerCalculoVendedor($request->usuario_id, $vendedor->id);
 
-                if ($request->monto_total > $calculo['total_disponible']) {
-                    abort(422, 'El monto a entregar (S/ ' . number_format($request->monto_total, 2) . ') excede el saldo disponible de ventas y cobranzas del vendedor (S/ ' . number_format($calculo['total_disponible'], 2) . ').');
-                }
+                // SE ELIMINÓ LA RESTRICCIÓN DE MONTO DISPONIBLE PARA VENDEDORES
+                // if ($request->monto_total > $calculo['total_disponible']) {
+                //     abort(422, 'El monto a entregar (S/ ' . number_format($request->monto_total, 2) . ') excede el saldo disponible de ventas y cobranzas del vendedor (S/ ' . number_format($calculo['total_disponible'], 2) . ').');
+                // }
             }
         }
 
@@ -247,10 +248,32 @@ class EntregaDineroController
             
             if ($request->estado === 'ACEPTADA') {
                 $observacionSistema = '';
+                $entrega->load('usuario.roles', 'items');
                 $isVendedor = $entrega->usuario && $entrega->usuario->roles()->where('nombre', 'VENDEDOR')->exists();
                 
                 if ($isVendedor) {
-                    $observacionSistema = '[SISTEMA] Entrega de vendedor aprobada (sin afectación de caja central).';
+                    // Para entregas de vendedores, registrar los ítems no en efectivo como egresos en caja.
+                    foreach ($entrega->items as $item) {
+                        $metodo = strtoupper($item->metodo_pago);
+                        if ($metodo !== 'EFECTIVO' && $item->monto > 0) {
+                            try {
+                                \App\Services\CajaService::registrarMovimiento([
+                                    'tipo' => 'EGRESO',
+                                    'estado' => 'APROBADO',
+                                    'monto' => $item->monto,
+                                    'metodo_pago' => $metodo,
+                                    'comprobante' => 'Entrega #' . $entrega->id,
+                                    'categoria' => 'ENTREGA DINERO',
+                                    'descripcion' => 'Entrega de dinero digital (' . $metodo . ') por vendedor ' . ($entrega->usuario->nombre ?? ''),
+                                    'referencia_tipo' => 'ENTREGA_DINERO',
+                                    'referencia_id' => $entrega->id,
+                                ]);
+                            } catch (\Throwable $e) {
+                                // Excepción ignorada si no hay caja abierta
+                            }
+                        }
+                    }
+                    $observacionSistema = '[SISTEMA] Entrega de vendedor aprobada (movimientos digitales registrados en caja).';
                 } else {
                     $cajaAbierta = \App\Models\Caja::whereDate('fecha', now())->where('estado', 'ABIERTA')->first();
                     
@@ -260,6 +283,7 @@ class EntregaDineroController
                                 'tipo' => 'EGRESO',
                                 'estado' => 'APROBADO',
                                 'monto' => $entrega->monto_total,
+                                'metodo_pago' => 'EFECTIVO',
                                 'categoria' => 'ENTREGA DINERO',
                                 'descripcion' => 'Aprobación de entrega de dinero #' . $entrega->id,
                                 'referencia_tipo' => get_class($entrega),
@@ -267,7 +291,6 @@ class EntregaDineroController
                             ]);
                             $observacionSistema = '[SISTEMA] El monto se registró automáticamente como un egreso en la caja abierta.';
                         } catch (\Exception $e) {
-                            // Thrown by registrarMovimiento if balance is insufficient
                             abort(422, $e->getMessage());
                         }
                     } else {

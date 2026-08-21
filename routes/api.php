@@ -240,16 +240,17 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
             Route::get('/', [CajaController::class, 'getCaja']);
             //Obtener movimientos
             Route::get('/movimientos/total', [CajaController::class, 'obtenerMovimientos']);
+            //Conciliar movimiento (Ingreso o Egreso).
+            Route::post('/movimientos/{id}/conciliar', [CajaController::class, 'conciliarMovimiento']);
             //Lista Egresos
             Route::get('/egresos', [CajaController::class, 'obtenerEgresos']);
-            //Aprobar o rechazar egreso
-            Route::post('/egresos/{id}/estado', [CajaController::class, 'updateEstadoEgreso'])
-                ->middleware(['permiso:caja_registrar_egreso']);
+            //Aprobar o rechazar egreso (compatibilidad).
+            Route::post('/egresos/{id}/estado', [CajaController::class, 'updateEstadoEgreso']);
             //Crear movimiento
             Route::post('/movimientos', [CajaController::class, 'crearMovimiento']);
-            //Obtener cajas sin cerrar de dias anteriores
+            //Obtener cajas sin cerrar de dias anteriores.
             Route::get('/sin-cerrar', [CajaController::class, 'cajasSinCerrar']);
-            //Cerrar cajas de dias anteriores
+            //Cerrar cajas de dias anteriores.
             Route::post('/cerrar-antiguas', [CajaController::class, 'cerrarAntiguas'])
                 ->middleware('permiso:cerrar_caja');
             //Abrir caja

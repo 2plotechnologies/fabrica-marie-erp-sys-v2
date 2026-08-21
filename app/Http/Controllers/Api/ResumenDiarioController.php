@@ -341,22 +341,8 @@ class ResumenDiarioController extends Controller
     {
         $resumenDiario = ResumenDiario::findOrFail($id);
         $resumenDiario->estado = $request->estado;
-        //Aprobar gastos automaticamente si es estado es CONFIRMADO (Usar resumen_diario_id).
-        if($request->estado == 'CONFIRMADO'){
-            $gastos = Gasto::where('resumen_diario_id', $id)->get();
-            foreach ($gastos as $gasto) {
-                $gasto->estado = 'CONFIRMADO';
-                $gasto->save();
-            }
-        }
-        //Rechazar gastos automaticamente si es estado es RECHAZADO (Usar resumen_diario_id)
-        if($request->estado == 'RECHAZADO'){
-            $gastos = Gasto::where('resumen_diario_id', $id)->get();
-            foreach ($gastos as $gasto) {
-                $gasto->estado = 'RECHAZADO';
-                $gasto->save();
-            }
-        }
+        // NOTA: El estado del resumen diario ya NO cambia automáticamente el estado del gasto
+        // ni elimina su egreso en la caja. El estado del gasto se gestiona vía conciliación en caja.
         $resumenDiario->save();
         return response()->json($resumenDiario);
     }
@@ -368,7 +354,7 @@ class ResumenDiarioController extends Controller
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
 
-        $query = Gasto::with('vendedor.usuario')->orderBy('id', 'desc');
+        $query = Gasto::with('vendedor.usuario')->orderBy('fecha', 'desc');
 
         if ($vendedor) {
             $query->where('vendedor_id', $vendedor->id);
@@ -404,6 +390,25 @@ class ResumenDiarioController extends Controller
                 'estado' => 'PENDIENTE',
             ]
         );
+
+        // Registrar egreso PENDIENTE en caja para conciliación por administradores.
+        try {
+            \App\Services\CajaService::registrarMovimiento([
+                'tipo' => 'EGRESO',
+                'estado' => 'PENDIENTE',
+                'monto' => $request->monto,
+                'metodo_pago' => 'EFECTIVO',
+                'comprobante' => $request->comprobante,
+                'categoria' => 'GASTO',
+                'descripcion' => 'Gasto vendedor (' . $request->tipo . ') - Vendedor: ' . $vendedor->usuario->nombre,
+                'referencia_tipo' => 'GASTO',
+                'referencia_id' => $gasto->id,
+                'created_at' => $request->fecha ? \Carbon\Carbon::parse($request->fecha)->setTimeFrom(now()) : now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Silencioso si no existe caja abierta o error no crítico.
+        }
+
         return response()->json($gasto, 201);
     }
 
@@ -426,6 +431,12 @@ class ResumenDiarioController extends Controller
                 'message' => 'No se puede eliminar un gasto en estado ' . ($gasto->estado ?? 'NO PENDIENTE') . '. Solo se pueden eliminar gastos en estado PENDIENTE.'
             ], 422);
         }
+
+        // Eliminar egreso pendiente en caja si existe
+        \App\Models\MovimientoCaja::where('referencia_tipo', 'GASTO')
+            ->where('referencia_id', $gasto->id)
+            ->where('estado', 'PENDIENTE')
+            ->delete();
 
         $gasto->delete();
 
@@ -496,14 +507,7 @@ class ResumenDiarioController extends Controller
                     ->orderBy('fecha', 'asc')
                     ->get();
 
-                // Si no hay resúmenes asignados directamente por salida_id, buscar por vendedor y coincidencia de fecha
-                if ($resumenes->isEmpty()) {
-                    $resumenes = ResumenDiario::with(['gastos', 'vendedor.usuario', 'vehiculo', 'ruta', 'rutas'])
-                        ->where('vendedor_id', $salida->vendedor_id)
-                        ->whereDate('fecha', '>=', $salida->fecha)
-                        ->orderBy('fecha', 'asc')
-                        ->get();
-                }
+
 
                 // Obtener fechas de los resúmenes de la salida
                 $fechasResumenes = $resumenes->pluck('fecha')->map(function($f) {
@@ -741,6 +745,38 @@ class ResumenDiarioController extends Controller
         }
 
         $itemsAudit = [];
+        $vendedorIdAudit = $salidaModel ? $salidaModel->vendedor_id : $vendedorId;
+
+        // Pre-calcular qué fechas de esta salida NO son reclamadas por una salida anterior
+        // para evitar duplicar devoluciones cuando dos salidas comparten el mismo día.
+        $fechasValidasParaDevolucion = [];
+        foreach ($todasFechas as $devDate) {
+            $olderClaims = false;
+            if ($salidaModel) {
+                $olderSalida = \App\Models\Salida::where('vendedor_id', $vendedorIdAudit)
+                    ->where('id', '<', $salidaId)
+                    ->where(function($q) use ($devDate) {
+                        $q->whereDate('fecha', $devDate)
+                          ->orWhereHas('resumenesDiarios', function($rq) use ($devDate) {
+                              $rq->whereDate('fecha', $devDate);
+                          })
+                          ->orWhereIn('id', function($vq) use ($devDate) {
+                              $vq->select('venta_items.salida_id')
+                                 ->from('venta_items')
+                                 ->join('ventas', 'ventas.id', '=', 'venta_items.venta_id')
+                                 ->whereDate('ventas.fecha', $devDate)
+                                 ->whereNotNull('venta_items.salida_id');
+                          });
+                    })->exists();
+                    
+                if ($olderSalida) {
+                    $olderClaims = true;
+                }
+            }
+            if (!$olderClaims) {
+                $fechasValidasParaDevolucion[] = $devDate;
+            }
+        }
 
         foreach ($productosList as $pInfo) {
             $productoId = $pInfo['id'];
@@ -771,7 +807,17 @@ class ResumenDiarioController extends Controller
                 $totalVendido += $cantVendidoDia;
             }
 
-            $sobrante = max(0, $stockAsignado - $totalVendido);
+            $cantDevuelto = 0;
+            if (!empty($fechasValidasParaDevolucion)) {
+                $cantDevuelto = (float) \App\Models\DevolucionItem::where('producto_id', $productoId)
+                    ->whereHas('devolucion', function($q) use ($vendedorIdAudit, $fechasValidasParaDevolucion) {
+                        $q->where('vendedor_id', $vendedorIdAudit)
+                          ->where('estado', 'ACEPTADA')
+                          ->whereIn(\Illuminate\Support\Facades\DB::raw('DATE(fecha)'), $fechasValidasParaDevolucion);
+                    })->sum('cantidad');
+            }
+
+            $sobrante = max(0, $stockAsignado - $totalVendido - $cantDevuelto);
 
             $itemsAudit[] = [
                 'producto_id' => $productoId,
@@ -780,6 +826,7 @@ class ResumenDiarioController extends Controller
                 'stock_asignado' => $stockAsignado,
                 'ventas_dias' => $ventasPorDia,
                 'total_vendido' => $totalVendido,
+                'total_devuelto' => $cantDevuelto,
                 'sobrante' => $sobrante,
             ];
         }

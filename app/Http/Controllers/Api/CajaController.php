@@ -18,18 +18,6 @@ class CajaController extends Controller
             ->first();
     }
 
-    public function getCaja()
-    {
-        //Ordenar movimientos por fecha
-        return Caja::with(['usuario', 'movimientos' => function ($query) {
-            $query->orderBy('created_at', 'desc');
-        }])
-            ->whereDate('fecha', now())
-            ->where('estado', 'ABIERTA')
-            ->latest('id')
-            ->first();
-    }
-
     public function abrir(Request $request)
     {
         //Si hay una caja abierta, no permitir abrir otra
@@ -57,6 +45,111 @@ class CajaController extends Controller
         });
     }
 
+    public function getCaja()
+    {
+        return Caja::with(['usuario', 'movimientos' => function ($query) {
+            $query->with('conciliador')->orderBy('created_at', 'desc');
+        }])
+            ->whereDate('fecha', now())
+            ->where('estado', 'ABIERTA')
+            ->latest('id')
+            ->first();
+    }
+
+    public function obtenerMovimientos()
+    {
+        return MovimientoCaja::with(['caja.usuario', 'conciliador'])->orderBy('created_at', 'desc')->get();
+    }
+
+    public function obtenerEgresos()
+    {
+        return MovimientoCaja::with(['caja.usuario', 'conciliador'])
+        ->where('tipo', 'EGRESO')
+        ->orderBy('created_at', 'desc')->get();
+    }
+
+    public function updateEstadoEgreso(Request $request, $id)
+    {
+        return $this->conciliarMovimiento($request, $id);
+    }
+
+    public function conciliarMovimiento(Request $request, $id)
+    {
+        $request->validate([
+            'estado' => 'required|string|in:APROBADO,RECHAZADO,PENDIENTE',
+            'motivo' => 'nullable|string'
+        ]);
+
+        $movimiento = MovimientoCaja::findOrFail($id);
+
+        if ($request->estado === 'APROBADO' && $movimiento->estado !== 'APROBADO') {
+            if ($movimiento->tipo === 'EGRESO' && strtoupper($movimiento->metodo_pago ?? 'EFECTIVO') === 'EFECTIVO') {
+                $caja = $movimiento->caja;
+
+                $ingresosEfectivo = MovimientoCaja::where('caja_id', $caja->id)
+                    ->where('tipo', 'INGRESO')
+                    ->where('estado', 'APROBADO')
+                    ->where(function($q) {
+                        $q->whereNull('metodo_pago')->orWhere('metodo_pago', 'EFECTIVO');
+                    })
+                    ->sum('monto');
+                    
+                $egresosEfectivo = MovimientoCaja::where('caja_id', $caja->id)
+                    ->where('tipo', 'EGRESO')
+                    ->where('estado', 'APROBADO')
+                    ->where(function($q) {
+                        $q->whereNull('metodo_pago')->orWhere('metodo_pago', 'EFECTIVO');
+                    })
+                    ->sum('monto');
+                    
+                $saldoDisponible = $caja->saldo_inicial + $ingresosEfectivo - $egresosEfectivo;
+
+                if ($saldoDisponible <= 0) {
+                    return response()->json(['error' => 'No se puede conciliar/aprobar el egreso porque el saldo en efectivo de la caja es 0.'], 400);
+                }
+
+                if ($movimiento->monto > $saldoDisponible) {
+                    return response()->json(['error' => 'No se puede conciliar/aprobar el egreso porque supera el saldo en efectivo disponible (S/ ' . number_format($saldoDisponible, 2) . ').'], 400);
+                }
+            }
+        }
+
+        $movimiento->estado = $request->estado;
+        if ($request->estado === 'PENDIENTE') {
+            $movimiento->conciliado_by = null;
+        } else {
+            $movimiento->conciliado_by = auth()->id();
+        }
+
+        if ($request->estado === "RECHAZADO" && $request->filled('motivo')) {
+            $movimiento->descripcion = $movimiento->descripcion . ' | RECHAZADO: ' . $request->motivo;
+        } elseif ($request->estado === "PENDIENTE" && $request->filled('motivo')) {
+            $movimiento->descripcion = $movimiento->descripcion . ' | ANULACIÓN: ' . $request->motivo;
+        }
+
+        $movimiento->save();
+
+        // Si este movimiento pertenece a un gasto de vendedor, actualizar su estado
+        if ($movimiento->referencia_tipo === 'GASTO' && $movimiento->referencia_id) {
+            $gasto = \App\Models\Gasto::find($movimiento->referencia_id);
+            if ($gasto) {
+                if ($request->estado === 'APROBADO') {
+                    $gasto->estado = 'CONFIRMADO';
+                } elseif ($request->estado === 'RECHAZADO') {
+                    $gasto->estado = 'RECHAZADO';
+                } else {
+                    $gasto->estado = 'PENDIENTE';
+                }
+                $gasto->save();
+            }
+        }
+
+        return response()->json([
+            'message' => $request->estado === 'PENDIENTE' ? 'Conciliación anulada / devuelta a pendiente correctamente.' : 'Movimiento conciliado correctamente.',
+            'data' => $movimiento->load('caja.usuario', 'conciliador')
+        ]);
+    }
+
     public function crearMovimiento(Request $request, CajaService $service)
     {
         return DB::transaction(function () use ($request, $service) {
@@ -79,53 +172,6 @@ class CajaController extends Controller
                 $request->fecha
             )
         );
-    }
-
-    public function obtenerMovimientos()
-    {
-        return MovimientoCaja::with(['caja.usuario'])->orderBy('created_at', 'desc')->get();
-    }
-
-    public function obtenerEgresos()
-    {
-        return MovimientoCaja::with(['caja.usuario'])
-        ->where('tipo', 'EGRESO')
-        ->orderBy('created_at', 'desc')->get();
-    }
-
-    public function updateEstadoEgreso(Request $request, $id)
-    {
-        $movimiento = MovimientoCaja::findOrFail($id);
-
-        if ($request->estado === 'APROBADO' && $movimiento->estado !== 'APROBADO') {
-            $caja = $movimiento->caja;
-            $ingresos = MovimientoCaja::where('caja_id', $caja->id)
-                ->where('tipo', 'INGRESO')
-                ->sum('monto');
-                
-            $egresos = MovimientoCaja::where('caja_id', $caja->id)
-                ->where('tipo', 'EGRESO')
-                ->where('estado', 'APROBADO')
-                ->sum('monto');
-                
-            $saldoActual = $caja->saldo_inicial + $ingresos - $egresos;
-
-            if ($saldoActual <= 0) {
-                return response()->json(['error' => 'No se puede aprobar el egreso porque el saldo actual de la caja es 0.'], 400);
-            }
-
-            if ($movimiento->monto > $saldoActual) {
-                return response()->json(['error' => 'No se puede aprobar el egreso porque el monto supera el saldo actual. Saldo disponible: ' . number_format($saldoActual, 2)], 400);
-            }
-        }
-
-        $movimiento->estado = $request->estado;
-        if($request->estado === "RECHAZADO"){
-            $movimiento->descripcion = 'EGRESO RECHAZADO: ' . $request->motivo;
-        }
-        $movimiento->save();
-        
-        return response()->json(['message' => 'Estado actualizado correctamente.']);
     }
 
     public function obtenerCajasCerradas()

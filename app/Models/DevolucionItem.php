@@ -25,4 +25,9 @@ class DevolucionItem extends Model
     {
         return $this->belongsTo(Producto::class);
     }
+
+    public function devolucion()
+    {
+        return $this->belongsTo(Devolucion::class);
+    }
 }

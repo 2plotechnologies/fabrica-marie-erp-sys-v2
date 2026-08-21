@@ -19,7 +19,7 @@ class RutaController extends Controller
 
     /**
      * Listado paginado con búsqueda por nombre. Usado por el módulo RoutesList.
-     * GET /rutas/paginado?search=&page=&per_page=
+     * GET /rutas/paginado?search=&page=&per_page=.
      */
     public function listPaginado(Request $request)
     {

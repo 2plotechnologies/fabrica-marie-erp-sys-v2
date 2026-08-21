@@ -64,6 +64,7 @@ const renderStockAuditTable = (stockAuditData: any) => {
             {hasMultipleDays && (
               <TableHead className="text-right whitespace-nowrap font-bold">Total Vendido</TableHead>
             )}
+            <TableHead className="text-right whitespace-nowrap font-bold text-amber-700 dark:text-amber-500">Devueltos</TableHead>
             <TableHead className="text-right whitespace-nowrap font-bold">Sobrantes / Disponible</TableHead>
           </TableRow>
         </TableHeader>
@@ -102,6 +103,9 @@ const renderStockAuditTable = (stockAuditData: any) => {
                     {totalVendido}
                   </TableCell>
                 )}
+                <TableCell className="text-right font-bold text-amber-600 dark:text-amber-500 whitespace-nowrap">
+                  {stItem.total_devuelto || 0}
+                </TableCell>
                 <TableCell className="text-right font-bold whitespace-nowrap">
                   {sobrante > 0 ? (
                     <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 whitespace-nowrap">
@@ -490,6 +494,8 @@ const DailySummaryPage = () => {
         return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30">CONFIRMADO</Badge>;
       case 'RECHAZADO':
         return <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/30">RECHAZADO</Badge>;
+      case 'ANULADO':
+        return <Badge variant="outline" className="bg-slate-800/10 text-slate-800 border-slate-800/30 dark:bg-slate-400/10 dark:text-slate-400 dark:border-slate-400/30">ANULADO</Badge>;
       default:
         return <Badge variant="outline">{estado}</Badge>;
     }
@@ -572,6 +578,20 @@ const DailySummaryPage = () => {
     } catch (error) {
       toast.error('Error al rechazar el resumen: ' + error.response.data.message);
       if (error.response.status === 403) {
+        toast.error('Usted no tiene autorización para realizar esta acción.');
+      }
+    }
+  };
+
+  const handleAnular = async (id: string) => {
+    if (!window.confirm('¿Está seguro de anular este resumen confirmado? Sus gastos asociados también serán invalidados y los montos dejarán de ser contabilizados.')) return;
+    try {
+      await resumenDiarioService.update(id, 'ANULADO', 'Resumen anulado por el administrador');
+      setSelectedResumen(null);
+      getResumenesDiarios();
+    } catch (error) {
+      toast.error('Error al anular el resumen: ' + (error.response?.data?.message || ''));
+      if (error.response?.status === 403) {
         toast.error('Usted no tiene autorización para realizar esta acción.');
       }
     }
@@ -1192,6 +1212,7 @@ const DailySummaryPage = () => {
                         <SelectItem value="ENVIADO">Enviado</SelectItem>
                         <SelectItem value="CONFIRMADO">Confirmado</SelectItem>
                         <SelectItem value="RECHAZADO">Rechazado</SelectItem>
+                        <SelectItem value="ANULADO">Anulado</SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -1740,7 +1761,7 @@ const DailySummaryPage = () => {
               </div>
 
               {/* Ingresos y Gastos lado a lado */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Ingresos */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -1766,15 +1787,34 @@ const DailySummaryPage = () => {
                       <span className="text-muted-foreground">Cobranzas</span>
                       <span className="font-medium">S/ {Number(selectedResumen.cobranza).toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="text-muted-foreground">Otros Ingresos</span>
-                      <span className="font-medium">S/ {Number(selectedResumen.depositos).toLocaleString()}</span>
-                    </div>
                     <Separator />
                     <div className="flex justify-between font-bold text-xs sm:text-sm">
                       <span>Total Ingresos</span>
                       <span className="text-emerald-600">
-                        S/ {(Number(selectedResumen.contado) + Number(selectedResumen.cobranza) + Number(selectedResumen.adelanto) + Number(selectedResumen.depositos)).toLocaleString()}
+                        S/ {(Number(selectedResumen.contado) + Number(selectedResumen.cobranza) + Number(selectedResumen.adelanto)).toLocaleString()}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Depósitos */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ArrowDownCircle className="h-4 w-4 text-sky-500" />
+                      Depósitos / Transferencias
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-muted-foreground">Yape / Plin / Bancos</span>
+                      <span className="font-medium">S/ {Number(selectedResumen.depositos).toLocaleString()}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-xs sm:text-sm">
+                      <span>Total Depósitos</span>
+                      <span className="text-sky-600">
+                        S/ {Number(selectedResumen.depositos).toLocaleString()}
                       </span>
                     </div>
                   </CardContent>
@@ -1979,30 +2019,37 @@ const DailySummaryPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Botón de aprobar */}
-              {selectedResumen.estado !== 'CONFIRMADO' && (
-                <div className="flex flex-col sm:flex-row justify-end gap-2">
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSelectedResumen(null)}>
-                    {isVendedor ? 'Cerrar' : 'Cancelar'}
-                  </Button>
-                  {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
+              {/* Botón de aprobar / anular */}
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setSelectedResumen(null)}>
+                  {isVendedor ? 'Cerrar' : 'Cerrar / Cancelar'}
+                </Button>
+                {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
+                  <>
                     <Button
                       className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
                       onClick={() => handleRechazar(selectedResumen.id)}>
                       <XCircle className="h-4 w-4 mr-2" />
                       Rechazar Resumen
                     </Button>
-                  )}
-                  {selectedResumen.estado === 'PENDIENTE' && !isVendedor && (
                     <Button
                       className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
                       onClick={() => handleAprobar(selectedResumen.id)}>
                       <CheckCircle2 className="h-4 w-4 mr-2" />
                       Confirmar Resumen
                     </Button>
-                  )}
-                </div>
-              )}
+                  </>
+                )}
+                {selectedResumen.estado === 'CONFIRMADO' && !isVendedor && (
+                  <Button
+                    variant="destructive"
+                    className="w-full sm:w-auto"
+                    onClick={() => handleAnular(selectedResumen.id)}>
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Anular Resumen
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

@@ -277,8 +277,7 @@ const FactoryOutput = () => {
     } catch (error: any) {
       console.log("ERROR COMPLETO:", error);
       console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-      const backendError = error.response?.data?.error || error.response?.data?.message || 'No se pudo crear la salida.';
-      toast.error(backendError);
+      toast.error(formatErrorMessage('Error al crear salida', error, 'No se pudo crear la salida.'));
     }
   };
 
@@ -343,8 +342,7 @@ const FactoryOutput = () => {
 
     } catch (error: any) {
       console.log("ERROR ACTUALIZACION:", error);
-      const backendError = error.response?.data?.error || error.response?.data?.message || 'No se pudo actualizar la salida.';
-      toast.error(backendError);
+      toast.error(formatErrorMessage('Error al actualizar salida', error, 'No se pudo actualizar la salida.'));
     }
   };
 
