@@ -1648,28 +1648,37 @@ const DailySummaryPage = () => {
                                             </TableRow>
                                           </TableHeader>
                                           <TableBody>
-                                            {resumenesList.map((r: any, idx: number) => (
-                                              <TableRow key={r.id} className="text-xs">
-                                                <TableCell className="font-medium">
-                                                  <span className="font-bold text-primary mr-1">Día {idx + 1}:</span>
-                                                  {format(new Date((r.fecha || '').substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}
-                                                </TableCell>
-                                                <TableCell>{r.vendedor?.usuario?.nombre || '-'}</TableCell>
-                                                <TableCell>{r.conductor || r.zona || '-'}</TableCell>
-                                                <TableCell className="text-right text-emerald-600 font-medium">S/ {Number(r.contado).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right text-amber-600">S/ {Number(r.credito).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right text-purple-600 font-medium">S/ {Number(r.adelanto || 0).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right">S/ {Number(r.cobranza).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right text-sky-600 font-medium">S/ {Number(r.depositos || 0).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right text-indigo-600 font-medium">S/ {Number(r.viaticos).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right text-red-600">S/ {Number(r.total_gastos).toFixed(2)}</TableCell>
-                                                <TableCell className="text-right font-bold">S/ {Number(r.saldo_entregado).toFixed(2)}</TableCell>
-                                                <TableCell className={`text-right font-bold ${Number(r.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                                                  {Number(r.diferencia) >= 0 ? '+' : ''}{Number(r.diferencia).toFixed(2)}
-                                                </TableCell>
-                                                <TableCell>{getEstadoBadge(r.estado)}</TableCell>
-                                              </TableRow>
-                                            ))}
+                                            {resumenesList.map((r: any, idx: number) => {
+                                              const isInvalid = r.estado === 'RECHAZADO' || r.estado === 'ANULADO';
+                                              const validDaysBefore = resumenesList.slice(0, idx).filter((prev: any) => prev.estado !== 'RECHAZADO' && prev.estado !== 'ANULADO').length;
+                                              const dayNumber = validDaysBefore + 1;
+                                              return (
+                                                <TableRow key={r.id} className={`text-xs ${isInvalid ? 'opacity-50 grayscale line-through text-muted-foreground bg-gray-50/50 dark:bg-gray-900/20' : ''}`}>
+                                                  <TableCell className="font-medium">
+                                                    {!isInvalid ? (
+                                                      <span className="font-bold text-primary mr-1">Día {dayNumber}:</span>
+                                                    ) : (
+                                                      <span className="font-bold mr-1">--</span>
+                                                    )}
+                                                    {format(new Date((r.fecha || '').substring(0, 10) + 'T00:00:00'), 'dd/MM/yyyy')}
+                                                  </TableCell>
+                                                  <TableCell>{r.vendedor?.usuario?.nombre || '-'}</TableCell>
+                                                  <TableCell>{r.conductor || r.zona || '-'}</TableCell>
+                                                  <TableCell className={`text-right font-medium ${isInvalid ? '' : 'text-emerald-600'}`}>S/ {Number(r.contado).toFixed(2)}</TableCell>
+                                                  <TableCell className={`text-right ${isInvalid ? '' : 'text-amber-600'}`}>S/ {Number(r.credito).toFixed(2)}</TableCell>
+                                                  <TableCell className={`text-right font-medium ${isInvalid ? '' : 'text-purple-600'}`}>S/ {Number(r.adelanto || 0).toFixed(2)}</TableCell>
+                                                  <TableCell className="text-right">S/ {Number(r.cobranza).toFixed(2)}</TableCell>
+                                                  <TableCell className={`text-right font-medium ${isInvalid ? '' : 'text-sky-600'}`}>S/ {Number(r.depositos || 0).toFixed(2)}</TableCell>
+                                                  <TableCell className={`text-right font-medium ${isInvalid ? '' : 'text-indigo-600'}`}>S/ {Number(r.viaticos).toFixed(2)}</TableCell>
+                                                  <TableCell className={`text-right ${isInvalid ? '' : 'text-red-600'}`}>S/ {Number(r.total_gastos).toFixed(2)}</TableCell>
+                                                  <TableCell className="text-right font-bold">S/ {Number(r.saldo_entregado).toFixed(2)}</TableCell>
+                                                  <TableCell className={`text-right font-bold ${isInvalid ? '' : (Number(r.diferencia) >= 0 ? 'text-emerald-600' : 'text-red-600')}`}>
+                                                    {Number(r.diferencia) >= 0 ? '+' : ''}{Number(r.diferencia).toFixed(2)}
+                                                  </TableCell>
+                                                  <TableCell className={isInvalid ? 'no-underline' : ''}>{getEstadoBadge(r.estado)}</TableCell>
+                                                </TableRow>
+                                              );
+                                            })}
                                           </TableBody>
                                         </Table>
                                       </div>
