@@ -33,8 +33,9 @@ interface NavItemProps {
 
 const NavItem = ({ to, icon, label, subItems }: NavItemProps) => {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
-  const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
+  const isSubItemActive = subItems?.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to + '/')));
+  const [isOpen, setIsOpen] = useState(isSubItemActive);
+  const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to + '/')) || isSubItemActive;
   const hasSubItems = subItems && subItems.length > 0;
 
   if (hasSubItems) {
@@ -172,7 +173,17 @@ const navigation: NavItemConfig[] = [
       { to: '/caja/proyeccion', label: 'Proyectado de Ventas' },
     ]
   },
-  { to: '/rutas', icon: <MapPin className="h-5 w-5" />, label: 'Rutas', module: 'rutas' },
+  {
+    to: '/zonas-rutas',
+    icon: <MapPin className="h-5 w-5" />,
+    label: 'Zonas y Rutas',
+    module: 'rutas',
+    subItems: [
+      { to: '/zonas', label: 'Zonas' },
+      { to: '/rutas', label: 'Rutas' },
+      { to: '/mapa-interactivo', label: 'Mapa Interactivo' },
+    ]
+  },
   {
     to: '/gps',
     icon: <Navigation className="h-5 w-5" />,

@@ -72,11 +72,12 @@ interface NewClient {
 interface RouteMapProps {
   routes: any[];
   onRoutesChange: (routes: any[]) => void;
+  initialZoneId?: string | number;
 }
 
 type MapMode = 'view' | 'create-route' | 'create-client' | 'create-zone' | 'edit-routes' | 'edit-zones';
 
-const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
+const RouteMap = ({ routes, onRoutesChange, initialZoneId }: RouteMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -185,6 +186,7 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   const [routeZone, setRouteZone] = useState('');
   const [zoneName, setZoneName] = useState('');
   const [zoneColor, setZoneColor] = useState('#d97706');
+  const [selectedZoneIdForSave, setSelectedZoneIdForSave] = useState<string>('new');
 
   const zoneColors = [
     { name: 'Ámbar', value: '#d97706' },
@@ -240,6 +242,19 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  useEffect(() => {
+    if (initialZoneId && zones.length > 0) {
+      const foundZone = zones.find(z => String(z.id) === String(initialZoneId));
+      if (foundZone) {
+        setSelectedZoneIdForSave(String(foundZone.id));
+        setZoneName(foundZone.name);
+        setZoneColor(foundZone.color);
+        setMode('create-zone');
+        toast.info(`Modo "Crear Zona" activado para "${foundZone.name}". Haz clic en el mapa para trazar sus vértices.`);
+      }
+    }
+  }, [initialZoneId, zones]);
 
   const saveToken = async () => {
     if (mapboxToken.trim()) {
@@ -489,6 +504,8 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
 
     // Draw saved zones
     zones.forEach(zone => {
+      if (!zone.points || zone.points.length < 3) return;
+
       const sourceId = `zone-${zone.id}`;
       const coordinates = [...zone.points.map(p => [p.lng, p.lat]), [zone.points[0].lng, zone.points[0].lat]];
 
@@ -714,35 +731,46 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
   };
 
   const handleSaveZone = async () => {
-    if (zonePoints.length < 3 || !zoneName) {
-      toast.error('Zona inválida');
+    if (zonePoints.length < 3) {
+      toast.error('La zona debe tener al menos 3 vértices');
+      return;
+    }
+    if (!zoneName.trim()) {
+      toast.error('Por favor ingresa o selecciona un nombre para la zona');
       return;
     }
 
     try {
-      await mapaInteractivoService.saveZona({
-        nombre: zoneName,
+      const payload: any = {
+        nombre: zoneName.trim(),
         color: zoneColor,
         puntos: zonePoints.map((p, index) => ({
           latitud: p.lat,
           longitud: p.lng,
           orden: index + 1
         }))
-      });
+      };
 
-      toast.success('Zona guardada');
+      if (selectedZoneIdForSave && selectedZoneIdForSave !== 'new') {
+        payload.zona_id = selectedZoneIdForSave;
+      }
+
+      await mapaInteractivoService.saveZona(payload);
+
+      toast.success(selectedZoneIdForSave !== 'new' ? 'Puntos asignados a la zona exitosamente' : 'Zona guardada exitosamente');
 
       clearZone();
       setZoneName('');
+      setSelectedZoneIdForSave('new');
       setMode('view');
 
       loadZonas();
 
-    } catch (error) {
+    } catch (error: any) {
       console.log("ERROR COMPLETO: ", error);
-      console.log("ERROR RESPONSE: ", error.response);
-      console.log("ERROR MESSAGE: ", error.message);
-      const errorMessage = error.response?.data?.message || error.message || 'Error desconocido';
+      console.log("ERROR RESPONSE: ", error?.response);
+      console.log("ERROR MESSAGE: ", error?.message);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Error desconocido';
       toast.error('Error al guardar zona: ' + errorMessage);
     }
   };
@@ -1278,12 +1306,42 @@ const RouteMap = ({ routes, onRoutesChange }: RouteMapProps) => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pentagon className="h-5 w-5 text-purple-500" />
-              Guardar Nueva Zona
+              Guardar / Asignar Puntos a Zona
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="zone-name">Nombre de la Zona</Label>
+              <Label>Asignar a Zona</Label>
+              <Select
+                value={selectedZoneIdForSave}
+                onValueChange={(val) => {
+                  setSelectedZoneIdForSave(val);
+                  if (val !== 'new') {
+                    const found = zones.find(z => String(z.id) === val);
+                    if (found) {
+                      setZoneName(found.name);
+                      setZoneColor(found.color);
+                    }
+                  } else {
+                    setZoneName('');
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Crear nueva o seleccionar existente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">+ Crear Nueva Zona</SelectItem>
+                  {zones.map((z) => (
+                    <SelectItem key={z.id} value={String(z.id)}>
+                      {z.name} {(!z.points || z.points.length < 3) ? '(Sin puntos en mapa)' : `(${z.points.length} puntos)`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="zone-name">Nombre de la Zona *</Label>
               <Input
                 id="zone-name"
                 placeholder="Ej: Zona Norte Industrial"

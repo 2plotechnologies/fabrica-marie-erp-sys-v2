@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,13 +29,15 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check, X, Trash, RefreshCw } from 'lucide-react';
+import { Search, ShoppingCart, Eye, FileText, Filter, Calendar, TrendingUp, Check, X, Trash, RefreshCw, MapPin, Route } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Sale } from '@/types';
 import { ventaService } from '@/services/ventaService';
+import { salidaService } from '@/services/salidaService';
 import { toast } from 'sonner';
 import { formatErrorMessage } from '@/lib/axios-error';
+import { useRole } from '@/contexts/RoleContext';
 
 interface CanjeItemState {
   item_id: number;
@@ -50,10 +52,14 @@ interface CanjeItemState {
 }
 
 const SalesHistory = () => {
+  const { currentRole } = useRole();
   const [ventas, setVentas] = useState<any[]>([]);
+  const [rutas, setRutas] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [paymentFilter, setPaymentFilter] = useState<string>('all');
+  const [zonaFilter, setZonaFilter] = useState<string>('all');
+  const [rutaFilter, setRutaFilter] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -95,8 +101,8 @@ const SalesHistory = () => {
         const tipoItem = item.es_bonificacion
           ? 'BONIFICACIÓN'
           : item.es_degustacion
-          ? 'DEGUSTACIÓN'
-          : 'VENTA';
+            ? 'DEGUSTACIÓN'
+            : 'VENTA';
         const stockDisp = stockMap[item.producto_id] ?? 0;
         const maxPosible = Math.max(0, Math.min(Number(item.cantidad), Number(stockDisp)));
 
@@ -220,19 +226,100 @@ const SalesHistory = () => {
   };
 
   useEffect(() => {
-    const fetchVentas = async () => {
-      const ventas = await ventaService.getAll();
-      setVentas(ventas);
+    const fetchData = async () => {
+      try {
+        const [ventasData, rutasData] = await Promise.all([
+          ventaService.getAll(),
+          salidaService.getRutas().catch(() => []),
+        ]);
+        setVentas(ventasData || []);
+        setRutas(rutasData || []);
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      }
     };
-    fetchVentas();
+    fetchData();
   }, []);
+
+  const getSaleZoneAndRoute = (sale: any) => {
+    const rutaObj = sale.cliente?.ruta || sale.items?.find((i: any) => i.salida?.ruta)?.salida?.ruta;
+    const rutaId = sale.cliente?.ruta_id || sale.cliente?.ruta?.id || sale.items?.find((i: any) => i.salida?.ruta_id)?.salida?.ruta_id;
+    const matchedRuta = rutas.find((r: any) => Number(r.id) === Number(rutaId));
+
+    const rutaNombre = rutaObj?.nombre || matchedRuta?.nombre || null;
+    const zonaNombre = rutaObj?.zona || matchedRuta?.zona || sale.items?.find((i: any) => i.salida?.zona)?.salida?.zona || null;
+
+    return { rutaId, rutaNombre, zonaNombre };
+  };
+
+  const zonasList = useMemo(() => {
+    const set = new Set<string>();
+    rutas.forEach((r: any) => {
+      if (r.zona && typeof r.zona === 'string' && r.zona.trim()) {
+        set.add(r.zona.trim());
+      }
+    });
+    ventas.forEach((s: any) => {
+      const z = s.cliente?.ruta?.zona || s.items?.find((i: any) => i.salida?.zona)?.salida?.zona || s.items?.find((i: any) => i.salida?.ruta?.zona)?.salida?.ruta?.zona;
+      if (z && typeof z === 'string' && z.trim()) {
+        set.add(z.trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [rutas, ventas]);
+
+  const rutasListFiltered = useMemo(() => {
+    if (zonaFilter === 'all') return rutas;
+    return rutas.filter((r: any) => r.zona === zonaFilter);
+  }, [rutas, zonaFilter]);
+
+  const handleZonaChange = (val: string) => {
+    setZonaFilter(val);
+    setPage(1);
+    if (val !== 'all' && rutaFilter !== 'all') {
+      const routeObj = rutas.find((r: any) => String(r.id) === rutaFilter);
+      if (!routeObj || routeObj.zona !== val) {
+        setRutaFilter('all');
+      }
+    }
+  };
+
+  const handleRutaChange = (val: string) => {
+    setRutaFilter(val);
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchTerm ||
+    statusFilter !== 'all' ||
+    paymentFilter !== 'all' ||
+    zonaFilter !== 'all' ||
+    rutaFilter !== 'all' ||
+    startDate ||
+    endDate
+  );
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPaymentFilter('all');
+    setZonaFilter('all');
+    setRutaFilter('all');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
 
   const filteredSales = ventas.filter((sale) => {
     const matchesSearch = sale.cliente?.razon_social
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || sale.estado === statusFilter;
     const matchesPayment = paymentFilter === 'all' || sale.tipo_pago === paymentFilter;
+
+    const { rutaId, zonaNombre } = getSaleZoneAndRoute(sale);
+    const matchesZona = zonaFilter === 'all' || zonaNombre === zonaFilter;
+    const matchesRuta = rutaFilter === 'all' || String(rutaId) === rutaFilter;
 
     let matchesDate = true;
     if (startDate || endDate) {
@@ -246,11 +333,12 @@ const SalesHistory = () => {
           matchesDate = false;
         }
       } catch (error) {
-        console.error("Error matching date for sale:", sale, error);
       }
     }
 
-    return matchesSearch && matchesStatus && matchesPayment && matchesDate;
+    const matchesRole = currentRole !== 'ALMACENERO' || Boolean(sale.vendedor?.venta_directa);
+
+    return matchesSearch && matchesStatus && matchesPayment && matchesDate && matchesRole && matchesZona && matchesRuta;
   });
 
   const itemsPerPage = 4;
@@ -369,29 +457,63 @@ const SalesHistory = () => {
                 className="pl-10"
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center flex-wrap">
+              {/* Filtro Zona */}
+              <Select value={zonaFilter} onValueChange={handleZonaChange}>
+                <SelectTrigger className="w-full sm:w-44">
+                  <MapPin className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Zona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las zonas</SelectItem>
+                  {zonasList.map((z) => (
+                    <SelectItem key={z} value={z}>
+                      {z}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Filtro Ruta */}
+              <Select value={rutaFilter} onValueChange={handleRutaChange}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <Route className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+                  <SelectValue placeholder="Ruta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las rutas</SelectItem>
+                  {rutasListFiltered.map((r: any) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.nombre} {r.zona && zonaFilter === 'all' ? `(${r.zona})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full sm:w-36">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all">Todos los estados</SelectItem>
                   <SelectItem value="PENDIENTE">Pendiente</SelectItem>
                   <SelectItem value="CONFIRMADA">Confirmada</SelectItem>
                   <SelectItem value="ANULADA">Anulada</SelectItem>
                 </SelectContent>
               </Select>
+
               <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full sm:w-36">
                   <SelectValue placeholder="Pago" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="all">Todos los pagos</SelectItem>
                   <SelectItem value="CONTADO">Contado</SelectItem>
                   <SelectItem value="CREDITO">Crédito</SelectItem>
                 </SelectContent>
               </Select>
+
               <div className="flex items-center gap-2">
                 <Input
                   type="date"
@@ -408,14 +530,11 @@ const SalesHistory = () => {
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full sm:w-36 text-xs sm:text-sm"
                 />
-                {(startDate || endDate) && (
+                {hasActiveFilters && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setStartDate('');
-                      setEndDate('');
-                    }}
+                    onClick={handleClearFilters}
                     className="h-9 px-2 text-muted-foreground hover:text-foreground text-xs sm:text-sm"
                   >
                     Limpiar
@@ -454,6 +573,18 @@ const SalesHistory = () => {
                     </div>
                     {getStatusBadge(sale.estado)}
                   </div>
+                  {(() => {
+                    const { rutaNombre, zonaNombre } = getSaleZoneAndRoute(sale);
+                    if (!rutaNombre && !zonaNombre) return null;
+                    return (
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                        <Route className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">
+                          {rutaNombre || 'Ruta'} {zonaNombre ? `(${zonaNombre})` : ''}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
                     <div>📅 <strong className="text-foreground">{format(sale.fecha, "dd/MM/yyyy HH:mm", { locale: es })}</strong></div>
                     {sale.vendedor?.usuario?.nombre && <div>👤 <strong className="text-foreground truncate">{sale.vendedor.usuario.nombre}</strong></div>}
@@ -498,29 +629,29 @@ const SalesHistory = () => {
                               </div>
                             )}
                           </div>
-                              {sale.items.map((item: any) => (
-                                <div key={item.id} className="p-2.5 flex justify-between items-center">
-                                  <div className="min-w-0 pr-2">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-medium truncate">{item.producto?.nombre}</span>
-                                      {Boolean(item.es_bonificacion) && (
-                                        <Badge variant="outline" className="text-[10px] py-0 bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
-                                          BONIFICACIÓN
-                                        </Badge>
-                                      )}
-                                      {Boolean(item.es_degustacion) && (
-                                        <Badge variant="outline" className="text-[10px] py-0 bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200">
-                                          DEGUSTACIÓN
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                      {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
-                                    </p>
-                                  </div>
-                                  <p className="font-semibold shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
+                          {sale.items.map((item: any) => (
+                            <div key={item.id} className="p-2.5 flex justify-between items-center">
+                              <div className="min-w-0 pr-2">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-medium truncate">{item.producto?.nombre}</span>
+                                  {Boolean(item.es_bonificacion) && (
+                                    <Badge variant="outline" className="text-[10px] py-0 bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                      BONIFICACIÓN
+                                    </Badge>
+                                  )}
+                                  {Boolean(item.es_degustacion) && (
+                                    <Badge variant="outline" className="text-[10px] py-0 bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200">
+                                      DEGUSTACIÓN
+                                    </Badge>
+                                  )}
                                 </div>
-                              ))}
+                                <p className="text-xs text-muted-foreground">
+                                  {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
+                                </p>
+                              </div>
+                              <p className="font-semibold shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
+                            </div>
+                          ))}
                           <div className="space-y-2 pt-3 border-t text-sm">
                             {sale.descuento > 0 && (
                               <div className="flex justify-between text-red-500 text-xs sm:text-sm">
@@ -555,26 +686,26 @@ const SalesHistory = () => {
                               </Button>
                             )}
 
-                              {sale.estado === "CONFIRMADA" && (
-                                <>
-                                  <Button
-                                    onClick={() => handleOpenCanjeModal(sale)}
-                                    className="w-full mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2"
-                                    size="sm"
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                    Canje por Producto Defectuoso
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleCancelSale(sale.id)}
-                                    className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2"
-                                    size="sm"
-                                  >
-                                    <X className="h-4 w-4" />
-                                    Anular Venta
-                                  </Button>
-                                </>
-                              )}
+                            {sale.estado === "CONFIRMADA" && (
+                              <>
+                                <Button
+                                  onClick={() => handleOpenCanjeModal(sale)}
+                                  className="w-full mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2"
+                                  size="sm"
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                  Canje por Producto Defectuoso
+                                </Button>
+                                <Button
+                                  onClick={() => handleCancelSale(sale.id)}
+                                  className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2"
+                                  size="sm"
+                                >
+                                  <X className="h-4 w-4" />
+                                  Anular Venta
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </DialogContent>
@@ -617,7 +748,21 @@ const SalesHistory = () => {
                       {sale.vendedor?.usuario?.nombre}
                     </TableCell>
                     <TableCell className="font-medium whitespace-nowrap">
-                      {sale.cliente?.razon_social}
+                      <div>
+                        <div>{sale.cliente?.razon_social}</div>
+                        {(() => {
+                          const { rutaNombre, zonaNombre } = getSaleZoneAndRoute(sale);
+                          if (!rutaNombre && !zonaNombre) return null;
+                          return (
+                            <div className="text-[11px] text-muted-foreground font-normal flex items-center gap-1 mt-0.5">
+                              <Route className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span>
+                                {rutaNombre || 'Ruta'} {zonaNombre ? `(${zonaNombre})` : ''}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell className="text-center whitespace-nowrap">
                       <Badge variant="outline">{sale.items.length} items</Badge>

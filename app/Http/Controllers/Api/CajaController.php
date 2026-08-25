@@ -82,34 +82,45 @@ class CajaController extends Controller
 
         $movimiento = MovimientoCaja::findOrFail($id);
 
+        // Resolver la caja a la que pertenece el movimiento
+        $caja = $movimiento->caja;
+        if (!$caja && $movimiento->caja_id) {
+            $caja = Caja::find($movimiento->caja_id);
+        }
+        if (!$caja) {
+            $caja = Caja::where('estado', 'ABIERTA')->latest('id')->first();
+        }
+
+        // 1. Validación al conciliar/aprobar un EGRESO en cualquier medio de pago.
         if ($request->estado === 'APROBADO' && $movimiento->estado !== 'APROBADO') {
-            if ($movimiento->tipo === 'EGRESO' && strtoupper($movimiento->metodo_pago ?? 'EFECTIVO') === 'EFECTIVO') {
-                $caja = $movimiento->caja;
+            if ($movimiento->tipo === 'EGRESO') {
+                if ($caja) {
+                    $metodo = strtoupper($movimiento->metodo_pago ?? 'EFECTIVO');
+                    $saldoDisponible = \App\Services\CajaService::obtenerSaldoDisponibleMetodo($caja, $metodo);
 
-                $ingresosEfectivo = MovimientoCaja::where('caja_id', $caja->id)
-                    ->where('tipo', 'INGRESO')
-                    ->where('estado', 'APROBADO')
-                    ->where(function($q) {
-                        $q->whereNull('metodo_pago')->orWhere('metodo_pago', 'EFECTIVO');
-                    })
-                    ->sum('monto');
-                    
-                $egresosEfectivo = MovimientoCaja::where('caja_id', $caja->id)
-                    ->where('tipo', 'EGRESO')
-                    ->where('estado', 'APROBADO')
-                    ->where(function($q) {
-                        $q->whereNull('metodo_pago')->orWhere('metodo_pago', 'EFECTIVO');
-                    })
-                    ->sum('monto');
-                    
-                $saldoDisponible = $caja->saldo_inicial + $ingresosEfectivo - $egresosEfectivo;
-
-                if ($saldoDisponible <= 0) {
-                    return response()->json(['error' => 'No se puede conciliar/aprobar el egreso porque el saldo en efectivo de la caja es 0.'], 400);
+                    if ($movimiento->monto > $saldoDisponible) {
+                        return response()->json([
+                            'message' => 'No se puede conciliar el egreso porque dejaría el saldo de ' . $metodo . ' en negativo.',
+                            'error' => 'No se puede conciliar el egreso de S/ ' . number_format($movimiento->monto, 2) . ' (' . $metodo . ') porque supera el saldo disponible (S/ ' . number_format(max(0, $saldoDisponible), 2) . ').'
+                        ], 400);
+                    }
                 }
+            }
+        }
 
-                if ($movimiento->monto > $saldoDisponible) {
-                    return response()->json(['error' => 'No se puede conciliar/aprobar el egreso porque supera el saldo en efectivo disponible (S/ ' . number_format($saldoDisponible, 2) . ').'], 400);
+        // 2. Validación al anular/rechazar un INGRESO previamente APROBADO en cualquier medio de pago.
+        if ($request->estado !== 'APROBADO' && $movimiento->estado === 'APROBADO') {
+            if ($movimiento->tipo === 'INGRESO') {
+                if ($caja) {
+                    $metodo = strtoupper($movimiento->metodo_pago ?? 'EFECTIVO');
+                    $saldoDisponible = \App\Services\CajaService::obtenerSaldoDisponibleMetodo($caja, $metodo);
+
+                    if ($movimiento->monto > $saldoDisponible) {
+                        return response()->json([
+                            'message' => 'No se puede anular/rechazar este ingreso porque dejaría el saldo de ' . $metodo . ' en negativo.',
+                            'error' => 'No se puede desconciliar el ingreso de S/ ' . number_format($movimiento->monto, 2) . ' (' . $metodo . ') porque el saldo disponible actual es de S/ ' . number_format($saldoDisponible, 2) . '.'
+                        ], 400);
+                    }
                 }
             }
         }
@@ -129,7 +140,7 @@ class CajaController extends Controller
 
         $movimiento->save();
 
-        // Si este movimiento pertenece a un gasto de vendedor, actualizar su estado
+        // Si este movimiento pertenece a un gasto de vendedor, actualizar su estado.
         if ($movimiento->referencia_tipo === 'GASTO' && $movimiento->referencia_id) {
             $gasto = \App\Models\Gasto::find($movimiento->referencia_id);
             if ($gasto) {

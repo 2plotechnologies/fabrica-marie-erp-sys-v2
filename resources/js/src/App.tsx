@@ -39,6 +39,8 @@ import MoneyDelivery from "@/pages/cash/MoneyDelivery";
 import DeliveryReport from "./pages/cash/DeliveryReport";
 import SalesProjection from "@/pages/cash/SalesProjection";
 import RoutesList from "@/pages/routes/RoutesList";
+import ZonesList from "@/pages/routes/ZonesList";
+import InteractiveMapPage from "@/pages/routes/InteractiveMapPage";
 import VehiclesList from "@/pages/vehicles/VehiclesList";
 import MaintenanceList from "@/pages/maintenance/MaintenanceList";
 import EmployeesList from "@/pages/hr/EmployeesList";
@@ -291,10 +293,20 @@ const AppRoutes = () => {
             : <ErrorBoundary key={location.pathname}><SalesProjection /></ErrorBoundary>
         } />
 
-        {/* Rutas */}
+        {/* Zonas y Rutas */}
+        <Route path="/zonas" element={
+          <ErrorBoundary key={location.pathname}>
+            <ZonesList />
+          </ErrorBoundary>
+        } />
         <Route path="/rutas" element={
           <ErrorBoundary key={location.pathname}>
             <RoutesList />
+          </ErrorBoundary>
+        } />
+        <Route path="/mapa-interactivo" element={
+          <ErrorBoundary key={location.pathname}>
+            <InteractiveMapPage />
           </ErrorBoundary>
         } />
 

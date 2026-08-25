@@ -49,14 +49,15 @@ const CashMovements = () => {
   }, []);
 
   const filteredMovements = movimientos.filter((movement) => {
-    const matchesSearch = movement.descripcion
+    const desc = (movement.descripcion || '') + ' ' + (movement.comprobante || '') + ' ' + (movement.caja?.usuario?.nombre || '');
+    const matchesSearch = desc
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === 'all' || movement.tipo === typeFilter;
     const matchesCategory = categoryFilter === 'all' || movement.categoria === categoryFilter;
     
     let matchesDate = true;
-    if (dateFilter) {
+    if (dateFilter && movement.created_at) {
       const movementDate = format(new Date(movement.created_at), 'yyyy-MM-dd');
       const filterDate = format(dateFilter, 'yyyy-MM-dd');
       matchesDate = movementDate === filterDate;
@@ -258,7 +259,9 @@ const CashMovements = () => {
                     <Badge variant="secondary">{movement.categoria}</Badge>
                   </TableCell>
                   <TableCell className="font-medium">{movement.descripcion}</TableCell>
-                  <TableCell className="text-muted-foreground">{movement.caja.usuario.nombre}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {movement.caja?.usuario?.nombre || movement.conciliador?.nombre || '-'}
+                  </TableCell>
                   <TableCell className={`text-right font-bold ${movement.tipo === 'INGRESO' ? 'text-emerald-600' : 'text-red-600'
                     }`}>
                     {movement.tipo === 'INGRESO' ? '+' : '-'} S/ {Number(movement.monto).toFixed(2)}

@@ -434,7 +434,7 @@ const ClientsList = () => {
         </div>
 
         {/* Estado Filter Buttons */}
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Button
             variant={statusFilter === null ? 'default' : 'outline'}
             size="sm"
@@ -470,10 +470,91 @@ const ClientsList = () => {
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up">
-        <div className="overflow-x-auto">
-          <Table>
+      {/* Tabla & Vista Móvil */}
+      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up p-3 sm:p-0">
+        {/* Mobile Card View */}
+        <div className="space-y-3 sm:hidden">
+          {paginatedClients.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No hay clientes registrados
+            </div>
+          ) : (
+            paginatedClients.map((client) => (
+              <div key={client.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2.5 text-xs min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-sm text-foreground break-words">{client.razon_social}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <span className="text-[11px] text-muted-foreground font-mono">{client.codigo}</span>
+                      {client.ruta_nombre && (
+                        <Badge variant="outline" className="text-[10px] py-0 h-5 bg-muted/40 font-normal truncate max-w-full">
+                          <Map className="h-3 w-3 mr-1 text-muted-foreground shrink-0" />
+                          <span className="truncate">{client.ruta_nombre} {client.zona ? `(${client.zona})` : ''}</span>
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={cn(getStatusBadge(client.status), 'shrink-0')}>
+                    {client.status}
+                  </Badge>
+                </div>
+
+                <div className="space-y-1 pt-1 border-t border-border/50 text-muted-foreground text-[11px]">
+                  {client.phone && (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Phone className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{client.phone}</span>
+                    </div>
+                  )}
+                  {client.address && (
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      <MapPin className="h-3 w-3 shrink-0 mt-0.5 text-muted-foreground" />
+                      <span className="break-words">{client.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-border/50 text-center">
+                  <div className="bg-muted/40 p-1.5 rounded border">
+                    <span className="text-[10px] text-muted-foreground block">Límite Crédito</span>
+                    <span className="font-bold text-foreground">S/ {client.creditLimit.toLocaleString('es-PE')}</span>
+                  </div>
+                  <div className="bg-muted/40 p-1.5 rounded border">
+                    <span className="text-[10px] text-muted-foreground block">Deuda Actual</span>
+                    <span className={`font-bold ${client.currentDebt > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                      S/ {client.currentDebt.toLocaleString('es-PE')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                        Acciones <MoreHorizontal className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleViewDetail(client.id)}>Ver detalle</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenEdit(client.id)}>Editar</DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={client.status === 'INACTIVO'}
+                        onClick={() => handleDeactivate(client.id)}
+                        className={cn(client.status !== 'INACTIVO' && 'text-destructive focus:text-destructive')}
+                      >
+                        Desactivar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto w-full">
+          <Table className="w-full min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
@@ -508,23 +589,23 @@ const ClientsList = () => {
                         {client.phone}
                       </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
+                        <MapPin className="h-3 w-3 shrink-0" />
                         <span className="truncate max-w-[150px]">{client.address}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     S/ {client.creditLimit.toLocaleString('es-PE')}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     S/ {client.currentDebt.toLocaleString('es-PE')}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <Badge variant="outline" className={getStatusBadge(client.status)}>
                       {client.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -548,41 +629,43 @@ const ClientsList = () => {
               ))}
             </TableBody>
           </Table>
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-4">
-              <Button
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
-                Anterior
-              </Button>
-
-              <span className="px-3 py-2 text-sm">
-                Página {page} de {totalPages}
-              </span>
-
-              <Button
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                Siguiente
-              </Button>
-            </div>
-          )}
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 p-4 border-t">
+            <Button
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Anterior
+            </Button>
+
+            <span className="px-3 py-2 text-sm">
+              Página {page} de {totalPages}
+            </span>
+
+            <Button
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Modales responsivos */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>Detalle del cliente</DialogTitle>
-            <DialogDescription>Información completa del cliente seleccionado.</DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Detalle del cliente</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">Información completa del cliente seleccionado.</DialogDescription>
           </DialogHeader>
 
           {detailLoading && <p className="text-sm text-muted-foreground">Cargando información...</p>}
 
           {!detailLoading && detailClient && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm break-words min-w-0">
               <p><strong>Código:</strong> {detailClient.codigo_cliente}</p>
               <p><strong>Razón social:</strong> {detailClient.razon_social}</p>
               <p><strong>Tipo:</strong> {detailClient.tipo_cliente || '-'}</p>
@@ -602,10 +685,10 @@ const ClientsList = () => {
       </Dialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle>Editar cliente</DialogTitle>
-            <DialogDescription>Actualiza los datos del cliente seleccionado.</DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Editar cliente</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">Actualiza los datos del cliente seleccionado.</DialogDescription>
           </DialogHeader>
 
           {editLoading && <p className="text-sm text-muted-foreground">Cargando información...</p>}
@@ -631,9 +714,9 @@ const ClientsList = () => {
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={editSaving}>Cancelar</Button>
-            <Button onClick={handleEditSave} disabled={editSaving || editLoading || !editForm}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsEditOpen(false)} disabled={editSaving}>Cancelar</Button>
+            <Button className="w-full sm:w-auto" onClick={handleEditSave} disabled={editSaving || editLoading || !editForm}>
               {editSaving ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </DialogFooter>

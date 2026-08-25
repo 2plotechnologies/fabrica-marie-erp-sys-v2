@@ -249,10 +249,41 @@ class EntregaDineroController
             if ($request->estado === 'ACEPTADA') {
                 $observacionSistema = '';
                 $entrega->load('usuario.roles', 'items');
-                $isVendedor = $entrega->usuario && $entrega->usuario->roles()->where('nombre', 'VENDEDOR')->exists();
                 
-                if ($isVendedor) {
-                    // Para entregas de vendedores, registrar los ítems no en efectivo como egresos en caja.
+                $cajaAbierta = \App\Models\Caja::whereDate('fecha', now())->where('estado', 'ABIERTA')->first();
+
+                // Calcular el total en efectivo de la entrega
+                $montoEfectivo = 0;
+                foreach ($entrega->items as $item) {
+                    if (strtoupper($item->metodo_pago) === 'EFECTIVO') {
+                        $montoEfectivo += (float) $item->monto;
+                    }
+                }
+                if ($montoEfectivo == 0 && $entrega->items->count() == 0) {
+                    $montoEfectivo = (float) $entrega->monto_total;
+                }
+
+                if ($cajaAbierta) {
+                    // Validar saldo disponible en efectivo en caja abierta antes de aprobar
+                    if ($montoEfectivo > 0) {
+                        try {
+                            \App\Services\CajaService::registrarMovimiento([
+                                'tipo' => 'EGRESO',
+                                'estado' => 'APROBADO',
+                                'monto' => $montoEfectivo,
+                                'metodo_pago' => 'EFECTIVO',
+                                'categoria' => 'ENTREGA DINERO',
+                                'descripcion' => 'Aprobación de entrega de dinero #' . $entrega->id . ' por ' . ($entrega->usuario->nombre ?? ''),
+                                'referencia_tipo' => get_class($entrega),
+                                'referencia_id' => $entrega->id,
+                            ]);
+                            $observacionSistema = '[SISTEMA] Egreso en efectivo registrado en la caja abierta.';
+                        } catch (\Exception $e) {
+                            abort(422, 'No se puede aprobar la entrega: ' . $e->getMessage());
+                        }
+                    }
+
+                    // Registrar movimientos digitales si los hubiera
                     foreach ($entrega->items as $item) {
                         $metodo = strtoupper($item->metodo_pago);
                         if ($metodo !== 'EFECTIVO' && $item->monto > 0) {
@@ -264,58 +295,35 @@ class EntregaDineroController
                                     'metodo_pago' => $metodo,
                                     'comprobante' => 'Entrega #' . $entrega->id,
                                     'categoria' => 'ENTREGA DINERO',
-                                    'descripcion' => 'Entrega de dinero digital (' . $metodo . ') por vendedor ' . ($entrega->usuario->nombre ?? ''),
+                                    'descripcion' => 'Entrega de dinero digital (' . $metodo . ') por ' . ($entrega->usuario->nombre ?? ''),
                                     'referencia_tipo' => 'ENTREGA_DINERO',
                                     'referencia_id' => $entrega->id,
                                 ]);
-                            } catch (\Throwable $e) {
-                                // Excepción ignorada si no hay caja abierta
-                            }
+                            } catch (\Throwable $e) {}
                         }
                     }
-                    $observacionSistema = '[SISTEMA] Entrega de vendedor aprobada (movimientos digitales registrados en caja).';
                 } else {
-                    $cajaAbierta = \App\Models\Caja::whereDate('fecha', now())->where('estado', 'ABIERTA')->first();
+                    $ultimoCierre = \App\Models\CierreCaja::orderBy('id', 'desc')->first();
                     
-                    if ($cajaAbierta) {
-                        try {
-                            \App\Services\CajaService::registrarMovimiento([
-                                'tipo' => 'EGRESO',
-                                'estado' => 'APROBADO',
-                                'monto' => $entrega->monto_total,
-                                'metodo_pago' => 'EFECTIVO',
-                                'categoria' => 'ENTREGA DINERO',
-                                'descripcion' => 'Aprobación de entrega de dinero #' . $entrega->id,
-                                'referencia_tipo' => get_class($entrega),
-                                'referencia_id' => $entrega->id,
-                            ]);
-                            $observacionSistema = '[SISTEMA] El monto se registró automáticamente como un egreso en la caja abierta.';
-                        } catch (\Exception $e) {
-                            abort(422, $e->getMessage());
-                        }
+                    if (!$ultimoCierre) {
+                        abort(422, 'No hay cierres de caja registrados para validar los fondos.');
+                    }
+                    
+                    if ($entrega->monto_total > $ultimoCierre->conteo_real) {
+                        abort(422, 'El monto de la entrega (S/ ' . number_format($entrega->monto_total, 2) . ') excede el conteo real del último cierre de caja (S/ ' . number_format($ultimoCierre->conteo_real, 2) . ').');
+                    }
+                    
+                    if ($ultimoCierre->estado !== 'CUADRADO' && !$request->boolean('confirmar_cierre_irregular')) {
+                        return response()->json([
+                            'warning' => true,
+                            'message' => 'El último cierre de caja tiene un estado de ' . $ultimoCierre->estado . '. ¿Desea continuar de todos modos con la aprobación?'
+                        ], 409);
+                    }
+                    
+                    if ($ultimoCierre->estado !== 'CUADRADO') {
+                        $observacionSistema = '[SISTEMA] Entrega aprobada con caja cerrada sin cuadrar (Estado: ' . $ultimoCierre->estado . ').';
                     } else {
-                        $ultimoCierre = \App\Models\CierreCaja::orderBy('id', 'desc')->first();
-                        
-                        if (!$ultimoCierre) {
-                            abort(422, 'No hay cierres de caja registrados para validar los fondos.');
-                        }
-                        
-                        if ($entrega->monto_total > $ultimoCierre->conteo_real) {
-                            abort(422, 'El monto de la entrega (S/ ' . number_format($entrega->monto_total, 2) . ') excede el conteo real del último cierre de caja (S/ ' . number_format($ultimoCierre->conteo_real, 2) . ').');
-                        }
-                        
-                        if ($ultimoCierre->estado !== 'CUADRADO' && !$request->boolean('confirmar_cierre_irregular')) {
-                            return response()->json([
-                                'warning' => true,
-                                'message' => 'El último cierre de caja tiene un estado de ' . $ultimoCierre->estado . '. ¿Desea continuar de todos modos con la aprobación?'
-                            ], 409);
-                        }
-                        
-                        if ($ultimoCierre->estado !== 'CUADRADO') {
-                            $observacionSistema = '[SISTEMA] Entrega aprobada con caja cerrada sin cuadrar (Estado: ' . $ultimoCierre->estado . ').';
-                        } else {
-                            $observacionSistema = '[SISTEMA] Entrega aprobada con caja cerrada.';
-                        }
+                        $observacionSistema = '[SISTEMA] Entrega aprobada con caja cerrada.';
                     }
                 }
                 

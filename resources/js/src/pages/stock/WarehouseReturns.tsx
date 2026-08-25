@@ -264,43 +264,122 @@ const WarehouseReturns = () => {
         <Button onClick={() => setIsDialogOpen(true)} className="gap-2"><Plus className="h-4 w-4" />Nueva Devolución</Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-slide-up">
-        <div className="bg-card rounded-xl border shadow-card p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-warning/10"><Clock className="h-5 w-5 text-warning" /></div><div><p className="text-sm text-muted-foreground">Pendientes</p><p className="text-xl font-bold">{devoluciones.filter(d => d.estado === 'PENDIENTE').length}</p></div></div></div>
-        <div className="bg-card rounded-xl border shadow-card p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-success/10"><CheckCircle className="h-5 w-5 text-success" /></div><div><p className="text-sm text-muted-foreground">Recibidas</p><p className="text-xl font-bold">{devoluciones.filter(d => d.estado === 'ACEPTADA').length}</p></div></div></div>
-        <div className="bg-card rounded-xl border shadow-card p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-success/10"><Package className="h-5 w-5 text-success" /></div><div><p className="text-sm text-muted-foreground">Buenas</p><p className="text-xl font-bold">{devoluciones.filter(d => d.tipo === 'BUENA').length}</p></div></div></div>
-        <div className="bg-card rounded-xl border shadow-card p-4"><div className="flex items-center gap-3"><div className="p-2 rounded-lg bg-destructive/10"><PackageX className="h-5 w-5 text-destructive" /></div><div><p className="text-sm text-muted-foreground">Malas / Desecho</p><p className="text-xl font-bold">{devoluciones.filter(d => d.tipo === 'MALA').length}</p></div></div></div>
-      </div>
-
-      <div className="bg-card rounded-xl border shadow-card p-5 animate-slide-up">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar por vendedor o motivo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" /></div>
-          <div className="flex gap-2">
-            <Select value={filterTipo} onValueChange={setFilterTipo}><SelectTrigger className="w-[150px]"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="BUENA">Buena</SelectItem><SelectItem value="MALA">Mala</SelectItem></SelectContent></Select>
-            <Select value={filterEstado} onValueChange={setFilterEstado}><SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="PENDIENTE">Pendiente</SelectItem><SelectItem value="ACEPTADA">Recibido</SelectItem><SelectItem value="RECHAZADA">Rechazado</SelectItem><SelectItem value="DESECHO">Desecho</SelectItem></SelectContent></Select>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 animate-slide-up">
+        <div className="bg-card rounded-xl border shadow-card p-3 sm:p-4 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 rounded-lg bg-warning/10 shrink-0"><Clock className="h-4 w-4 sm:h-5 sm:w-5 text-warning" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Pendientes</p>
+              <p className="text-lg sm:text-xl font-bold truncate">{devoluciones.filter(d => d.estado === 'PENDIENTE').length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border shadow-card p-3 sm:p-4 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 rounded-lg bg-success/10 shrink-0"><CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-success" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Recibidas</p>
+              <p className="text-lg sm:text-xl font-bold truncate">{devoluciones.filter(d => d.estado === 'ACEPTADA').length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border shadow-card p-3 sm:p-4 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 rounded-lg bg-success/10 shrink-0"><Package className="h-4 w-4 sm:h-5 sm:w-5 text-success" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Buenas</p>
+              <p className="text-lg sm:text-xl font-bold truncate">{devoluciones.filter(d => d.tipo === 'BUENA').length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border shadow-card p-3 sm:p-4 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 rounded-lg bg-destructive/10 shrink-0"><PackageX className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground truncate">Malas / Desecho</p>
+              <p className="text-lg sm:text-xl font-bold truncate">{devoluciones.filter(d => d.tipo === 'MALA').length}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up">
-        <Table>
-          <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Vendedor</TableHead><TableHead>Tipo</TableHead><TableHead>Motivo</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {filteredDevoluciones.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay devoluciones</TableCell></TableRow>
-            ) : paginatedDevoluciones.map(d => (
-              <TableRow key={d.id}>
-                <TableCell>{format(new Date(d.fecha), 'dd/MM/yyyy')}</TableCell>
-                <TableCell className="font-medium">{d.vendedor?.usuario.nombre || '-'}</TableCell>
-                <TableCell>{getTipoBadge(d.tipo)}</TableCell>
-                <TableCell className="max-w-[200px] truncate">{d.motivo || '-'}</TableCell>
-                <TableCell>{getEstadoBadge(d.estado)}</TableCell>
-                <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleViewDetail(d)}><Eye className="h-4 w-4" /></Button></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="bg-card rounded-xl border shadow-card p-4 sm:p-5 animate-slide-up">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex-1 relative min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar por vendedor o motivo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger className="w-1/2 sm:w-[150px] min-w-0"><Filter className="h-4 w-4 mr-2 shrink-0" /><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="BUENA">Buena</SelectItem><SelectItem value="MALA">Mala</SelectItem></SelectContent>
+            </Select>
+            <Select value={filterEstado} onValueChange={setFilterEstado}>
+              <SelectTrigger className="w-1/2 sm:w-[150px] min-w-0"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="PENDIENTE">Pendiente</SelectItem><SelectItem value="ACEPTADA">Recibido</SelectItem><SelectItem value="RECHAZADA">Rechazado</SelectItem><SelectItem value="DESECHO">Desecho</SelectItem></SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up p-3 sm:p-0">
+        {/* Mobile Card View */}
+        <div className="space-y-3 sm:hidden">
+          {filteredDevoluciones.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">No hay devoluciones</div>
+          ) : (
+            paginatedDevoluciones.map(d => (
+              <div key={d.id} className="p-3.5 rounded-xl border bg-card shadow-sm space-y-2 text-xs min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-sm text-foreground truncate">{d.vendedor?.usuario?.nombre || '-'}</p>
+                    <p className="text-[11px] text-muted-foreground">📅 {format(new Date(d.fecha), 'dd/MM/yyyy')}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {getEstadoBadge(d.estado)}
+                    {getTipoBadge(d.tipo)}
+                  </div>
+                </div>
+
+                {d.motivo && (
+                  <div className="pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+                    <strong>Motivo:</strong> <span className="break-words text-foreground">{d.motivo}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-1 border-t border-border/50">
+                  <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1" onClick={() => handleViewDetail(d)}>
+                    <Eye className="h-3.5 w-3.5" /> Ver Detalle
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto w-full">
+          <Table className="w-full min-w-[700px]">
+            <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Vendedor</TableHead><TableHead>Tipo</TableHead><TableHead>Motivo</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {filteredDevoluciones.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay devoluciones</TableCell></TableRow>
+              ) : paginatedDevoluciones.map(d => (
+                <TableRow key={d.id}>
+                  <TableCell className="whitespace-nowrap">{format(new Date(d.fecha), 'dd/MM/yyyy')}</TableCell>
+                  <TableCell className="font-medium whitespace-nowrap">{d.vendedor?.usuario.nombre || '-'}</TableCell>
+                  <TableCell className="whitespace-nowrap">{getTipoBadge(d.tipo)}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{d.motivo || '-'}</TableCell>
+                  <TableCell className="whitespace-nowrap">{getEstadoBadge(d.estado)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap"><Button variant="ghost" size="icon" onClick={() => handleViewDetail(d)}><Eye className="h-4 w-4" /></Button></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
         {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-4">
+          <div className="flex justify-center gap-2 p-4 border-t">
             <Button
               disabled={page === 1}
               onClick={() => setPage(page - 1)}
@@ -324,10 +403,10 @@ const WarehouseReturns = () => {
 
       {/* New Return Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nueva Devolución a Almacén</DialogTitle><DialogDescription>Registra una devolución de productos</DialogDescription></DialogHeader>
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader><DialogTitle className="text-lg sm:text-xl">Nueva Devolución a Almacén</DialogTitle><DialogDescription className="text-xs sm:text-sm">Registra una devolución de productos</DialogDescription></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2"><Label>Fecha</Label><Input type="date" value={formData.fecha} onChange={(e) => setFormData({ ...formData, fecha: e.target.value })} /></div>
               <div className="space-y-2">
                 <Label>Vendedor *</Label>
@@ -351,19 +430,20 @@ const WarehouseReturns = () => {
             </div>
             <div className="space-y-2">
               <Label>Tipo de Devolución</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant={formData.tipo_devolucion === 'BUENA' ? 'default' : 'outline'} className="gap-2" onClick={() => setFormData({ ...formData, tipo_devolucion: 'BUENA' })}><Package className="h-4 w-4" />Buena (No vendida)</Button>
-                <Button type="button" variant={formData.tipo_devolucion === 'MALA' ? 'destructive' : 'outline'} className="gap-2" onClick={() => setFormData({ ...formData, tipo_devolucion: 'MALA' })}><PackageX className="h-4 w-4" />Mala (Dañada → Desecho)</Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button type="button" variant={formData.tipo_devolucion === 'BUENA' ? 'default' : 'outline'} className="gap-2 text-xs sm:text-sm" onClick={() => setFormData({ ...formData, tipo_devolucion: 'BUENA' })}><Package className="h-4 w-4" />Buena (No vendida)</Button>
+                <Button type="button" variant={formData.tipo_devolucion === 'MALA' ? 'destructive' : 'outline'} className="gap-2 text-xs sm:text-sm" onClick={() => setFormData({ ...formData, tipo_devolucion: 'MALA' })}><PackageX className="h-4 w-4" />Mala (Dañada → Desecho)</Button>
               </div>
             </div>
 
             {formData.tipo_devolucion === 'MALA' && (
               <div className="space-y-2 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200/50">
-                <Label className="font-semibold text-amber-800 dark:text-amber-300">Origen de Productos Defectuosos</Label>
-                <div className="grid grid-cols-2 gap-2">
+                <Label className="font-semibold text-amber-800 dark:text-amber-300 text-xs sm:text-sm">Origen de Productos Defectuosos</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Button
                     type="button"
                     size="sm"
+                    className="text-xs"
                     variant={formData.origen_stock === 'DEFECTUOSOS' ? 'default' : 'outline'}
                     onClick={() => setFormData({ ...formData, origen_stock: 'DEFECTUOSOS' })}
                   >
@@ -372,6 +452,7 @@ const WarehouseReturns = () => {
                   <Button
                     type="button"
                     size="sm"
+                    className="text-xs"
                     variant={formData.origen_stock === 'REGULAR' ? 'default' : 'outline'}
                     onClick={() => setFormData({ ...formData, origen_stock: 'REGULAR' })}
                   >
@@ -386,7 +467,7 @@ const WarehouseReturns = () => {
               <Label className="text-base font-semibold">Productos a Devolver</Label>
               <div className="flex gap-2">
                 <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="flex-1 min-w-0">
                     <SelectValue placeholder="Seleccionar producto..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -400,57 +481,62 @@ const WarehouseReturns = () => {
                     })}
                   </SelectContent>
                 </Select>
-                <Button type="button" onClick={handleAddProduct}><Plus className="h-4 w-4" /></Button>
+                <Button type="button" shrink-0 onClick={handleAddProduct}><Plus className="h-4 w-4" /></Button>
               </div>
               {formItems.length > 0 && (
-                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                <div className="space-y-2 max-h-[220px] overflow-y-auto">
                   {formItems.map((item, index) => {
                     const prod = productos.find(p => p.id === item.producto_id);
                     const stockDisp = getStockDisponible(prod);
                     return (
-                      <div key={index} className="flex items-center gap-2 p-3 bg-secondary/30 rounded-lg">
-                        <div className="flex-1 min-w-0"><p className="font-medium text-sm truncate">{prod?.nombre}</p><p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p></div>
-                        <Input
-                          type="number"
-                          step={prod?.tipo_venta === 'GRANEL' ? '0.01' : '1'}
-                          min={prod?.tipo_venta === 'GRANEL' ? "0.01" : "1"}
-                          max={stockDisp !== Infinity ? stockDisp : undefined}
-                          value={item.cantidad}
-                          onChange={(e) => {
-                            let valStr = e.target.value;
-                            if (valStr && prod?.tipo_venta === 'UNIDAD' && valStr.includes('.')) {
-                              valStr = valStr.split('.')[0];
-                            }
-                            setFormItems(formItems.map((it, i) => i === index ? {
-                              ...it,
-                              cantidad: valStr
-                            } : it));
-                          }}
-                          onBlur={() => {
-                            const maxVal = getStockDisponible(prod);
-                            const isGranel = prod?.tipo_venta === 'GRANEL';
-                            const minVal = isGranel ? 0.01 : 1;
-                            let numVal = parseFloat(String(item.cantidad));
+                      <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-secondary/30 rounded-lg min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm break-words">{prod?.nombre}</p>
+                          <p className="text-xs text-muted-foreground">{prod?.marca} • {prod?.presentacion}</p>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <Input
+                            type="number"
+                            step={prod?.tipo_venta === 'GRANEL' ? '0.01' : '1'}
+                            min={prod?.tipo_venta === 'GRANEL' ? "0.01" : "1"}
+                            max={stockDisp !== Infinity ? stockDisp : undefined}
+                            value={item.cantidad}
+                            onChange={(e) => {
+                              let valStr = e.target.value;
+                              if (valStr && prod?.tipo_venta === 'UNIDAD' && valStr.includes('.')) {
+                                valStr = valStr.split('.')[0];
+                              }
+                              setFormItems(formItems.map((it, i) => i === index ? {
+                                ...it,
+                                cantidad: valStr
+                              } : it));
+                            }}
+                            onBlur={() => {
+                              const maxVal = getStockDisponible(prod);
+                              const isGranel = prod?.tipo_venta === 'GRANEL';
+                              const minVal = isGranel ? 0.01 : 1;
+                              let numVal = parseFloat(String(item.cantidad));
 
-                            if (isNaN(numVal) || numVal < minVal) {
-                              toast.error(`La cantidad mínima es ${minVal}`);
-                              numVal = minVal;
-                            } else if (numVal > maxVal) {
-                              toast.error(`La cantidad no puede superar el stock disponible (${maxVal})`);
-                              numVal = maxVal;
-                            } else if (!isGranel) {
-                              numVal = Math.floor(numVal);
-                            }
+                              if (isNaN(numVal) || numVal < minVal) {
+                                toast.error(`La cantidad mínima es ${minVal}`);
+                                numVal = minVal;
+                              } else if (numVal > maxVal) {
+                                toast.error(`La cantidad no puede superar el stock disponible (${maxVal})`);
+                                numVal = maxVal;
+                              } else if (!isGranel) {
+                                numVal = Math.floor(numVal);
+                              }
 
-                            setFormItems(formItems.map((it, i) => i === index ? {
-                              ...it,
-                              cantidad: numVal
-                            } : it));
-                          }}
-                          className="w-24"
-                        />
-                        <Input placeholder="Motivo" value={item.motivo || ''} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, motivo: e.target.value || null } : it))} className="w-40" />
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setFormItems(formItems.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
+                              setFormItems(formItems.map((it, i) => i === index ? {
+                                ...it,
+                                cantidad: numVal
+                              } : it));
+                            }}
+                            className="w-24 shrink-0"
+                          />
+                          <Input placeholder="Motivo" value={item.motivo || ''} onChange={(e) => setFormItems(formItems.map((it, i) => i === index ? { ...it, motivo: e.target.value || null } : it))} className="flex-1 sm:w-40 min-w-0" />
+                          <Button variant="ghost" size="icon" className="text-destructive shrink-0" onClick={() => setFormItems(formItems.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -459,38 +545,41 @@ const WarehouseReturns = () => {
             </div>
             <div className="space-y-2"><Label>Observaciones</Label><Textarea value={formData.observaciones} onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit}>Registrar Devolución</Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+            <Button className="w-full sm:w-auto" onClick={handleSubmit}>Registrar Devolución</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-2xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           {selectedDevolucion && (
             <>
-              <DialogHeader><DialogTitle>Detalle de Devolución</DialogTitle></DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-muted-foreground">Vendedor</p><p className="font-medium">{selectedDevolucion.vendedor?.usuario.nombre}</p></div>
-                  <div><p className="text-muted-foreground">Tipo</p>{getTipoBadge(selectedDevolucion.tipo)}</div>
-                  <div><p className="text-muted-foreground">Estado</p>{getEstadoBadge(selectedDevolucion.estado)}</div>
+              <DialogHeader><DialogTitle className="text-lg sm:text-xl">Detalle de Devolución</DialogTitle></DialogHeader>
+              <div className="space-y-4 text-xs sm:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-muted/40 p-3 rounded-lg">
+                  <div><p className="text-muted-foreground text-xs">Vendedor</p><p className="font-medium text-foreground">{selectedDevolucion.vendedor?.usuario.nombre}</p></div>
+                  <div><p className="text-muted-foreground text-xs">Tipo</p>{getTipoBadge(selectedDevolucion.tipo)}</div>
+                  <div><p className="text-muted-foreground text-xs">Estado</p>{getEstadoBadge(selectedDevolucion.estado)}</div>
                 </div>
-                {selectedDevolucion.motivo && <div><p className="text-sm text-muted-foreground">Motivo</p><p>{selectedDevolucion.motivo}</p></div>}
-                <Table>
-                  <TableHeader><TableRow><TableHead>Producto</TableHead><TableHead>Marca</TableHead><TableHead className="text-right">Cantidad</TableHead><TableHead>Motivo</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {detailItems.map(item => (
-                      <TableRow key={item.id}><TableCell>{item.producto.nombre}</TableCell><TableCell>{item.producto.marca || '-'}</TableCell><TableCell className="text-right font-semibold">{item.cantidad}</TableCell><TableCell>{item.motivo || '-'}</TableCell></TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                {selectedDevolucion.motivo && <div className="bg-amber-50 dark:bg-amber-950/20 p-2.5 rounded-lg border border-amber-200/50"><p className="text-xs text-muted-foreground">Motivo</p><p className="break-words font-medium">{selectedDevolucion.motivo}</p></div>}
+                
+                <div className="overflow-x-auto w-full border rounded-lg">
+                  <Table className="w-full min-w-[500px]">
+                    <TableHeader><TableRow><TableHead>Producto</TableHead><TableHead>Marca</TableHead><TableHead className="text-right">Cantidad</TableHead><TableHead>Motivo</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {detailItems.map(item => (
+                        <TableRow key={item.id}><TableCell className="break-words max-w-[150px]">{item.producto.nombre}</TableCell><TableCell className="whitespace-nowrap">{item.producto.marca || '-'}</TableCell><TableCell className="text-right font-semibold whitespace-nowrap">{item.cantidad}</TableCell><TableCell className="break-words max-w-[150px]">{item.motivo || '-'}</TableCell></TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
                 {selectedDevolucion.estado === 'PENDIENTE' && !isVendedor && (
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" className="gap-1 text-destructive" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'RECHAZADA')}><XCircle className="h-4 w-4" />Rechazar</Button>
-                    <Button className="gap-1" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'ACEPTADA')}><CheckCircle className="h-4 w-4" />Recibir en Almacén</Button>
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 border-t">
+                    <Button variant="outline" className="gap-1 text-destructive w-full sm:w-auto" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'RECHAZADA')}><XCircle className="h-4 w-4" />Rechazar</Button>
+                    <Button className="gap-1 w-full sm:w-auto" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'ACEPTADA')}><CheckCircle className="h-4 w-4" />Recibir en Almacén</Button>
                   </div>
                 )}
               </div>

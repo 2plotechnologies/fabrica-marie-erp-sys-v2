@@ -403,6 +403,8 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
     // Zonas
     Route::get('/zonas', [ZonaController::class, 'index']);
     Route::post('/zonas', [ZonaController::class, 'store']);
+    Route::put('/zonas/{id}', [ZonaController::class, 'update']);
+    Route::delete('/zonas/{id}', [ZonaController::class, 'destroy']);
 
     // Entregas de Dinero
     Route::prefix('entregas-dinero')

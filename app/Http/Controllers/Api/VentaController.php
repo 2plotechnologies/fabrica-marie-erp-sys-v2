@@ -75,15 +75,24 @@ class VentaController extends Controller
     {
         $user = auth()->user();
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $isAlmacenero = $user && $user->roles()->where('nombre', 'ALMACENERO')->exists();
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
 
         return Venta::query()
             ->with([
-                'cliente:id,razon_social',
-                'vendedor:id,usuario_id',
+                'cliente:id,razon_social,ruta_id',
+                'cliente.ruta:id,nombre,zona',
+                'vendedor:id,usuario_id,venta_directa',
                 'vendedor.usuario:id,nombre',
                 'items.producto:id,nombre',
+                'items.salida:id,zona,ruta_id',
+                'items.salida.ruta:id,nombre,zona',
             ])
+            ->when($isAlmacenero, function ($query) {
+                $query->whereHas('vendedor', function ($q) {
+                    $q->where('venta_directa', true);
+                });
+            })
             ->when($vendedor, function ($query) use ($vendedor) {
                 $query->where('vendedor_id', $vendedor->id);
             })
@@ -98,6 +107,26 @@ class VentaController extends Controller
             })
             ->when($request->filled('vendedor_id'), function ($query) use ($request) {
                 $query->where('vendedor_id', $request->input('vendedor_id'));
+            })
+            ->when($request->filled('zona'), function ($query) use ($request) {
+                $zona = $request->input('zona');
+                $query->where(function ($q) use ($zona) {
+                    $q->whereHas('cliente.ruta', function ($rq) use ($zona) {
+                        $rq->where('zona', $zona);
+                    })->orWhereHas('items.salida', function ($sq) use ($zona) {
+                        $sq->where('zona', $zona);
+                    });
+                });
+            })
+            ->when($request->filled('ruta_id'), function ($query) use ($request) {
+                $rutaId = $request->input('ruta_id');
+                $query->where(function ($q) use ($rutaId) {
+                    $q->whereHas('cliente', function ($rq) use ($rutaId) {
+                        $rq->where('ruta_id', $rutaId);
+                    })->orWhereHas('items.salida', function ($sq) use ($rutaId) {
+                        $sq->where('ruta_id', $rutaId);
+                    });
+                });
             })
             ->when($request->filled('tipo_pago'), function ($query) use ($request) {
                 $tipoPago = strtoupper($request->input('tipo_pago'));
@@ -237,7 +266,7 @@ class VentaController extends Controller
             }
         }
 
-        //Si la venta es al credito, NO permitir vende a cliente con documento 000000 (Cliente Varios)
+        //Si la venta es al credito, NO permitir vender a cliente con documento 000000 (Cliente Varios).
         if($validated['tipo_pago'] === 'CREDITO'){
             $cliente = Cliente::findOrFail($validated['cliente_id']);
             if($cliente->codigo_cliente === '000000' || $cliente->codigo_cliente === '0000000'){

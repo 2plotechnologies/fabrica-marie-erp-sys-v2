@@ -142,15 +142,19 @@ const CurrentCash = () => {
 
   const handleCloseCash = async () => {
     if (!cajaActual) return;
+    if (countNoConciliado > 0) {
+      toast.error(`No se puede cerrar la caja. Existen ${countNoConciliado} movimiento(s) pendiente(s) de conciliar.`);
+      return;
+    }
     try {
       await cajaService.cerrarCaja(cajaActual.id, Number(cajaActual.saldo_actual), Number(closingCount));
       await fetchCajaActual();
       toast.success("Caja cerrada correctamente");
+      setIsCloseCashDialog(false);
+      setClosingCount('');
     } catch (error) {
       toast.error(formatErrorMessage('Error al cerrar caja', error, 'No se pudo cerrar la caja.'));
     }
-    setIsCloseCashDialog(false);
-    setClosingCount('');
   };
 
   const handleMovement = async () => {
@@ -181,7 +185,36 @@ const CurrentCash = () => {
     }
   };
 
+  const getSaldoDisponibleMetodo = (metodo: string) => {
+    const met = (metodo || 'EFECTIVO').toUpperCase();
+    if (met === 'EFECTIVO') return saldoActual;
+
+    const ingresosMetodo = movimientos
+      .filter(m => m.tipo === 'INGRESO' && m.estado === 'APROBADO' && (m.metodo_pago ?? 'EFECTIVO').toUpperCase() === met)
+      .reduce((acc, m) => acc + Number(m.monto), 0);
+
+    const egresosMetodo = movimientos
+      .filter(m => m.tipo === 'EGRESO' && m.estado === 'APROBADO' && (m.metodo_pago ?? 'EFECTIVO').toUpperCase() === met)
+      .reduce((acc, m) => acc + Number(m.monto), 0);
+
+    return ingresosMetodo - egresosMetodo;
+  };
+
   const handleConciliar = async (movId: number, estado: 'APROBADO' | 'RECHAZADO' | 'PENDIENTE', motivo?: string) => {
+    const targetMov = movimientos.find(m => m.id === movId);
+
+    // Validación preventiva en cliente al conciliar un egreso de cualquier método de pago
+    if (targetMov && estado === 'APROBADO' && targetMov.tipo === 'EGRESO') {
+      const met = (targetMov.metodo_pago ?? 'EFECTIVO').toUpperCase();
+      const saldoDisponible = getSaldoDisponibleMetodo(met);
+      const montoEgreso = Number(targetMov.monto);
+
+      if (montoEgreso > saldoDisponible) {
+        toast.error(`No se puede conciliar el egreso en ${met} (S/ ${montoEgreso.toFixed(2)}) porque dejaría el saldo en negativo. Saldo disponible en ${met}: S/ ${Math.max(0, saldoDisponible).toFixed(2)}.`);
+        return;
+      }
+    }
+
     setConciliandoId(movId);
     try {
       await cajaService.conciliarMovimiento(movId, { estado, motivo });
@@ -238,6 +271,27 @@ const CurrentCash = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Alerta de Cajas Abiertas de días anteriores */}
+      {cajasSinCerrarCount > 0 && (
+        <Alert variant="destructive" className="bg-amber-500/15 border-amber-500/30 text-amber-900 dark:text-amber-300">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+          <AlertTitle className="font-bold text-base">Cajas de días anteriores sin cerrar ({cajasSinCerrarCount})</AlertTitle>
+          <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-1">
+            <span className="text-xs">
+              Existen cajas abiertas de fechas anteriores. Para poder aperturar la caja del día de hoy, debes cerrar las anteriores. Al hacerlo, el sistema auto-conciliará los movimientos pendientes y asumirá que el saldo teórico coincide con el conteo real.
+            </span>
+            <Button
+              size="sm"
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold whitespace-nowrap shadow-sm"
+              onClick={() => setIsOpenCajasSinCerrarDialog(true)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Cerrar Cajas Anteriores
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header wireframe replica */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card p-6 rounded-xl border border-border shadow-sm">
         <div>
@@ -362,6 +416,18 @@ const CurrentCash = () => {
                     <DialogDescription>Calculado únicamente sobre saldo conciliado en EFECTIVO.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
+                    {countNoConciliado > 0 && (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 font-medium space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold text-red-800 dark:text-red-200">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                          Imposible realizar el cierre de caja
+                        </div>
+                        <p>
+                          Existen <strong>{countNoConciliado} movimiento(s) pendiente(s) de conciliar</strong>. Debes conciliar o rechazar todos los movimientos antes de realizar el cierre.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="p-4 bg-muted rounded-lg space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Saldo teórico en EFECTIVO:</span>
@@ -370,7 +436,14 @@ const CurrentCash = () => {
                     </div>
                     <div className="space-y-2">
                       <Label>Conteo Real en Efectivo (S/)</Label>
-                      <Input type="number" step="0.01" placeholder="0.00" value={closingCount} onChange={(e) => setClosingCount(e.target.value)} />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={closingCount}
+                        disabled={countNoConciliado > 0}
+                        onChange={(e) => setClosingCount(e.target.value)}
+                      />
                     </div>
                     {closingCount && (
                       <div className={`p-4 rounded-lg ${Number(closingCount) === saldoActual ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
@@ -385,7 +458,13 @@ const CurrentCash = () => {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setIsCloseCashDialog(false)}>Cancelar</Button>
-                    <Button variant="destructive" onClick={handleCloseCash}>Confirmar Cierre</Button>
+                    <Button
+                      variant="destructive"
+                      disabled={countNoConciliado > 0 || !closingCount}
+                      onClick={handleCloseCash}
+                    >
+                      Confirmar Cierre
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -739,6 +818,53 @@ const CurrentCash = () => {
               onClick={() => rejectDialog.movId && handleConciliar(rejectDialog.movId, 'RECHAZADO', rejectMotivo)}
             >
               Confirmar Rechazo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog para cerrar cajas sin cerrar de días anteriores */}
+      <Dialog open={isOpenCajasSinCerrarDialog} onOpenChange={setIsOpenCajasSinCerrarDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-amber-800 dark:text-amber-400 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Cajas Abiertas de Días Anteriores
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-foreground space-y-2">
+              Se han detectado <strong>{cajasSinCerrarCount} caja(s) abierta(s)</strong> correspondientes a días anteriores.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg text-xs space-y-2 text-amber-900 dark:text-amber-300">
+            <p className="font-semibold text-amber-800 dark:text-amber-200">
+              ⚠️ Advertencia del Sistema:
+            </p>
+            <ul className="list-disc pl-4 space-y-1">
+              <li>El sistema asumirá que el <strong>saldo final del sistema coincide con el conteo real</strong> de cada caja anterior.</li>
+              <li>Todos los movimientos en estado pendiente de esas fechas se <strong>conciliarán automáticamente</strong>.</li>
+            </ul>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button variant="outline" onClick={() => setIsOpenCajasSinCerrarDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+              disabled={isClosingAntiguas}
+              onClick={handleCerrarCajasAntiguas}
+            >
+              {isClosingAntiguas ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Cerrando cajas...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Cerrar Todas las Cajas Anteriores
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
