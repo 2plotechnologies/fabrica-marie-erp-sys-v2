@@ -54,4 +54,27 @@ class Cliente extends Model
     {
         return $this->hasOne(ClienteUbicacion::class);
     }
+
+    public static function isClienteVarios($cliente): bool
+    {
+        if (!$cliente) return false;
+        $codigo = (string) ($cliente->codigo_cliente ?? '');
+        $razon = strtolower((string) ($cliente->razon_social ?? ''));
+
+        return $codigo === '000000' ||
+               $codigo === '0000000' ||
+               $codigo === '000' ||
+               str_starts_with($codigo, 'VAR-ZONA-') ||
+               str_contains($razon, 'cliente varios') ||
+               str_contains($razon, 'clientes varios');
+    }
+
+    public function scopeExcluirClientesVarios($query)
+    {
+        $table = $this->getTable();
+        return $query->where("{$table}.codigo_cliente", '!=', '000000')
+                     ->where("{$table}.codigo_cliente", '!=', '0000000')
+                     ->where("{$table}.codigo_cliente", 'NOT LIKE', 'VAR-ZONA-%')
+                     ->where("{$table}.razon_social", 'NOT LIKE', '%Cliente%Varios%');
+    }
 }

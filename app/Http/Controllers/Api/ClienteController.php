@@ -59,10 +59,10 @@ class ClienteController extends Controller
 
     public function listaCRM()
     {
-        //Excluir cliente varios (000000).
+        // Excluir cualquier cliente varios.
         $clientes = Cliente::with('ruta','interacciones.usuario','tareas.usuario')
             ->where('activo', true)
-            ->where('codigo_cliente', '!=', '000000')
+            ->excluirClientesVarios()
             ->get();
 
         $fechaActual = date('Y-m-d');
@@ -166,7 +166,7 @@ class ClienteController extends Controller
     public function indexMapa()
     {
         $clientes = Cliente::join('cliente_ubicaciones', 'clientes.id', '=', 'cliente_ubicaciones.cliente_id')
-        ->where('codigo_cliente', '!=', '000000')
+        ->excluirClientesVarios()
         ->where('activo', true)
         ->whereNotNull('latitud')
         ->whereNotNull('longitud')

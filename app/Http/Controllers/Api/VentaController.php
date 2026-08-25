@@ -266,11 +266,11 @@ class VentaController extends Controller
             }
         }
 
-        //Si la venta es al credito, NO permitir vender a cliente con documento 000000 (Cliente Varios).
-        if($validated['tipo_pago'] === 'CREDITO'){
+        // Si la venta es al crédito, NO permitir vender a ningún cliente varios (generico o por zona).
+        if ($validated['tipo_pago'] === 'CREDITO') {
             $cliente = Cliente::findOrFail($validated['cliente_id']);
-            if($cliente->codigo_cliente === '000000' || $cliente->codigo_cliente === '0000000'){
-                throw new Exception('No se puede vender al credito a cliente varios. Por favor, seleccione un cliente registrado.');
+            if (Cliente::isClienteVarios($cliente)) {
+                throw new Exception('No se puede vender al crédito a cliente varios. Por favor, seleccione un cliente registrado.');
             }
             if ($validated['total_neto'] <= 0) {
                 throw new Exception('No se puede crear una venta al crédito con total cero.');
