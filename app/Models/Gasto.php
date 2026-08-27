@@ -14,6 +14,7 @@ class Gasto extends Model
         'vendedor_id',
         'monto',
         'comprobante',
+        'tipo_comprobante',
         'tipo',
         'fecha',
         'resumen_diario_id',

@@ -371,6 +371,7 @@ class ResumenDiarioController extends Controller
             'vendedor_id' => 'required',
             'monto' => 'required',
             'comprobante' => 'nullable',
+            'tipo_comprobante' => 'required|string',
             'tipo' => 'required',
             'fecha' => 'required',
         ]);
@@ -385,6 +386,7 @@ class ResumenDiarioController extends Controller
                 'vendedor_id' => $vendedorId,
                 'monto' => $request->monto,
                 'comprobante' => $request->comprobante,
+                'tipo_comprobante' => $request->tipo_comprobante ?? 'Otro/Ninguno',
                 'tipo' => $request->tipo,
                 'fecha' => $request->fecha,
                 'estado' => 'PENDIENTE',

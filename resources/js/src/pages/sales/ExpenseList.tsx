@@ -53,6 +53,7 @@ const ExpenseList = () => {
   const [formVendedor, setFormVendedor] = useState('');
   const [formMonto, setFormMonto] = useState('');
   const [formComprobante, setFormComprobante] = useState('');
+  const [formTipoComprobante, setFormTipoComprobante] = useState('');
   const [formTipo, setFormTipo] = useState('');
   const [formFecha, setFormFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -87,12 +88,13 @@ const ExpenseList = () => {
     setFormVendedor(isVendedor && vendedorActual ? String(vendedorActual.id) : '');
     setFormMonto('');
     setFormComprobante('');
+    setFormTipoComprobante('');
     setFormTipo('');
     setFormFecha(format(new Date(), 'yyyy-MM-dd'));
   };
 
   const handleSubmit = async () => {
-    if (!formVendedor || !formMonto || !formTipo || !formFecha) {
+    if (!formVendedor || !formMonto || !formTipo || !formFecha || !formTipoComprobante) {
       toast.error('Complete todos los campos requeridos');
       return;
     }
@@ -102,6 +104,7 @@ const ExpenseList = () => {
         vendedor_id: Number(formVendedor),
         monto: Number(formMonto),
         comprobante: formComprobante || undefined,
+        tipo_comprobante: formTipoComprobante,
         tipo: formTipo,
         fecha: formFecha,
       });
@@ -223,6 +226,25 @@ const ExpenseList = () => {
               </div>
 
               <div>
+                <Label>Tipo Comprobante *</Label>
+                <Select
+                  value={formTipoComprobante}
+                  onValueChange={(v) => setFormTipoComprobante(v)}
+                >
+                  <SelectTrigger className="col-span-4">
+                    <SelectValue placeholder="Seleccionar tipo comprobante..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Boleta">Boleta</SelectItem>
+                    <SelectItem value="Factura">Factura</SelectItem>
+                    <SelectItem value="Ticket">Ticket</SelectItem>
+                    <SelectItem value="Comprobante de Caja">Comprobante de Caja</SelectItem>
+                    <SelectItem value="Otro/Ninguno">Otro/Ninguno</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label>Comprobante / Referencia</Label>
                 <Input
                   placeholder="Número de boleta, serie, etc."
@@ -234,7 +256,7 @@ const ExpenseList = () => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button variant="gradient" onClick={handleSubmit} disabled={!formVendedor || !formMonto || !formTipo || !formFecha}>Registrar</Button>
+              <Button variant="gradient" onClick={handleSubmit} disabled={!formVendedor || !formMonto || !formTipo || !formFecha || !formTipoComprobante}>Registrar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -247,6 +269,7 @@ const ExpenseList = () => {
               <TableHead>Fecha</TableHead>
               <TableHead>Vendedor</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Tipo Comprobante</TableHead>
               <TableHead>Comprobante</TableHead>
               <TableHead className="text-right">Monto</TableHead>
               <TableHead>Estado</TableHead>
@@ -256,13 +279,13 @@ const ExpenseList = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : gastos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   <ReceiptText className="h-8 w-8 mx-auto mb-2 opacity-30" />
                   No hay gastos registrados
                 </TableCell>
@@ -275,6 +298,7 @@ const ExpenseList = () => {
                   </TableCell>
                   <TableCell>{g.vendedor?.usuario?.nombre ?? '—'}</TableCell>
                   <TableCell>{g.tipo}</TableCell>
+                  <TableCell>{g.tipo_comprobante || 'Otro/Ninguno'}</TableCell>
                   <TableCell>{g.comprobante || '—'}</TableCell>
                   <TableCell className="text-right font-semibold">
                     S/ {Number(g.monto).toFixed(2)}

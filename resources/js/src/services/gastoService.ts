@@ -5,7 +5,7 @@ export const gastoService = {
     const response = await api.get('/resumen-diario/gastos/all');
     return response.data;
   },
-  createGasto: async (data: { vendedor_id: number; monto: number; comprobante?: string; tipo: string; fecha: string }) => {
+  createGasto: async (data: { vendedor_id: number; monto: number; comprobante?: string; tipo_comprobante: string; tipo: string; fecha: string }) => {
     const response = await api.post('/resumen-diario/gastos', data);
     return response.data;
   },
