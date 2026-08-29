@@ -183,6 +183,7 @@ class DashboardService
     private function getVentasStats()
     {
         $today = Carbon::today();
+        $yesterday = Carbon::yesterday();
         $startOfWeek = Carbon::now()->startOfWeek();
         $startOfMonth = Carbon::now()->startOfMonth();
 
@@ -190,6 +191,13 @@ class DashboardService
             ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
             ->where('clientes.activo', 1)
             ->whereDate('ventas.fecha', $today)
+            ->where('ventas.estado', 'CONFIRMADA')
+            ->sum('ventas.total_neto');
+
+        $ventasAyer = DB::table('ventas')
+            ->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+            ->where('clientes.activo', 1)
+            ->whereDate('ventas.fecha', $yesterday)
             ->where('ventas.estado', 'CONFIRMADA')
             ->sum('ventas.total_neto');
 
@@ -214,11 +222,56 @@ class DashboardService
             ->where('ventas.estado', 'CONFIRMADA')
             ->count();
 
+        // Obtener Proyección de ventas del mes actual
+        $mesActualStr = Carbon::now()->format('Y-m');
+        $proyeccionRow = DB::table('proyecciones_ventas')
+            ->whereRaw("DATE_FORMAT(mes, '%Y-%m') = ?", [$mesActualStr])
+            ->first();
+
+        $proyeccionMonto = $proyeccionRow ? (float) $proyeccionRow->monto_proyectado : null;
+
+        // Tendencia Ventas Hoy vs Ayer
+        $trendHoy = null;
+        if ($ventasAyer > 0) {
+            $diffHoy = (($ventasHoy - $ventasAyer) / $ventasAyer) * 100;
+            $trendHoy = [
+                'value' => round(abs($diffHoy), 1),
+                'isPositive' => $diffHoy >= 0,
+            ];
+        } else if ($ventasHoy > 0) {
+            $trendHoy = [
+                'value' => 100.0,
+                'isPositive' => true,
+            ];
+        } else {
+            $trendHoy = [
+                'value' => 0.0,
+                'isPositive' => true,
+            ];
+        }
+
+        // Cumplimiento de la Meta del Mes
+        $porcentajeMeta = null;
+        $trendMes = null;
+        if ($proyeccionMonto && $proyeccionMonto > 0) {
+            $pctMeta = ($ventasMes / $proyeccionMonto) * 100;
+            $porcentajeMeta = round($pctMeta, 1);
+            $trendMes = [
+                'value' => round($pctMeta, 1),
+                'isPositive' => $pctMeta >= 100,
+            ];
+        }
+
         return [
-            'hoy'       => (float) $ventasHoy,
-            'semana'    => (float) $ventasSemana,
-            'mes'       => (float) $ventasMes,
-            'total_hoy' => (int) $transaccionesHoy,
+            'hoy'             => (float) $ventasHoy,
+            'ayer'            => (float) $ventasAyer,
+            'semana'          => (float) $ventasSemana,
+            'mes'             => (float) $ventasMes,
+            'total_hoy'       => (int) $transaccionesHoy,
+            'trend_hoy'       => $trendHoy,
+            'proyeccion_mes'  => $proyeccionMonto,
+            'porcentaje_meta' => $porcentajeMeta,
+            'trend_mes'       => $trendMes,
         ];
     }
 

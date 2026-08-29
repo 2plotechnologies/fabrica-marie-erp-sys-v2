@@ -9,6 +9,8 @@ interface KPICardProps {
   trend?: {
     value: number;
     isPositive: boolean;
+    label?: string;
+    showPlus?: boolean;
   };
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'danger';
   className?: string;
@@ -91,12 +93,12 @@ export const KPICard = ({
                 "font-medium",
                 trend.isPositive ? 'text-success' : 'text-destructive'
               )}>
-                {trend.isPositive ? '+' : ''}{trend.value}%
+                {(trend.showPlus ?? true) && trend.isPositive ? '+' : ''}{trend.value}%
               </span>
               <span className={cn(
                 variant === 'primary' ? 'text-primary-foreground/60' : 'text-muted-foreground'
               )}>
-                vs ayer
+                {trend.label || 'vs ayer'}
               </span>
             </div>
           )}

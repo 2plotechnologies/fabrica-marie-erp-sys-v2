@@ -376,6 +376,17 @@ class ResumenDiarioController extends Controller
             'fecha' => 'required',
         ]);
 
+        // Verificar que exista una caja abierta para registrar el gasto
+        $cajaAbierta = \App\Models\Caja::whereDate('fecha', \Carbon\Carbon::today())
+            ->where('estado', 'ABIERTA')
+            ->first();
+
+        if (!$cajaAbierta) {
+            return response()->json([
+                'message' => 'No se puede registrar el gasto porque no existe una caja abierta para el día de hoy.'
+            ], 403);
+        }
+
         $user = auth()->user();
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;

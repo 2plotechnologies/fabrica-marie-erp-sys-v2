@@ -8,16 +8,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { format, differenceInDays } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
+import { format, differenceInDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
-//import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins, Plus, Trash2 } from 'lucide-react';
-import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins, Plus, Trash2, Ban } from 'lucide-react';
+import { FileDown, Search, DollarSign, Users, Clock, Loader2, CreditCard, CalendarPlus, Coins, Plus, Trash2, Ban, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { cobranzasService } from '@/services/cobranzasService';
 import { formatErrorMessage } from '@/lib/axios-error';
 const CollectionsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVendedor, setFilterVendedor] = useState<string>('all');
+  const [filterZona, setFilterZona] = useState<string>('all');
+  const [dateRangeVenta, setDateRangeVenta] = useState<{ from: Date; to: Date } | null>(null);
   const [selectedCuentaId, setSelectedCuentaId] = useState<string | null>(null);
   // Annul Dialog State
   const [anularDialog, setAnularDialog] = useState<any | null>(null);
@@ -198,15 +201,51 @@ const CollectionsPage = () => {
       toast.error(formatErrorMessage('Error al extender fecha de vencimiento', error, 'No se pudo extender la fecha.'));
     }
   };
+  const zonas = Array.from(
+    new Set(
+      cuentas
+        .map(c => c.zona_nombre)
+        .filter(Boolean)
+    )
+  ).sort();
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterVendedor, filterZona, dateRangeVenta]);
+
   const filteredCuentas = cuentas.filter(c => {
     const matchesSearch =
+      !searchTerm.trim() ||
       (c.cliente?.razon_social?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       (c.cliente?.codigo_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       (c.venta?.nota_pedido?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       (c.zona_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
       (c.ruta_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+
     const matchesVendedor = filterVendedor === 'all' || String(c.venta?.vendedor_id) === String(filterVendedor);
-    return matchesSearch && matchesVendedor;
+
+    const matchesZona = filterZona === 'all' || c.zona_nombre === filterZona;
+
+    let matchesFechaVenta = true;
+    if (dateRangeVenta?.from && dateRangeVenta?.to) {
+      if (c.venta?.fecha) {
+        const fechaStr = typeof c.venta.fecha === 'string' ? c.venta.fecha.substring(0, 10) : '';
+        if (fechaStr) {
+          const vDate = new Date(fechaStr + 'T00:00:00');
+          const fromDate = new Date(dateRangeVenta.from);
+          fromDate.setHours(0, 0, 0, 0);
+          const toDate = new Date(dateRangeVenta.to);
+          toDate.setHours(23, 59, 59, 999);
+          matchesFechaVenta = vDate >= fromDate && vDate <= toDate;
+        } else {
+          matchesFechaVenta = false;
+        }
+      } else {
+        matchesFechaVenta = false;
+      }
+    }
+
+    return matchesSearch && matchesVendedor && matchesZona && matchesFechaVenta;
   });
   const itemsPerPage = 10;
   const [page, setPage] = useState(1);
@@ -273,18 +312,103 @@ const CollectionsPage = () => {
       {/* Filters */}
       <Card className="shadow-card">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            <div className="relative xl:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar por cliente, nota de pedido, zona o ruta..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
             </div>
-            <Select value={filterVendedor} onValueChange={(val) => { setFilterVendedor(val); setPage(1); }}>
-              <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+
+            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+              <SelectTrigger><SelectValue placeholder="Vendedor" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="all">Todos los vendedores</SelectItem>
                 {vendedores.map(v => (<SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre}</SelectItem>))}
               </SelectContent>
             </Select>
+
+            <Select value={filterZona} onValueChange={setFilterZona}>
+              <SelectTrigger><SelectValue placeholder="Zona" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las zonas</SelectItem>
+                {zonas.map(z => (<SelectItem key={z} value={z}>{z}</SelectItem>))}
+              </SelectContent>
+            </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start text-left font-normal min-w-0 w-full">
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {dateRangeVenta?.from && dateRangeVenta?.to
+                      ? `Venta: ${format(dateRangeVenta.from, 'dd/MM')} - ${format(dateRangeVenta.to, 'dd/MM')}`
+                      : 'Fecha de Venta'}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="end">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Filtros Rápidos (Fecha Venta)</p>
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal" onClick={() => setDateRangeVenta({ from: new Date(), to: new Date() })}>Hoy</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal" onClick={() => setDateRangeVenta({ from: startOfWeek(new Date(), { locale: es }), to: endOfWeek(new Date(), { locale: es }) })}>Esta semana</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal" onClick={() => setDateRangeVenta({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}>Este mes</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal text-muted-foreground" onClick={() => setDateRangeVenta(null)}>Todas las fechas</Button>
+                  </div>
+                  <Separator />
+                  <div className="space-y-2 px-1">
+                    <p className="text-xs font-semibold text-muted-foreground">Rango Personalizado</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-muted-foreground block mb-1">Desde</label>
+                        <Input
+                          type="date"
+                          className="h-8 text-xs px-2"
+                          value={dateRangeVenta?.from ? format(dateRangeVenta.from, 'yyyy-MM-dd') : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) return;
+                            const [y, m, d] = val.split('-').map(Number);
+                            const newFrom = new Date(y, m - 1, d);
+                            setDateRangeVenta(prev => ({ from: newFrom, to: prev?.to || newFrom }));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground block mb-1">Hasta</label>
+                        <Input
+                          type="date"
+                          className="h-8 text-xs px-2"
+                          value={dateRangeVenta?.to ? format(dateRangeVenta.to, 'yyyy-MM-dd') : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) return;
+                            const [y, m, d] = val.split('-').map(Number);
+                            const newTo = new Date(y, m - 1, d);
+                            setDateRangeVenta(prev => ({ from: prev?.from || newTo, to: newTo }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {(searchTerm || filterVendedor !== 'all' || filterZona !== 'all' || dateRangeVenta !== null) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterVendedor('all');
+                  setFilterZona('all');
+                  setDateRangeVenta(null);
+                }}
+                className="h-10 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Limpiar Filtros
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -344,7 +468,8 @@ const CollectionsPage = () => {
 
                         <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-1 border-t border-border/50">
                           <div>
-                            📅 Venc: <strong>{cuenta.fecha_vencimiento ? format(new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy") : 'Sin fecha'}</strong>
+                            <span className="block">🛒 Venta: <strong>{cuenta.venta?.fecha ? format(new Date(typeof cuenta.venta.fecha === 'string' ? cuenta.venta.fecha.substring(0, 10) + "T00:00:00" : cuenta.venta.fecha), "dd/MM/yyyy") : '-'}</strong></span>
+                            <span>📅 Venc: <strong>{cuenta.fecha_vencimiento ? format(new Date(cuenta.fecha_vencimiento.substring(0, 10) + "T00:00:00"), "dd/MM/yyyy") : 'Sin fecha'}</strong></span>
                             {textRestantes && !isPaid && (
                               <span className={`block text-[10px] ${isOverdue ? 'text-red-500 font-bold' : 'text-muted-foreground'}`}>{textRestantes}</span>
                             )}

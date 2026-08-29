@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, ReceiptText, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, ReceiptText, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,6 +37,7 @@ import { gastoService } from '@/services/gastoService';
 import { formatErrorMessage } from '@/lib/axios-error';
 
 const ExpenseList = () => {
+  const navigate = useNavigate();
   const { currentRole } = useRole();
   const { user } = useAuth();
   const isVendedor = currentRole === 'VENDEDOR';
@@ -44,6 +46,7 @@ const ExpenseList = () => {
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
 
   // Delete State
   const [deleteConfirmGasto, setDeleteConfirmGasto] = useState<any | null>(null);
@@ -115,7 +118,17 @@ const ExpenseList = () => {
       setDialogOpen(false);
       toast.success('Gasto registrado con éxito');
     } catch (error: any) {
-      toast.error(formatErrorMessage('Error al crear gasto', error, 'No se pudo crear el gasto.'));
+      const errorMessage = error.response?.data?.message || error.response?.data?.error || '';
+      const isCajaCerrada = error.response?.status === 403 &&
+        (errorMessage.toLowerCase().includes('caja abierta') ||
+          errorMessage.toLowerCase().includes('caja cerrada'));
+
+      if (isCajaCerrada) {
+        setDialogOpen(false);
+        setIsCajaCerradaModalOpen(true);
+      } else {
+        toast.error(formatErrorMessage('Error al crear gasto', error, 'No se pudo crear el gasto.'));
+      }
     }
   };
 
@@ -371,6 +384,66 @@ const ExpenseList = () => {
             <Button variant="destructive" onClick={handleDeleteGasto} disabled={isDeleting}>
               {isDeleting ? 'Eliminando...' : 'Eliminar Gasto'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Caja Cerrada */}
+      <Dialog open={isCajaCerradaModalOpen} onOpenChange={setIsCajaCerradaModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="flex flex-col items-center justify-center text-center pt-4">
+            <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 mb-3 animate-bounce">
+              <Lock className="h-6 w-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold font-display text-red-600 dark:text-red-400">
+              Apertura de Caja Requerida
+            </DialogTitle>
+            <DialogDescription className="text-center text-muted-foreground mt-2">
+              No se ha detectado una caja abierta para el día de hoy. Es indispensable contar con una caja abierta antes de registrar gastos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 text-center">
+            {isVendedor ? (
+              <div className="bg-muted p-4 rounded-lg text-sm font-medium border border-border text-left">
+                Por favor, solicite a un <span className="text-primary font-bold">administrador, gerente, supervisor o cajero</span> que aperture la caja para continuar.
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Como usuario administrador o de gestión, puede proceder a realizar la apertura de caja directamente en la vista de caja.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="flex sm:justify-center gap-2">
+            {isVendedor ? (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsCajaCerradaModalOpen(false)}
+              >
+                Entendido
+              </Button>
+            ) : (
+              <div className="flex w-full gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCajaCerradaModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="gradient"
+                  className="gap-2"
+                  onClick={() => {
+                    setIsCajaCerradaModalOpen(false);
+                    navigate('/caja');
+                  }}
+                >
+                  Ir a la Vista de Caja
+                </Button>
+              </div>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

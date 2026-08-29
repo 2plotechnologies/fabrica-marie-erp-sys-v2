@@ -162,14 +162,19 @@ class EntregaDineroController
         $isVendedor = $targetUser && $targetUser->roles()->where('nombre', 'VENDEDOR')->exists();
 
         if ($isVendedor) {
+            $cajaAbierta = \App\Models\Caja::whereDate('fecha', \Carbon\Carbon::today())
+                ->where('estado', 'ABIERTA')
+                ->first();
+
+            if (!$cajaAbierta) {
+                return response()->json([
+                    'message' => 'No se puede registrar la entrega de dinero porque no existe una caja abierta para el día de hoy.'
+                ], 403);
+            }
+
             $vendedor = \App\Models\Vendedor::where('usuario_id', $request->usuario_id)->first();
             if ($vendedor) {
                 $calculo = $this->obtenerCalculoVendedor($request->usuario_id, $vendedor->id);
-
-                // SE ELIMINÓ LA RESTRICCIÓN DE MONTO DISPONIBLE PARA VENDEDORES
-                // if ($request->monto_total > $calculo['total_disponible']) {
-                //     abort(422, 'El monto a entregar (S/ ' . number_format($request->monto_total, 2) . ') excede el saldo disponible de ventas y cobranzas del vendedor (S/ ' . number_format($calculo['total_disponible'], 2) . ').');
-                // }
             }
         }
 
@@ -252,7 +257,7 @@ class EntregaDineroController
                 
                 $cajaAbierta = \App\Models\Caja::whereDate('fecha', now())->where('estado', 'ABIERTA')->first();
 
-                // Calcular el total en efectivo de la entrega
+                // Calcular el total en efectivo de la entrega.
                 $montoEfectivo = 0;
                 foreach ($entrega->items as $item) {
                     if (strtoupper($item->metodo_pago) === 'EFECTIVO') {
@@ -283,7 +288,7 @@ class EntregaDineroController
                         }
                     }
 
-                    // Registrar movimientos digitales si los hubiera
+                    // Registrar movimientos digitales si los hubiera.
                     foreach ($entrega->items as $item) {
                         $metodo = strtoupper($item->metodo_pago);
                         if ($metodo !== 'EFECTIVO' && $item->monto > 0) {
@@ -299,7 +304,9 @@ class EntregaDineroController
                                     'referencia_tipo' => 'ENTREGA_DINERO',
                                     'referencia_id' => $entrega->id,
                                 ]);
-                            } catch (\Throwable $e) {}
+                            } catch (\Exception $e) {
+                                abort(422, 'No se puede aprobar la entrega: ' . $e->getMessage());
+                            }
                         }
                     }
                 } else {

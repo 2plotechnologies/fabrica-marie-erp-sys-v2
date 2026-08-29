@@ -7,13 +7,15 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+    DialogDescription,
 } from '@/components/ui/dialog';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useNavigate } from 'react-router-dom';
 import {
-    Plus, Loader2, Banknote, CheckCircle2, Clock, Trash2, FileText, Download, UploadCloud, ShieldCheck, XCircle, Eye, AlertTriangle
+    Plus, Loader2, Banknote, CheckCircle2, Clock, Trash2, FileText, Download, UploadCloud, ShieldCheck, XCircle, Eye, AlertTriangle, Lock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -36,14 +38,17 @@ interface DeliveryItem {
 }
 
 const MoneyDelivery = () => {
+    const navigate = useNavigate();
     const { user, hasRole, hasPermission } = useAuth();
     const { currentRole } = useRole();
+    const isVendedor = currentRole === 'VENDEDOR' || hasRole('VENDEDOR');
     const [entregas, setEntregas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [maxVentasConfirmadas, setMaxVentasConfirmadas] = useState<number | null>(null);
 
     const [isNewDialog, setIsNewDialog] = useState(false);
     const [isViewDialog, setIsViewDialog] = useState(false);
+    const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
     const [confirmWarningDialog, setConfirmWarningDialog] = useState<{ id: number, estado: string, message: string } | null>(null);
 
     // Form state
@@ -115,7 +120,18 @@ const MoneyDelivery = () => {
         onError: (error: any) => {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
-            toast.error(formatErrorMessage('Error al crear la entrega de dinero', error, 'No se pudo crear. Verifique los datos o adjuntos.'));
+
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || '';
+            const isCajaCerrada = error.response?.status === 403 &&
+                (errorMessage.toLowerCase().includes('caja abierta') ||
+                    errorMessage.toLowerCase().includes('caja cerrada'));
+
+            if (isCajaCerrada) {
+                setIsNewDialog(false);
+                setIsCajaCerradaModalOpen(true);
+            } else {
+                toast.error(formatErrorMessage('Error al crear la entrega de dinero', error, 'No se pudo crear. Verifique los datos o adjuntos.'));
+            }
         }
     });
 
@@ -669,6 +685,65 @@ const MoneyDelivery = () => {
                             {updateEstado.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                             Continuar de todos modos
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            {/* Modal de Caja Cerrada para Vendedores */}
+            <Dialog open={isCajaCerradaModalOpen} onOpenChange={setIsCajaCerradaModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader className="flex flex-col items-center justify-center text-center pt-4">
+                        <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400 mb-3 animate-bounce">
+                            <Lock className="h-6 w-6" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold font-display text-red-600 dark:text-red-400">
+                            Apertura de Caja Requerida
+                        </DialogTitle>
+                        <DialogDescription className="text-center text-muted-foreground mt-2">
+                            No se ha detectado una caja abierta para el día de hoy. Es indispensable contar con una caja abierta antes de registrar entregas de dinero.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-2 text-center">
+                        {isVendedor ? (
+                            <div className="bg-muted p-4 rounded-lg text-sm font-medium border border-border text-left">
+                                Por favor, solicite a un <span className="text-primary font-bold">administrador, gerente, supervisor o cajero</span> que aperture la caja para continuar con la entrega.
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                Como usuario administrador o de gestión, puede proceder a realizar la apertura de caja directamente en la vista de caja.
+                            </p>
+                        )}
+                    </div>
+
+                    <DialogFooter className="flex sm:justify-center gap-2">
+                        {isVendedor ? (
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => setIsCajaCerradaModalOpen(false)}
+                            >
+                                Entendido
+                            </Button>
+                        ) : (
+                            <div className="flex w-full gap-2 justify-end">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsCajaCerradaModalOpen(false)}
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="gradient"
+                                    className="gap-2"
+                                    onClick={() => {
+                                        setIsCajaCerradaModalOpen(false);
+                                        navigate('/caja');
+                                    }}
+                                >
+                                    Ir a la Vista de Caja
+                                </Button>
+                            </div>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

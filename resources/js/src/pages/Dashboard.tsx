@@ -145,15 +145,32 @@ const Dashboard = () => {
               subtitle={`${kpis.ventas.total_hoy} transacciones`}
               icon={DollarSign}
               variant="primary"
-              trend={{ value: 12.5, isPositive: true }}
+              trend={kpis?.ventas?.trend_hoy ? {
+                value: kpis.ventas.trend_hoy.value,
+                isPositive: kpis.ventas.trend_hoy.isPositive,
+                label: 'vs ayer'
+              } : undefined}
               delay={0}
             />
             <KPICard
               title="Ventas del Mes"
               value={`S/ ${(Number(kpis.ventas.mes) / 1000).toFixed(1)}K`}
-              subtitle="Meta: S/ 150K"
+              subtitle={
+                kpis?.ventas?.proyeccion_mes
+                  ? `Meta: S/ ${Number(kpis.ventas.proyeccion_mes) >= 1000 ? `${Number((Number(kpis.ventas.proyeccion_mes) / 1000).toFixed(1))}K` : Number(kpis.ventas.proyeccion_mes).toLocaleString('es-PE')}`
+                  : 'Meta: -'
+              }
               icon={TrendingUp}
-              trend={{ value: 8.2, isPositive: true }}
+              trend={
+                kpis?.ventas?.proyeccion_mes && kpis?.ventas?.trend_mes
+                  ? {
+                      value: kpis.ventas.trend_mes.value,
+                      isPositive: kpis.ventas.trend_mes.isPositive,
+                      label: 'de la meta',
+                      showPlus: false,
+                    }
+                  : undefined
+              }
               delay={50}
             />
             <KPICard
@@ -200,7 +217,11 @@ const Dashboard = () => {
               subtitle={`${kpis.ventas.total_hoy} ventas hoy`}
               icon={TrendingUp}
               variant="primary"
-              trend={{ value: 12.5, isPositive: true }}
+              trend={kpis?.ventas?.trend_hoy ? {
+                value: kpis.ventas.trend_hoy.value,
+                isPositive: kpis.ventas.trend_hoy.isPositive,
+                label: 'vs ayer'
+              } : undefined}
               delay={0}
             />
             <KPICard

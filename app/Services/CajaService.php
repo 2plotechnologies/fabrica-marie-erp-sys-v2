@@ -135,7 +135,7 @@ class CajaService
         $estado = $data['estado'] ?? 'PENDIENTE';
 
         // Solo validar saldo disponible si el movimiento se crea directamente como APROBADO.
-        if ($estado === 'APROBADO' && strtoupper($data['tipo']) === 'EGRESO') {
+        if ($estado === 'APROBADO' && strtoupper($data['tipo']) === 'EGRESO' && $data['categoria'] !== 'ENTREGA DINERO') {
             $saldoDisponible = self::obtenerSaldoDisponibleMetodo($caja, $metodoPago);
 
             if ($data['monto'] > $saldoDisponible) {

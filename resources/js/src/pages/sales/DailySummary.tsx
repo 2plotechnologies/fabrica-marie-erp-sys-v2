@@ -133,7 +133,7 @@ const DailySummaryPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVendedor, setFilterVendedor] = useState<string>('all');
   const [filterEstado, setFilterEstado] = useState<string>('all');
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>({
     from: startOfWeek(new Date(), { locale: es }),
     to: endOfWeek(new Date(), { locale: es }),
   });
@@ -454,16 +454,50 @@ const DailySummaryPage = () => {
     }
   };
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterVendedor, filterEstado, dateRange]);
+
   // Filtrar resúmenes
   const filteredResumenes = (Array.isArray(resumenes) ? resumenes : []).filter(resumen => {
     const vendedorNombre = resumen.vendedor?.usuario?.nombre || '';
     const conductor = resumen.conductor || '';
     const zona = resumen.zona || '';
+    const rutaText = (resumen.rutas && resumen.rutas.length > 0)
+      ? resumen.rutas.map((r: any) => r.nombre).join(' ')
+      : (resumen.ruta?.nombre || '');
+
     const matchesSearch =
+      !searchTerm.trim() ||
       vendedorNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       conductor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      zona.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+      zona.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rutaText.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesVendedor =
+      filterVendedor === 'all' ||
+      String(resumen.vendedor_id) === String(filterVendedor) ||
+      String(resumen.vendedor?.id) === String(filterVendedor);
+
+    const matchesEstado =
+      filterEstado === 'all' ||
+      resumen.estado === filterEstado;
+
+    let matchesFecha = true;
+    if (dateRange?.from && dateRange?.to) {
+      const fechaStr = (resumen.fecha || '').substring(0, 10);
+      if (fechaStr) {
+        const rDate = new Date(fechaStr + 'T00:00:00');
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        matchesFecha = rDate >= fromDate && rDate <= toDate;
+      }
+    }
+
+    return matchesSearch && matchesVendedor && matchesEstado && matchesFecha;
   });
 
   const itemsPerPage = 4;
@@ -1181,7 +1215,7 @@ const DailySummaryPage = () => {
                     <div className={`relative ${isVendedor ? 'xl:col-span-3' : 'xl:col-span-2'}`}>
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder={isVendedor ? "Buscar por conductor o zona..." : "Buscar por vendedor, conductor o zona..."}
+                        placeholder={isVendedor ? "Buscar por conductor, zona o ruta..." : "Buscar por vendedor, conductor, zona o ruta..."}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-10"
@@ -1196,7 +1230,7 @@ const DailySummaryPage = () => {
                         <SelectContent>
                           <SelectItem value="all">Todos los vendedores</SelectItem>
                           {(Array.isArray(vendedores) ? vendedores : []).map(v => (
-                            <SelectItem key={v.id} value={v.id}>{v.usuario?.nombre}</SelectItem>
+                            <SelectItem key={v.id} value={String(v.id)}>{v.usuario?.nombre}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -1207,7 +1241,7 @@ const DailySummaryPage = () => {
                         <SelectValue placeholder="Estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="all">Todos los estados</SelectItem>
                         <SelectItem value="PENDIENTE">Pendiente</SelectItem>
                         <SelectItem value="ENVIADO">Enviado</SelectItem>
                         <SelectItem value="CONFIRMADO">Confirmado</SelectItem>
@@ -1220,44 +1254,117 @@ const DailySummaryPage = () => {
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="justify-start text-left font-normal min-w-0 w-full">
                           <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                          <span className="truncate">{format(dateRange.from, 'dd/MM')} - {format(dateRange.to, 'dd/MM')}</span>
+                          <span className="truncate">
+                            {dateRange?.from && dateRange?.to
+                              ? `${format(dateRange.from, 'dd/MM')} - ${format(dateRange.to, 'dd/MM')}`
+                              : 'Todas las fechas'}
+                          </span>
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <div className="p-3 space-y-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start"
-                            onClick={() => setDateRange({ from: new Date(), to: new Date() })}
-                          >
-                            Hoy
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start"
-                            onClick={() => setDateRange({
-                              from: startOfWeek(new Date(), { locale: es }),
-                              to: endOfWeek(new Date(), { locale: es })
-                            })}
-                          >
-                            Esta semana
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start"
-                            onClick={() => setDateRange({
-                              from: startOfMonth(new Date()),
-                              to: endOfMonth(new Date())
-                            })}
-                          >
-                            Este mes
-                          </Button>
+                      <PopoverContent className="w-auto p-3" align="end">
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Filtros Rápidos</p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-xs font-normal"
+                              onClick={() => setDateRange({ from: new Date(), to: new Date() })}
+                            >
+                              Hoy
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-xs font-normal"
+                              onClick={() => setDateRange({
+                                from: startOfWeek(new Date(), { locale: es }),
+                                to: endOfWeek(new Date(), { locale: es })
+                              })}
+                            >
+                              Esta semana
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-xs font-normal"
+                              onClick={() => setDateRange({
+                                from: startOfMonth(new Date()),
+                                to: endOfMonth(new Date())
+                              })}
+                            >
+                              Este mes
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start text-xs font-normal text-muted-foreground"
+                              onClick={() => setDateRange(null)}
+                            >
+                              Todas las fechas
+                            </Button>
+                          </div>
+                          <Separator />
+                          <div className="space-y-2 px-1">
+                            <p className="text-xs font-semibold text-muted-foreground">Rango Personalizado</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Desde</label>
+                                <Input
+                                  type="date"
+                                  className="h-8 text-xs px-2"
+                                  value={dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!val) return;
+                                    const [y, m, d] = val.split('-').map(Number);
+                                    const newFrom = new Date(y, m - 1, d);
+                                    setDateRange(prev => ({
+                                      from: newFrom,
+                                      to: prev?.to || newFrom
+                                    }));
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-muted-foreground block mb-1">Hasta</label>
+                                <Input
+                                  type="date"
+                                  className="h-8 text-xs px-2"
+                                  value={dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!val) return;
+                                    const [y, m, d] = val.split('-').map(Number);
+                                    const newTo = new Date(y, m - 1, d);
+                                    setDateRange(prev => ({
+                                      from: prev?.from || newTo,
+                                      to: newTo
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </PopoverContent>
                     </Popover>
+
+                    {(searchTerm || filterVendedor !== 'all' || filterEstado !== 'all' || dateRange !== null) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSearchTerm('');
+                          setFilterVendedor('all');
+                          setFilterEstado('all');
+                          setDateRange(null);
+                        }}
+                        className="h-10 text-xs text-muted-foreground hover:text-foreground col-span-1"
+                      >
+                        Limpiar Filtros
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
