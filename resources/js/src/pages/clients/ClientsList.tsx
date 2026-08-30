@@ -44,6 +44,8 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { clienteService } from '@/services/clienteService';
+import { ubigeoService, Departamento, Provincia, Distrito } from '@/services/ubigeoService';
+import { formatDireccionCompleta } from '@/lib/ubigeo';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/axios-error';
 import { Label } from '@/components/ui/label';
@@ -74,6 +76,12 @@ interface ClientDetail {
   razon_social: string;
   tipo_cliente?: string;
   direccion?: string;
+  departamento_id?: number | null;
+  provincia_id?: number | null;
+  distrito_id?: number | null;
+  departamento?: any;
+  provincia?: any;
+  distrito?: any;
   telefono?: string;
   ruta_id?: number | null;
   ruta?: { id: number; nombre: string; zona?: string } | null;
@@ -106,6 +114,15 @@ const ClientsList = () => {
   const [editSaving, setEditSaving] = useState(false);
   const [editClientId, setEditClientId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<ClientDetail | null>(null);
+
+  // Estados de Ubigeo para edición
+  const [editDepartamentos, setEditDepartamentos] = useState<Departamento[]>([]);
+  const [editProvincias, setEditProvincias] = useState<Provincia[]>([]);
+  const [editDistritos, setEditDistritos] = useState<Distrito[]>([]);
+
+  useEffect(() => {
+    ubigeoService.getDepartamentos().then(setEditDepartamentos).catch(console.error);
+  }, []);
 
   // 🔹 Obtener clientes y rutas desde backend
   useEffect(() => {
@@ -143,7 +160,7 @@ const ClientsList = () => {
     razon_social: c.razon_social,
     codigo: c.codigo_cliente,
     phone: c.telefono || '',
-    address: c.direccion || '',
+    address: formatDireccionCompleta(c) || c.direccion || '',
     creditLimit: Number(c.limite_credito || 0),
     currentDebt: Number(c.deuda_actual || 0),
     status: c.status || 'ACTIVO',
@@ -246,12 +263,52 @@ const ClientsList = () => {
   const handleOpenEdit = async (clientId: number) => {
     setIsEditOpen(true);
     setEditLoading(true);
+    setEditProvincias([]);
+    setEditDistritos([]);
     const data = await getClientById(clientId);
     if (data) {
       setEditClientId(clientId);
       setEditForm(data);
+      if (data.departamento_id) {
+        ubigeoService.getProvincias(Number(data.departamento_id)).then(setEditProvincias).catch(console.error);
+      }
+      if (data.provincia_id) {
+        ubigeoService.getDistritos(Number(data.provincia_id)).then(setEditDistritos).catch(console.error);
+      }
     }
     setEditLoading(false);
+  };
+
+  const handleEditDepartamentoChange = async (depIdStr: string) => {
+    if (!editForm) return;
+    const depId = depIdStr ? Number(depIdStr) : null;
+    setEditForm({
+      ...editForm,
+      departamento_id: depId,
+      provincia_id: null,
+      distrito_id: null,
+    });
+    setEditProvincias([]);
+    setEditDistritos([]);
+    if (depId) {
+      const data = await ubigeoService.getProvincias(depId);
+      setEditProvincias(data || []);
+    }
+  };
+
+  const handleEditProvinciaChange = async (provIdStr: string) => {
+    if (!editForm) return;
+    const provId = provIdStr ? Number(provIdStr) : null;
+    setEditForm({
+      ...editForm,
+      provincia_id: provId,
+      distrito_id: null,
+    });
+    setEditDistritos([]);
+    if (provId) {
+      const data = await ubigeoService.getDistritos(provId);
+      setEditDistritos(data || []);
+    }
   };
 
   const handleEditChange = (field: keyof ClientDetail, value: string | number | boolean | null) => {
@@ -268,6 +325,9 @@ const ClientsList = () => {
         razon_social: editForm.razon_social,
         tipo_cliente: editForm.tipo_cliente || '',
         direccion: editForm.direccion || '',
+        departamento_id: editForm.departamento_id ? Number(editForm.departamento_id) : null,
+        provincia_id: editForm.provincia_id ? Number(editForm.provincia_id) : null,
+        distrito_id: editForm.distrito_id ? Number(editForm.distrito_id) : null,
         telefono: editForm.telefono || '',
         ruta_id: editForm.ruta_id || null,
         condicion_pago: editForm.condicion_pago,
@@ -670,7 +730,7 @@ const ClientsList = () => {
               <p><strong>Razón social:</strong> {detailClient.razon_social}</p>
               <p><strong>Tipo:</strong> {detailClient.tipo_cliente || '-'}</p>
               <p><strong>Teléfono:</strong> {detailClient.telefono || '-'}</p>
-              <p className="sm:col-span-2"><strong>Dirección:</strong> {detailClient.direccion || '-'}</p>
+              <p className="sm:col-span-2"><strong>Dirección:</strong> {formatDireccionCompleta(detailClient) || detailClient.direccion || '-'}</p>
               <p><strong>Ruta:</strong> {detailClient.ruta?.nombre || '-'}</p>
               <p><strong>Zona:</strong> {detailClient.ruta?.zona || '-'}</p>
               <p><strong>Condición:</strong> {detailClient.condicion_pago}</p>
@@ -707,9 +767,65 @@ const ClientsList = () => {
                 <Label>Teléfono</Label>
                 <Input value={editForm.telefono || ''} onChange={(e) => handleEditChange('telefono', e.target.value)} />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label>Dirección</Label>
                 <Input value={editForm.direccion || ''} onChange={(e) => handleEditChange('direccion', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select
+                  value={editForm.departamento_id ? String(editForm.departamento_id) : ''}
+                  onValueChange={handleEditDepartamentoChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {editDepartamentos.map((dep) => (
+                      <SelectItem key={dep.idDepa} value={String(dep.idDepa)}>
+                        {dep.departamento}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Provincia</Label>
+                <Select
+                  value={editForm.provincia_id ? String(editForm.provincia_id) : ''}
+                  onValueChange={handleEditProvinciaChange}
+                  disabled={!editForm.departamento_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={!editForm.departamento_id ? "Seleccione departamento" : "Seleccionar provincia"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {editProvincias.map((prov) => (
+                      <SelectItem key={prov.idProv} value={String(prov.idProv)}>
+                        {prov.provincia}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Distrito</Label>
+                <Select
+                  value={editForm.distrito_id ? String(editForm.distrito_id) : ''}
+                  onValueChange={(v) => handleEditChange('distrito_id', v ? Number(v) : null)}
+                  disabled={!editForm.provincia_id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={!editForm.provincia_id ? "Seleccione provincia" : "Seleccionar distrito"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {editDistritos.map((dist) => (
+                      <SelectItem key={dist.idDist} value={String(dist.idDist)}>
+                        {dist.distrito}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}

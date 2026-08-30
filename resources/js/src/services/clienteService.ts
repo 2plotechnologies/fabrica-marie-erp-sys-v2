@@ -6,6 +6,9 @@ export interface ClientePayload {
   razon_social: string;
   tipo_cliente?: string;
   direccion?: string;
+  departamento_id?: number | null;
+  provincia_id?: number | null;
+  distrito_id?: number | null;
   telefono?: string;
   ruta_id?: number | null;
   condicion_pago: string;

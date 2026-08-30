@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { salidaService } from '@/services/salidaService';
+import { formatDireccionCompleta } from '@/lib/ubigeo';
 import { cn } from '@/lib/utils';
 
 interface ClientSelectorProps {
@@ -312,7 +313,7 @@ export const ClientSelector = ({
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground shrink-0">Dirección:</span>
-            <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">{selectedClientData.direccion || '-'}</span>
+            <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">{formatDireccionCompleta(selectedClientData) || selectedClientData.direccion || '-'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground shrink-0">Teléfono:</span>

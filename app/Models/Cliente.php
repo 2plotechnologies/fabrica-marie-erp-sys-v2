@@ -13,6 +13,9 @@ class Cliente extends Model
         'razon_social',
         'tipo_cliente',
         'direccion',
+        'departamento_id',
+        'provincia_id',
+        'distrito_id',
         'telefono',
         'ruta_id',
         'condicion_pago',
@@ -23,7 +26,42 @@ class Cliente extends Model
         'status'
     ];
 
+    protected $appends = ['direccion_completa'];
+
     public $timestamps = false;
+
+    public function departamento()
+    {
+        return $this->belongsTo(Ubdepartamento::class, 'departamento_id', 'idDepa');
+    }
+
+    public function provincia()
+    {
+        return $this->belongsTo(Ubprovincia::class, 'provincia_id', 'idProv');
+    }
+
+    public function distrito()
+    {
+        return $this->belongsTo(Ubdistrito::class, 'distrito_id', 'idDist');
+    }
+
+    public function getDireccionCompletaAttribute(): string
+    {
+        $parts = [];
+        if (!empty($this->direccion)) {
+            $parts[] = trim($this->direccion);
+        }
+        if ($this->relationLoaded('departamento') && $this->departamento && !empty($this->departamento->departamento)) {
+            $parts[] = trim($this->departamento->departamento);
+        }
+        if ($this->relationLoaded('provincia') && $this->provincia && !empty($this->provincia->provincia)) {
+            $parts[] = trim($this->provincia->provincia);
+        }
+        if ($this->relationLoaded('distrito') && $this->distrito && !empty($this->distrito->distrito)) {
+            $parts[] = trim($this->distrito->distrito);
+        }
+        return implode(', ', $parts);
+    }
 
     public function ruta()
     {

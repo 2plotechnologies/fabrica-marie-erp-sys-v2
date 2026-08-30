@@ -15,7 +15,7 @@ class ClienteController extends Controller
     public function index()
     {
         return response()->json(
-            Cliente::where('activo', true)->with('ruta')->get()
+            Cliente::where('activo', true)->with(['ruta', 'departamento', 'provincia', 'distrito'])->get()
         );
     }
 
@@ -26,6 +26,9 @@ class ClienteController extends Controller
             'razon_social' => 'required|string',
             'tipo_cliente' => 'nullable|in:TIENDA,DISTRIBUIDOR,MINORISTA,MAYORISTA,CONSUMIDOR',
             'direccion' => 'nullable|string',
+            'departamento_id' => 'nullable|integer',
+            'provincia_id' => 'nullable|integer',
+            'distrito_id' => 'nullable|integer',
             'telefono' => 'nullable|string',
             'ruta_id' => 'nullable|exists:rutas,id',
             'condicion_pago' => 'required|in:CONTADO,CREDITO',
@@ -47,20 +50,20 @@ class ClienteController extends Controller
             ]);
         }
 
-        return response()->json($cliente, 201);
+        return response()->json($cliente->load(['ruta', 'departamento', 'provincia', 'distrito']), 201);
     }
 
     public function show($id)
     {
         return response()->json(
-            Cliente::with(['ruta', 'rutas'])->findOrFail($id)
+            Cliente::with(['ruta', 'rutas', 'departamento', 'provincia', 'distrito'])->findOrFail($id)
         );
     }
 
     public function listaCRM()
     {
         // Excluir cualquier cliente varios.
-        $clientes = Cliente::with('ruta','interacciones.usuario','tareas.usuario')
+        $clientes = Cliente::with(['ruta', 'interacciones.usuario', 'tareas.usuario', 'departamento', 'provincia', 'distrito'])
             ->where('activo', true)
             ->excluirClientesVarios()
             ->get();
@@ -151,7 +154,7 @@ class ClienteController extends Controller
         $cliente = Cliente::findOrFail($id);
         $cliente->update($request->all());
 
-        return response()->json($cliente);
+        return response()->json($cliente->load(['ruta', 'departamento', 'provincia', 'distrito']));
     }
 
     public function destroy($id)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clienteService } from '@/services/clienteService';
+import { ubigeoService, Departamento, Provincia, Distrito } from '@/services/ubigeoService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,11 +33,22 @@ const NewClient = () => {
   const [selectedZona, setSelectedZona] = useState<string>('');
   const [formErrors, setFormErrors] = useState<any>({});
 
+  // 🔹 Estados para Ubigeo
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [provincias, setProvincias] = useState<Provincia[]>([]);
+  const [distritos, setDistritos] = useState<Distrito[]>([]);
+  const [loadingDepartamentos, setLoadingDepartamentos] = useState(true);
+  const [loadingProvincias, setLoadingProvincias] = useState(false);
+  const [loadingDistritos, setLoadingDistritos] = useState(false);
+
   const [formData, setFormData] = useState({
     codigo_cliente: '',
     razon_social: '',
     tipo_cliente: '',
     direccion: '',
+    departamento_id: '',
+    provincia_id: '',
+    distrito_id: '',
     telefono: '',
     ruta_id: '',
     condicion_pago: 'CONTADO',
@@ -49,6 +61,62 @@ const NewClient = () => {
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // 🔹 Cargar Departamentos al montar
+  useEffect(() => {
+    const fetchDepartamentos = async () => {
+      try {
+        setLoadingDepartamentos(true);
+        const data = await ubigeoService.getDepartamentos();
+        setDepartamentos(data || []);
+      } catch (error: any) {
+        console.error("Error al cargar departamentos:", error);
+      } finally {
+        setLoadingDepartamentos(false);
+      }
+    };
+    fetchDepartamentos();
+  }, []);
+
+  // 🔹 Manejo de cambio de departamento
+  const handleDepartamentoChange = async (depIdStr: string) => {
+    handleInputChange('departamento_id', depIdStr);
+    handleInputChange('provincia_id', '');
+    handleInputChange('distrito_id', '');
+    setProvincias([]);
+    setDistritos([]);
+
+    if (!depIdStr) return;
+
+    try {
+      setLoadingProvincias(true);
+      const data = await ubigeoService.getProvincias(Number(depIdStr));
+      setProvincias(data || []);
+    } catch (error: any) {
+      console.error("Error al cargar provincias:", error);
+    } finally {
+      setLoadingProvincias(false);
+    }
+  };
+
+  // 🔹 Manejo de cambio de provincia
+  const handleProvinciaChange = async (provIdStr: string) => {
+    handleInputChange('provincia_id', provIdStr);
+    handleInputChange('distrito_id', '');
+    setDistritos([]);
+
+    if (!provIdStr) return;
+
+    try {
+      setLoadingDistritos(true);
+      const data = await ubigeoService.getDistritos(Number(provIdStr));
+      setDistritos(data || []);
+    } catch (error: any) {
+      console.error("Error al cargar distritos:", error);
+    } finally {
+      setLoadingDistritos(false);
+    }
   };
 
   // 🔹 Extraer zonas únicas de las rutas
@@ -112,6 +180,9 @@ const NewClient = () => {
     try {
       const payload = {
         ...formData,
+        departamento_id: formData.departamento_id ? Number(formData.departamento_id) : null,
+        provincia_id: formData.provincia_id ? Number(formData.provincia_id) : null,
+        distrito_id: formData.distrito_id ? Number(formData.distrito_id) : null,
         ruta_id: formData.ruta_id ? Number(formData.ruta_id) : null,
         limite_credito:
           formData.condicion_pago === 'CREDITO'
@@ -263,11 +334,88 @@ const NewClient = () => {
                 <Label>Dirección</Label>
                 <Input
                   value={formData.direccion}
-                  placeholder="Ej: Calle San Martin 123 - Chilca - Huancayo"
+                  placeholder="Ej: Av. Los Pinos 123"
                   onChange={(e) =>
                     handleInputChange('direccion', e.target.value)
                   }
                 />
+              </div>
+
+              {/* 🔹 Selects de Departamento, Provincia y Distrito debajo de Dirección */}
+              <div className="space-y-2">
+                <Label>Departamento</Label>
+                <Select
+                  value={formData.departamento_id}
+                  onValueChange={handleDepartamentoChange}
+                  disabled={loadingDepartamentos}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingDepartamentos ? "Cargando..." : "Seleccionar departamento"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departamentos.map((dep) => (
+                      <SelectItem key={dep.idDepa} value={String(dep.idDepa)}>
+                        {dep.departamento}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Provincia</Label>
+                <Select
+                  value={formData.provincia_id}
+                  onValueChange={handleProvinciaChange}
+                  disabled={!formData.departamento_id || loadingProvincias}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !formData.departamento_id
+                          ? "Seleccione departamento primero"
+                          : loadingProvincias
+                          ? "Cargando provincias..."
+                          : "Seleccionar provincia"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provincias.map((prov) => (
+                      <SelectItem key={prov.idProv} value={String(prov.idProv)}>
+                        {prov.provincia}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Distrito</Label>
+                <Select
+                  value={formData.distrito_id}
+                  onValueChange={(v) => handleInputChange('distrito_id', v)}
+                  disabled={!formData.provincia_id || loadingDistritos}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !formData.provincia_id
+                          ? "Seleccione provincia primero"
+                          : loadingDistritos
+                          ? "Cargando distritos..."
+                          : "Seleccionar distrito"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {distritos.map((dist) => (
+                      <SelectItem key={dist.idDist} value={String(dist.idDist)}>
+                        {dist.distrito}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
             </CardContent>

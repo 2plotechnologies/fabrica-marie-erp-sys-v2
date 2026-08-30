@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\ProyeccionVentaController;
 use App\Http\Controllers\Api\ApiTokenController;
 use App\Http\Controllers\Api\RutaMapaController;
 use App\Http\Controllers\Api\ZonaController;
+use App\Http\Controllers\Api\UbigeoController;
 
 
 /*
@@ -179,6 +180,12 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::put('/{id}', [ClienteController::class, 'update']);
         Route::delete('/{id}', [ClienteController::class, 'destroy']);
         Route::put('/tareas/{id}/completar', [ClienteController::class, 'completeTask']);
+    });
+
+    Route::prefix('ubigeo')->group(function () {
+        Route::get('/departamentos', [UbigeoController::class, 'departamentos']);
+        Route::get('/provincias/{idDepa}', [UbigeoController::class, 'provincias']);
+        Route::get('/distritos/{idProv}', [UbigeoController::class, 'distritos']);
     });
 
     Route::prefix('rutas')

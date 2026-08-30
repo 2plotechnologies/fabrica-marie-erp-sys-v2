@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { clienteService } from '@/services/clienteService';
+import { formatDireccionCompleta } from '@/lib/ubigeo';
 import {
   Search,
   Phone,
@@ -338,7 +339,7 @@ const ClientsCRM = () => {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 text-muted-foreground pt-1 border-t border-border/50 text-[11px]">
-                    <div>📍 <strong className="text-foreground truncate">{client.direccion}</strong></div>
+                    <div>📍 <strong className="text-foreground truncate">{formatDireccionCompleta(client) || client.direccion}</strong></div>
                     <div>📞 <strong className="text-foreground">{client.phone}</strong></div>
                     <div>🗺️ <Badge variant="outline" className="text-[10px] py-0">{client.ruta?.nombre}</Badge></div>
                     <div>🗓️ Ult: <strong className="text-foreground">{formatShortDate(client.fecha_ultima_venta)}</strong></div>
@@ -401,7 +402,7 @@ const ClientsCRM = () => {
                     <TableCell className="whitespace-nowrap">
                       <div>
                         <p className="font-medium text-foreground">{client.razon_social}</p>
-                        <p className="text-sm text-muted-foreground">{client.direccion}</p>
+                        <p className="text-sm text-muted-foreground">{formatDireccionCompleta(client) || client.direccion}</p>
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
@@ -541,7 +542,7 @@ const ClientsCRM = () => {
                     )}
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{selectedClient.direccion}</span>
+                      <span>{formatDireccionCompleta(selectedClient) || selectedClient.direccion}</span>
                     </div>
                   </div>
                 </div>
