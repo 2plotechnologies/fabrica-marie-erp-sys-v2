@@ -9,6 +9,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { devolucionService } from '@/services/devolucionService';
@@ -42,6 +52,8 @@ const WarehouseReturns = () => {
   const [selectedDevolucion, setSelectedDevolucion] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [detailItems, setDetailItems] = useState<any[]>([]);
+  const [devolucionToDelete, setDevolucionToDelete] = useState<any | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const vendedorActual = vendedores.find(v => v.usuario_id === user?.id);
 
@@ -237,6 +249,29 @@ const WarehouseReturns = () => {
     }
   };
 
+  const canDeleteDevolucion = (dev: any) => {
+    if (!dev) return false;
+    return dev.estado === 'PENDIENTE' || dev.estado === 'RECHAZADA';
+  };
+
+  const handleDeleteDevolucion = async (id: number) => {
+    try {
+      await devolucionService.delete(id);
+      toast.success('Devolución eliminada correctamente');
+      if (isDetailOpen && selectedDevolucion?.id === id) {
+        setIsDetailOpen(false);
+        setSelectedDevolucion(null);
+      }
+      await fetchDevoluciones();
+    } catch (error) {
+      console.log('ERROR COMPLETO:', error);
+      toast.error(formatErrorMessage('Error al eliminar devolución', error, 'No se pudo eliminar la devolución.'));
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDevolucionToDelete(null);
+    }
+  };
+
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case 'PENDIENTE': return <Badge variant="outline" className="border-warning text-warning"><Clock className="h-3 w-3 mr-1" />Pendiente</Badge>;
@@ -347,7 +382,20 @@ const WarehouseReturns = () => {
                   </div>
                 )}
 
-                <div className="flex justify-end pt-1 border-t border-border/50">
+                <div className="flex justify-end gap-2 pt-1 border-t border-border/50">
+                  {canDeleteDevolucion(d) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs font-medium gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => {
+                        setDevolucionToDelete(d);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1" onClick={() => handleViewDetail(d)}>
                     <Eye className="h-3.5 w-3.5" /> Ver Detalle
                   </Button>
@@ -371,7 +419,27 @@ const WarehouseReturns = () => {
                   <TableCell className="whitespace-nowrap">{getTipoBadge(d.tipo)}</TableCell>
                   <TableCell className="max-w-[200px] truncate">{d.motivo || '-'}</TableCell>
                   <TableCell className="whitespace-nowrap">{getEstadoBadge(d.estado)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap"><Button variant="ghost" size="icon" onClick={() => handleViewDetail(d)}><Eye className="h-4 w-4" /></Button></TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleViewDetail(d)} title="Ver Detalle">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {canDeleteDevolucion(d) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Eliminar Devolución"
+                          onClick={() => {
+                            setDevolucionToDelete(d);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -474,7 +542,7 @@ const WarehouseReturns = () => {
                     {productos.map(p => {
                       const stockDisp = getStockDisponible(p);
                       return (
-                        <SelectItem key={p.id} value={String(p.id)}>
+                        <SelectItem key={p.id} value={String(p.id)} className="whitespace-normal break-words text-xs sm:text-sm py-2">
                           {p.nombre} - {p.marca} ({p.presentacion}){stockDisp !== Infinity ? ` - Stock disponible: ${stockDisp}` : ''}
                         </SelectItem>
                       );
@@ -576,10 +644,28 @@ const WarehouseReturns = () => {
                     </TableBody>
                   </Table>
                 </div>
-                {selectedDevolucion.estado === 'PENDIENTE' && !isVendedor && (
-                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 border-t">
-                    <Button variant="outline" className="gap-1 text-destructive w-full sm:w-auto" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'RECHAZADA')}><XCircle className="h-4 w-4" />Rechazar</Button>
-                    <Button className="gap-1 w-full sm:w-auto" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'ACEPTADA')}><CheckCircle className="h-4 w-4" />Recibir en Almacén</Button>
+                {(canDeleteDevolucion(selectedDevolucion) || (selectedDevolucion.estado === 'PENDIENTE' && !isVendedor)) && (
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t">
+                    <div>
+                      {canDeleteDevolucion(selectedDevolucion) && (
+                        <Button
+                          variant="outline"
+                          className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10 w-full sm:w-auto"
+                          onClick={() => {
+                            setDevolucionToDelete(selectedDevolucion);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" /> Eliminar Devolución
+                        </Button>
+                      )}
+                    </div>
+                    {selectedDevolucion.estado === 'PENDIENTE' && !isVendedor && (
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <Button variant="outline" className="gap-1 text-destructive w-full sm:w-auto" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'RECHAZADA')}><XCircle className="h-4 w-4" />Rechazar</Button>
+                        <Button className="gap-1 w-full sm:w-auto" onClick={() => handleUpdateEstado(selectedDevolucion.id, 'ACEPTADA')}><CheckCircle className="h-4 w-4" />Recibir en Almacén</Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -587,6 +673,29 @@ const WarehouseReturns = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Delete Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar devolución?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente la devolución
+              {devolucionToDelete && devolucionToDelete.fecha ? ` del ${format(new Date(devolucionToDelete.fecha), 'dd/MM/yyyy')}` : ''}.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDevolucionToDelete(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => devolucionToDelete && handleDeleteDevolucion(devolucionToDelete.id)}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

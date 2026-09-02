@@ -14,15 +14,14 @@ class CajaController extends Controller
     public function index()
     {
         return Caja::where('usuario_id', auth()->id())
-            ->where('fecha', now()->toDateString())
+            ->where('estado', 'ABIERTA')
             ->first();
     }
 
     public function abrir(Request $request)
     {
         //Si hay una caja abierta, no permitir abrir otra
-        $caja = Caja::where('fecha', now()->toDateString())
-            ->where('estado', 'ABIERTA')
+        $caja = Caja::where('estado', 'ABIERTA')
             ->first();
         if ($caja) {
             return response()->json([
@@ -50,7 +49,6 @@ class CajaController extends Controller
         return Caja::with(['usuario', 'movimientos' => function ($query) {
             $query->with('conciliador')->orderBy('created_at', 'desc');
         }])
-            ->whereDate('fecha', now())
             ->where('estado', 'ABIERTA')
             ->latest('id')
             ->first();
@@ -209,25 +207,18 @@ class CajaController extends Controller
 
     public function cajasSinCerrar()
     {
-        $cajas = Caja::where('estado', 'ABIERTA')
-            ->where('fecha', '<', now()->toDateString())
-            ->get();
-
         return response()->json([
-            'cantidad' => $cajas->count(),
-            'cajas' => $cajas
+            'cantidad' => 0,
+            'cajas' => []
         ]);
     }
 
     public function cerrarAntiguas(CajaService $service)
     {
-        return DB::transaction(function () use ($service) {
-            $cajasCerradas = $service->cerrarCajasAntiguas();
-            return response()->json([
-                'message' => 'Cajas anteriores cerradas correctamente',
-                'cantidad' => count($cajasCerradas),
-                'cajas' => $cajasCerradas
-            ]);
-        });
+        return response()->json([
+            'message' => 'No aplica',
+            'cantidad' => 0,
+            'cajas' => []
+        ]);
     }
 }

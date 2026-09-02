@@ -50,7 +50,6 @@ class AbonoController extends Controller
 
                 $cuenta = CuentaPorCobrar::findOrFail($cuenta_id);
                 $caja = Caja::where('estado', 'ABIERTA')
-                    ->where('fecha', now()->format('Y-m-d'))
                     ->first();
 
                 $totalAbonado = 0;
@@ -127,7 +126,6 @@ class AbonoController extends Controller
             $cuenta = CuentaPorCobrar::findOrFail($cuenta_id);
 
             $caja = Caja::where('estado', 'ABIERTA')
-                ->where('fecha', now()->format('Y-m-d'))
                 ->first();
 
             $referencia = $request->referencia;

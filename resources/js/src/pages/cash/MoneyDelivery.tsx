@@ -368,7 +368,7 @@ const MoneyDelivery = () => {
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-1">Formatos soportados: JPG, PNG, PDF (Max 2MB).</p>
+                                                <p className="text-xs text-muted-foreground mt-1">Formatos soportados: JPG, PNG, PDF (Max 4MB).</p>
                                             </div>
                                         </div>
                                     </div>

@@ -155,15 +155,14 @@ class EntregaDineroController
 
             'items.*.metodo_pago' => 'required|string',
             'items.*.monto' => 'required|numeric|min:0',
-            'items.*.comprobante' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048'
+            'items.*.comprobante' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:4080'
         ]);
 
         $targetUser = \App\Models\Usuario::with('roles')->find($request->usuario_id);
         $isVendedor = $targetUser && $targetUser->roles()->where('nombre', 'VENDEDOR')->exists();
 
         if ($isVendedor) {
-            $cajaAbierta = \App\Models\Caja::whereDate('fecha', \Carbon\Carbon::today())
-                ->where('estado', 'ABIERTA')
+            $cajaAbierta = \App\Models\Caja::where('estado', 'ABIERTA')
                 ->first();
 
             if (!$cajaAbierta) {
@@ -255,7 +254,7 @@ class EntregaDineroController
                 $observacionSistema = '';
                 $entrega->load('usuario.roles', 'items');
                 
-                $cajaAbierta = \App\Models\Caja::whereDate('fecha', now())->where('estado', 'ABIERTA')->first();
+                $cajaAbierta = \App\Models\Caja::where('estado', 'ABIERTA')->first();
 
                 // Calcular el total en efectivo de la entrega.
                 $montoEfectivo = 0;

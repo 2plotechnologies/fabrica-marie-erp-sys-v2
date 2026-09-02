@@ -377,8 +377,7 @@ class ResumenDiarioController extends Controller
         ]);
 
         // Verificar que exista una caja abierta para registrar el gasto
-        $cajaAbierta = \App\Models\Caja::whereDate('fecha', \Carbon\Carbon::today())
-            ->where('estado', 'ABIERTA')
+        $cajaAbierta = \App\Models\Caja::where('estado', 'ABIERTA')
             ->first();
 
         if (!$cajaAbierta) {

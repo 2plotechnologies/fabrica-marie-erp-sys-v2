@@ -67,5 +67,10 @@ export const devolucionService = {
   async updateEstado(id: number, estado: string) {
     const response = await api.put(`/inventario/devoluciones/estado/${id}`, { estado });
     return response.data;
+  },
+  //Eliminar devolucion
+  async delete(id: number) {
+    const response = await api.delete(`/inventario/devoluciones/${id}`);
+    return response.data;
   }
 };

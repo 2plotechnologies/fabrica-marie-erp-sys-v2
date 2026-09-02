@@ -10,8 +10,7 @@ class CajaAbierta
 {
     public function handle(Request $request, Closure $next)
     {
-        $caja = Caja::where('fecha', now()->toDateString())
-            ->where('estado', 'ABIERTA')
+        $caja = Caja::where('estado', 'ABIERTA')
             ->first();
 
         if (!$caja) {

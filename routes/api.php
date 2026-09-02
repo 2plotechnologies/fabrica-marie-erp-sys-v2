@@ -118,6 +118,7 @@ Route::middleware(['auth:sanctum', 'user.active'])->group(function () {
         Route::get('/devoluciones/{id}', [DevolucionController::class, 'show']);
         Route::post('/devoluciones', [DevolucionController::class, 'store']);
         Route::put('/devoluciones/estado/{id}', [DevolucionController::class, 'updateEstado']);
+        Route::delete('/devoluciones/{id}', [DevolucionController::class, 'destroy']);
 
         // Kardex.
         Route::get('/kardex/{productoId}',

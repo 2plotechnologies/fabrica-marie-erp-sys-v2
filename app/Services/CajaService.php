@@ -71,14 +71,11 @@ class CajaService
 
     private static function obtenerCajaAbierta()
     {
-        $hoy = Carbon::today();
-
-        $caja = Caja::whereDate('fecha', $hoy)
-            ->where('estado', 'ABIERTA')
+        $caja = Caja::where('estado', 'ABIERTA')
             ->first();
 
         if (!$caja) {
-            throw new \Exception('No hay una caja ABIERTA para el día de hoy.');
+            throw new \Exception('No hay una caja ABIERTA.');
         }
 
         return $caja;
@@ -164,7 +161,6 @@ class CajaService
     {
         $cajasAbiertas = Caja::with('movimientos')
             ->where('estado', 'ABIERTA')
-            ->where('fecha', '<', now()->toDateString())
             ->get();
 
         foreach ($cajasAbiertas as $caja) {

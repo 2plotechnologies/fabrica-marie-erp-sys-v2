@@ -607,40 +607,40 @@ const SalesHistory = () => {
                           <Eye className="h-3.5 w-3.5" /> Ver Detalle
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+                      <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-lg p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
                         <DialogHeader>
                           <DialogTitle className="text-lg">Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
-                          <DialogDescription className="text-xs">
+                          <DialogDescription className="text-xs break-words">
                             {sale.cliente?.razon_social} - {format(sale.fecha, "dd/MM/yyyy HH:mm")}
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 pt-2">
-                          <div className="grid grid-cols-2 gap-3 pb-3 border-b text-xs sm:text-sm">
-                            <div>
+                        <div className="space-y-4 pt-2 min-w-0">
+                          <div className="grid grid-cols-2 gap-3 pb-3 border-b text-xs sm:text-sm min-w-0">
+                            <div className="min-w-0">
                               <p className="text-xs text-muted-foreground">Tipo de Pago</p>
                               <p className="font-semibold">{sale.tipo_pago === 'CONTADO' ? 'Contado' : 'Crédito'}</p>
                             </div>
                             {sale.tipo_pago === 'CREDITO' && (
-                              <div>
+                              <div className="min-w-0">
                                 <p className="text-xs text-muted-foreground">Nota de Pedido</p>
-                                <p className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                                <p className="font-mono font-bold text-amber-600 dark:text-amber-400 truncate">
                                   {sale.nota_pedido || '-'}
                                 </p>
                               </div>
                             )}
                           </div>
                           {sale.items.map((item: any) => (
-                            <div key={item.id} className="p-2.5 flex justify-between items-center">
-                              <div className="min-w-0 pr-2">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-medium truncate">{item.producto?.nombre}</span>
+                            <div key={item.id} className="p-2.5 flex justify-between items-center w-full min-w-0 gap-2">
+                              <div className="min-w-0 flex-1 pr-1">
+                                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                  <span className="font-medium text-xs sm:text-sm break-words min-w-0">{item.producto?.nombre}</span>
                                   {Boolean(item.es_bonificacion) && (
-                                    <Badge variant="outline" className="text-[10px] py-0 bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                    <Badge variant="outline" className="text-[10px] py-0 bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 shrink-0">
                                       BONIFICACIÓN
                                     </Badge>
                                   )}
                                   {Boolean(item.es_degustacion) && (
-                                    <Badge variant="outline" className="text-[10px] py-0 bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200">
+                                    <Badge variant="outline" className="text-[10px] py-0 bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200 shrink-0">
                                       DEGUSTACIÓN
                                     </Badge>
                                   )}
@@ -649,10 +649,10 @@ const SalesHistory = () => {
                                   {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
                                 </p>
                               </div>
-                              <p className="font-semibold shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
+                              <p className="font-semibold text-xs sm:text-sm shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
                             </div>
                           ))}
-                          <div className="space-y-2 pt-3 border-t text-sm">
+                          <div className="space-y-2 pt-3 border-t text-sm min-w-0">
                             {sale.descuento > 0 && (
                               <div className="flex justify-between text-red-500 text-xs sm:text-sm">
                                 <span>Descuento</span>
@@ -690,19 +690,19 @@ const SalesHistory = () => {
                               <>
                                 <Button
                                   onClick={() => handleOpenCanjeModal(sale)}
-                                  className="w-full mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2"
+                                  className="w-full mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2 text-xs sm:text-sm"
                                   size="sm"
                                 >
-                                  <RefreshCw className="h-4 w-4" />
-                                  Canje por Producto Defectuoso
+                                  <RefreshCw className="h-4 w-4 shrink-0" />
+                                  <span className="truncate">Canje por Producto Defectuoso</span>
                                 </Button>
                                 <Button
                                   onClick={() => handleCancelSale(sale.id)}
-                                  className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2"
+                                  className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2 text-xs sm:text-sm"
                                   size="sm"
                                 >
-                                  <X className="h-4 w-4" />
-                                  Anular Venta
+                                  <X className="h-4 w-4 shrink-0" />
+                                  <span className="truncate">Anular Venta</span>
                                 </Button>
                               </>
                             )}
@@ -792,61 +792,61 @@ const SalesHistory = () => {
                             <Eye className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-lg p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
+                        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-lg p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
                           <DialogHeader>
-                            <DialogTitle>Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
-                            <DialogDescription>
+                            <DialogTitle className="text-lg">Detalle de Venta #{sale.codigo?.padStart(6, '0')}</DialogTitle>
+                            <DialogDescription className="text-xs break-words">
                               {sale.cliente?.razon_social} - {format(sale.fecha, "dd/MM/yyyy HH:mm")}
                             </DialogDescription>
                           </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 pb-4 border-b text-sm">
-                              <div>
+                          <div className="space-y-4 pt-2 min-w-0">
+                            <div className="grid grid-cols-2 gap-3 pb-3 border-b text-xs sm:text-sm min-w-0">
+                              <div className="min-w-0">
                                 <p className="text-xs text-muted-foreground">Tipo de Pago</p>
                                 <p className="font-semibold">{sale.tipo_pago === 'CONTADO' ? 'Contado' : 'Crédito'}</p>
                               </div>
                               {sale.tipo_pago === 'CREDITO' && (
-                                <div>
+                                <div className="min-w-0">
                                   <p className="text-xs text-muted-foreground">Nota de Pedido</p>
-                                  <p className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                                  <p className="font-mono font-bold text-amber-600 dark:text-amber-400 truncate">
                                     {sale.nota_pedido || '-'}
                                   </p>
                                 </div>
                               )}
                             </div>
-                            <div className="border rounded-lg divide-y max-h-60 overflow-y-auto">
+                            <div className="border rounded-lg divide-y max-h-60 overflow-y-auto min-w-0">
                               {sale.items.map((item) => (
-                                <div key={item.id} className="p-3 flex justify-between items-center">
-                                  <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="font-medium">{item.producto?.nombre}</span>
+                                <div key={item.id} className="p-2.5 flex justify-between items-center w-full min-w-0 gap-2">
+                                  <div className="min-w-0 flex-1 pr-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                      <span className="font-medium text-xs sm:text-sm break-words min-w-0">{item.producto?.nombre}</span>
                                       {Boolean(item.es_bonificacion) && (
-                                        <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200">
+                                        <Badge variant="outline" className="text-[10px] py-0 bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 shrink-0">
                                           BONIFICACIÓN
                                         </Badge>
                                       )}
                                       {Boolean(item.es_degustacion) && (
-                                        <Badge variant="outline" className="text-xs bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200">
+                                        <Badge variant="outline" className="text-[10px] py-0 bg-pink-500/10 text-pink-700 dark:text-pink-300 border-pink-200 shrink-0">
                                           DEGUSTACIÓN
                                         </Badge>
                                       )}
                                     </div>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                       {Number(item.cantidad).toFixed(2)} x S/ {Number(item.precio_unitario).toFixed(2)}
                                     </p>
                                   </div>
-                                  <p className="font-semibold">S/ {Number(item.subtotal).toFixed(2)}</p>
+                                  <p className="font-semibold text-xs sm:text-sm shrink-0">S/ {Number(item.subtotal).toFixed(2)}</p>
                                 </div>
                               ))}
                             </div>
-                            <div className="space-y-2 pt-4 border-t">
+                            <div className="space-y-2 pt-3 border-t text-sm min-w-0">
                               {sale.descuento > 0 && (
-                                <div className="flex justify-between text-red-500">
+                                <div className="flex justify-between text-red-500 text-xs sm:text-sm">
                                   <span>Descuento</span>
                                   <span>- S/ {Number(sale.descuento).toFixed(2)}</span>
                                 </div>
                               )}
-                              <div className="flex justify-between text-lg font-bold">
+                              <div className="flex justify-between text-base sm:text-lg font-bold">
                                 <span>Total</span>
                                 <span>S/ {Number(sale.total_neto).toFixed(2)}</span>
                               </div>
@@ -854,7 +854,7 @@ const SalesHistory = () => {
                               {sale.estado === "BORRADOR" && (
                                 <Button
                                   onClick={() => handleConfirmSale(sale.id)}
-                                  className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-medium"
+                                  className="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-medium"
                                   size="sm"
                                 >
                                   <Check className="h-4 w-4 mr-2" />
@@ -865,7 +865,7 @@ const SalesHistory = () => {
                               {(sale.estado === "BORRADOR") && (
                                 <Button
                                   onClick={() => handleDeleteSale(sale.id)}
-                                  className="w-full mt-4 bg-red-500 hover:bg-red-600 text-white font-medium"
+                                  className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium"
                                   size="sm"
                                 >
                                   <Trash className="h-4 w-4 mr-2" />
@@ -877,25 +877,22 @@ const SalesHistory = () => {
                                 <>
                                   <Button
                                     onClick={() => handleOpenCanjeModal(sale)}
-                                    className="w-full mt-4 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2"
+                                    className="w-full mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium gap-2 text-xs sm:text-sm"
                                     size="sm"
                                   >
-                                    <RefreshCw className="h-4 w-4" />
-                                    Canje por Producto Defectuoso
+                                    <RefreshCw className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">Canje por Producto Defectuoso</span>
                                   </Button>
                                   <Button
                                     onClick={() => handleCancelSale(sale.id)}
-                                    className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2"
+                                    className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white font-medium gap-2 text-xs sm:text-sm"
                                     size="sm"
                                   >
-                                    <X className="h-4 w-4" />
-                                    Anular Venta
+                                    <X className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">Anular Venta</span>
                                   </Button>
                                 </>
                               )}
-
-                              <div className="flex justify-between text-muted-foreground">
-                              </div>
                             </div>
                           </div>
                         </DialogContent>
@@ -932,7 +929,7 @@ const SalesHistory = () => {
 
       {/* Modal de Canje por Productos Defectuosos */}
       <Dialog open={isCanjeModalOpen} onOpenChange={setIsCanjeModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-2xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
               <RefreshCw className="h-5 w-5 text-amber-500" />

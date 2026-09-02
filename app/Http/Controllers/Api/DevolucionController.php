@@ -253,4 +253,36 @@ class DevolucionController
             ]);
         });
     }
+
+    public function destroy($id)
+    {
+        $user = auth()->user();
+        $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
+        $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
+
+        $devolucion = Devolucion::findOrFail($id);
+
+        if ($isVendedor) {
+            if (!$vendedor || $devolucion->vendedor_id !== $vendedor->id) {
+                return response()->json([
+                    'message' => 'No tienes permiso para eliminar esta devolución.'
+                ], 403);
+            }
+        }
+
+        if (!in_array($devolucion->estado, ['PENDIENTE', 'RECHAZADA'])) {
+            return response()->json([
+                'message' => 'Solo se pueden eliminar devoluciones pendientes o rechazadas.'
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($devolucion) {
+            $devolucion->items()->delete();
+            $devolucion->delete();
+
+            return response()->json([
+                'message' => 'Devolución eliminada correctamente.'
+            ]);
+        });
+    }
 }
