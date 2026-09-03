@@ -44,6 +44,8 @@ export interface Client {
   id: string;
   codigo: string;
   razon_social: string;
+  nombre_comercial?: string | null;
+  persona_juridica?: string | null;
   address: string;
   phone: string;
   routeId?: string;

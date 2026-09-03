@@ -108,6 +108,8 @@ export const ClientSelector = ({
         const lowerTerm = searchTerm.toLowerCase();
         const matchSearch =
           c.razon_social?.toLowerCase().includes(lowerTerm) ||
+          c.nombre_comercial?.toLowerCase().includes(lowerTerm) ||
+          c.persona_juridica?.toLowerCase().includes(lowerTerm) ||
           c.codigo?.toLowerCase().includes(lowerTerm) ||
           c.codigo_cliente?.toLowerCase().includes(lowerTerm) ||
           c.documento?.toLowerCase().includes(lowerTerm);
@@ -304,6 +306,18 @@ export const ClientSelector = ({
             <span className="text-muted-foreground shrink-0">Código:</span>
             <span className="font-medium truncate ml-2">{selectedClientData.codigo_cliente || selectedClientData.codigo}</span>
           </div>
+          {selectedClientData.nombre_comercial && String(selectedClientData.nombre_comercial).trim() !== '' && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground shrink-0">Nombre comercial:</span>
+              <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">{selectedClientData.nombre_comercial}</span>
+            </div>
+          )}
+          {selectedClientData.persona_juridica && String(selectedClientData.persona_juridica).trim() !== '' && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground shrink-0">Persona jurídica:</span>
+              <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">{selectedClientData.persona_juridica}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground shrink-0">Zona / Ruta:</span>
             <span className="font-medium text-right max-w-[160px] sm:max-w-[250px] truncate ml-2">

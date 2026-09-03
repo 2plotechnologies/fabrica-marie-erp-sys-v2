@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ReceiptText, Trash2, Lock, AlertTriangle } from 'lucide-react';
+import { Plus, ReceiptText, Trash2, Lock, Truck, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import { useRole } from '@/contexts/RoleContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { gastoService } from '@/services/gastoService';
+import { salidaService } from '@/services/salidaService';
 import { formatErrorMessage } from '@/lib/axios-error';
 
 const ExpenseList = () => {
@@ -44,6 +45,7 @@ const ExpenseList = () => {
 
   const [gastos, setGastos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
+  const [salidas, setSalidas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
@@ -60,22 +62,25 @@ const ExpenseList = () => {
   const [formTipo, setFormTipo] = useState('');
   const [formFecha, setFormFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [gastosData, vendedoresData, salidasData] = await Promise.all([
+        gastoService.getGastos(),
+        gastoService.getVendedores(),
+        salidaService.getAll().catch(() => []),
+      ]);
+      setGastos(gastosData);
+      setVendedores(vendedoresData);
+      setSalidas(salidasData);
+    } catch (error: any) {
+      toast.error(formatErrorMessage('Error al cargar datos', error, 'No se pudieron cargar los datos.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        const [gastosData, vendedoresData] = await Promise.all([
-          gastoService.getGastos(),
-          gastoService.getVendedores(),
-        ]);
-        setGastos(gastosData);
-        setVendedores(vendedoresData);
-      } catch (error: any) {
-        toast.error(formatErrorMessage('Error al cargar datos', error, 'No se pudieron cargar los datos.'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadData();
   }, []);
 
@@ -112,8 +117,7 @@ const ExpenseList = () => {
         fecha: formFecha,
       });
 
-      const gastosData = await gastoService.getGastos();
-      setGastos(gastosData);
+      await loadData();
       resetForm();
       setDialogOpen(false);
       toast.success('Gasto registrado con éxito');
@@ -138,8 +142,7 @@ const ExpenseList = () => {
       setIsDeleting(true);
       await gastoService.deleteGasto(deleteConfirmGasto.id);
       toast.success('Gasto eliminado con éxito');
-      const gastosData = await gastoService.getGastos();
-      setGastos(gastosData);
+      await loadData();
       setDeleteConfirmGasto(null);
     } catch (error: any) {
       toast.error(formatErrorMessage('Error al eliminar gasto', error, 'Solo se pueden eliminar gastos en estado PENDIENTE.'));
@@ -149,12 +152,78 @@ const ExpenseList = () => {
   };
 
   const itemsPerPage = 6;
-  const [page, setPage] = useState(1);
-  const totalPages = Math.ceil(gastos.length / itemsPerPage);
 
-  const paginatedGastos = gastos.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
+  // Paginación general para vista unificada (No Vendedores: Admin, Gerente, etc.).
+  const [pageAll, setPageAll] = useState(1);
+  const totalPagesAll = Math.ceil(gastos.length / itemsPerPage) || 1;
+  const paginatedGastosAll = gastos.slice(
+    (pageAll - 1) * itemsPerPage,
+    pageAll * itemsPerPage
+  );
+
+  // Mapa de salidas exclusivamente en estado EN_RUTA por vendedor_id.
+  const salidasEnRutaMap = useMemo(() => {
+    const map = new Map<number, any>();
+    if (Array.isArray(salidas)) {
+      salidas.forEach(s => {
+        const estadoUpper = (s.estado || '').toUpperCase();
+        if (estadoUpper === 'EN_RUTA' || estadoUpper === 'EN RUTA') {
+          if (!map.has(s.vendedor_id)) {
+            map.set(s.vendedor_id, s);
+          }
+        }
+      });
+    }
+    return map;
+  }, [salidas]);
+
+  // Clasificación de gastos (Exclusivo VENDEDOR): Gastos de la salida en ruta actual vs Gastos anteriores
+  const { gastosSalidaActual, gastosAnteriores } = useMemo(() => {
+    const enRuta: any[] = [];
+    const anteriores: any[] = [];
+
+    gastos.forEach(gasto => {
+      const vendedorId = gasto.vendedor_id;
+      const activeSalida = salidasEnRutaMap.get(vendedorId);
+
+      if (activeSalida) {
+        const gastoFecha = gasto.fecha;
+        const salidaFecha = activeSalida.fecha;
+        const resumenSalida = gasto.resumen_diario?.salida;
+        const resumenSalidaEstado = resumenSalida?.estado ? String(resumenSalida.estado).toUpperCase() : null;
+
+        const esDeSalidaActual =
+          gasto.resumen_diario?.salida_id === activeSalida.id ||
+          (gastoFecha >= salidaFecha && (!resumenSalidaEstado || resumenSalidaEstado === 'EN_RUTA' || resumenSalidaEstado === 'EN RUTA'));
+
+        if (esDeSalidaActual) {
+          enRuta.push(gasto);
+        } else {
+          anteriores.push(gasto);
+        }
+      } else {
+        anteriores.push(gasto);
+      }
+    });
+
+    return { gastosSalidaActual: enRuta, gastosAnteriores: anteriores };
+  }, [gastos, salidasEnRutaMap]);
+
+  const totalSalidaActual = useMemo(() => {
+    return gastosSalidaActual.reduce((sum, g) => sum + Number(g.monto || 0), 0);
+  }, [gastosSalidaActual]);
+
+  const totalGastosAnteriores = useMemo(() => {
+    return gastosAnteriores.reduce((sum, g) => sum + Number(g.monto || 0), 0);
+  }, [gastosAnteriores]);
+
+  // Paginación para Gastos Anteriores en vista vendedor
+  const [pageAnteriores, setPageAnteriores] = useState(1);
+  const totalPagesAnteriores = Math.ceil(gastosAnteriores.length / itemsPerPage) || 1;
+
+  const paginatedGastosAnteriores = gastosAnteriores.slice(
+    (pageAnteriores - 1) * itemsPerPage,
+    pageAnteriores * itemsPerPage
   );
 
   return (
@@ -275,94 +344,310 @@ const ExpenseList = () => {
         </Dialog>
       </div>
 
-      <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>Vendedor</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Tipo Comprobante</TableHead>
-              <TableHead>Comprobante</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      {!isVendedor ? (
+        /* VISTA UNIFICADA PARA ADMINISTRADORES / GERENTES / OTROS ROLES */
+        <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  Cargando...
-                </TableCell>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Vendedor</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Tipo Comprobante</TableHead>
+                <TableHead>Comprobante</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
-            ) : gastos.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  <ReceiptText className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  No hay gastos registrados
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedGastos.map((g) => (
-                <TableRow key={g.id}>
-                  <TableCell className="font-medium">
-                    {format(new Date(g.fecha + 'T00:00:00'), 'dd/MM/yyyy')}
-                  </TableCell>
-                  <TableCell>{g.vendedor?.usuario?.nombre ?? '—'}</TableCell>
-                  <TableCell>{g.tipo}</TableCell>
-                  <TableCell>{g.tipo_comprobante || 'Otro/Ninguno'}</TableCell>
-                  <TableCell>{g.comprobante || '—'}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    S/ {Number(g.monto).toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={g.estado === 'APROBADO' ? 'default' : g.estado === 'RECHAZADO' ? 'destructive' : 'secondary'}>
-                      {g.estado || 'PENDIENTE'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {(!g.estado || g.estado === 'PENDIENTE') ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteConfirmGasto(g)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Eliminar
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground italic">No eliminable</span>
-                    )}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    Cargando...
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        {totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-4">
-            <Button
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Anterior
-            </Button>
+              ) : gastos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <ReceiptText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    No hay gastos registrados
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedGastosAll.map((g) => (
+                  <TableRow key={g.id}>
+                    <TableCell className="font-medium">
+                      {format(new Date(g.fecha + 'T00:00:00'), 'dd/MM/yyyy')}
+                    </TableCell>
+                    <TableCell>{g.vendedor?.usuario?.nombre ?? '—'}</TableCell>
+                    <TableCell>{g.tipo}</TableCell>
+                    <TableCell>{g.tipo_comprobante || 'Otro/Ninguno'}</TableCell>
+                    <TableCell>{g.comprobante || '—'}</TableCell>
+                    <TableCell className="text-right font-semibold">
+                      S/ {Number(g.monto).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={g.estado === 'APROBADO' ? 'default' : g.estado === 'RECHAZADO' ? 'destructive' : 'secondary'}>
+                        {g.estado || 'PENDIENTE'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(!g.estado || g.estado === 'PENDIENTE') ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteConfirmGasto(g)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">No eliminable</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          {totalPagesAll > 1 && (
+            <div className="flex justify-center gap-2 p-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pageAll === 1}
+                onClick={() => setPageAll(pageAll - 1)}
+              >
+                Anterior
+              </Button>
 
-            <span className="px-3 py-2 text-sm">
-              Página {page} de {totalPages}
-            </span>
+              <span className="px-3 py-1 text-sm flex items-center">
+                Página {pageAll} de {totalPagesAll}
+              </span>
 
-            <Button
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              Siguiente
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pageAll === totalPagesAll}
+                onClick={() => setPageAll(pageAll + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* VISTA SEPARADA EXCLUSIVA PARA VENDEDORES */
+        <div className="space-y-6">
+          {/* SECCIÓN 1: Gastos de la salida en ruta actual */}
+          <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up space-y-0">
+            <div className="p-4 sm:p-5 border-b bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-semibold">
+                  <Truck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold font-display flex items-center gap-2">
+                    Gastos de la salida en ruta actual
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Gastos registrados durante la salida en ruta activa
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-xs px-3 py-1 font-semibold">
+                  {gastosSalidaActual.length} {gastosSalidaActual.length === 1 ? 'gasto' : 'gastos'} • Total: S/ {totalSalidaActual.toFixed(2)}
+                </Badge>
+              </div>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Tipo Comprobante</TableHead>
+                  <TableHead>Comprobante</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Cargando...
+                    </TableCell>
+                  </TableRow>
+                ) : gastosSalidaActual.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <ReceiptText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      No hay gastos registrados en la salida en ruta actual
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  gastosSalidaActual.map((g) => (
+                    <TableRow key={g.id}>
+                      <TableCell className="font-medium">
+                        {format(new Date(g.fecha + 'T00:00:00'), 'dd/MM/yyyy')}
+                      </TableCell>
+                      <TableCell>{g.vendedor?.usuario?.nombre ?? '—'}</TableCell>
+                      <TableCell>{g.tipo}</TableCell>
+                      <TableCell>{g.tipo_comprobante || 'Otro/Ninguno'}</TableCell>
+                      <TableCell>{g.comprobante || '—'}</TableCell>
+                      <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                        S/ {Number(g.monto).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={g.estado === 'APROBADO' ? 'default' : g.estado === 'RECHAZADO' ? 'destructive' : 'secondary'}>
+                          {g.estado || 'PENDIENTE'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(!g.estado || g.estado === 'PENDIENTE') ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteConfirmGasto(g)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Eliminar
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">No eliminable</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        )}
-      </div>
+
+          {/* SECCIÓN 2: Gastos anteriores */}
+          <div className="bg-card rounded-xl border shadow-card overflow-hidden animate-slide-up space-y-0">
+            <div className="p-4 sm:p-5 border-b bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-secondary text-secondary-foreground flex items-center justify-center font-semibold">
+                  <History className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold font-display flex items-center gap-2">
+                    Gastos anteriores
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Histórico de gastos de salidas finalizadas o previas
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Badge variant="secondary" className="text-xs px-3 py-1 font-semibold">
+                  {gastosAnteriores.length} {gastosAnteriores.length === 1 ? 'gasto' : 'gastos'} • Total: S/ {totalGastosAnteriores.toFixed(2)}
+                </Badge>
+              </div>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Tipo Comprobante</TableHead>
+                  <TableHead>Comprobante</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Cargando...
+                    </TableCell>
+                  </TableRow>
+                ) : gastosAnteriores.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <ReceiptText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      No hay gastos anteriores registrados
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedGastosAnteriores.map((g) => (
+                    <TableRow key={g.id}>
+                      <TableCell className="font-medium">
+                        {format(new Date(g.fecha + 'T00:00:00'), 'dd/MM/yyyy')}
+                      </TableCell>
+                      <TableCell>{g.vendedor?.usuario?.nombre ?? '—'}</TableCell>
+                      <TableCell>{g.tipo}</TableCell>
+                      <TableCell>{g.tipo_comprobante || 'Otro/Ninguno'}</TableCell>
+                      <TableCell>{g.comprobante || '—'}</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        S/ {Number(g.monto).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={g.estado === 'APROBADO' ? 'default' : g.estado === 'RECHAZADO' ? 'destructive' : 'secondary'}>
+                          {g.estado || 'PENDIENTE'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(!g.estado || g.estado === 'PENDIENTE') ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteConfirmGasto(g)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Eliminar
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">No eliminable</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            {totalPagesAnteriores > 1 && (
+              <div className="flex justify-center gap-2 p-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pageAnteriores === 1}
+                  onClick={() => setPageAnteriores(pageAnteriores - 1)}
+                >
+                  Anterior
+                </Button>
+
+                <span className="px-3 py-1 text-sm flex items-center">
+                  Página {pageAnteriores} de {totalPagesAnteriores}
+                </span>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pageAnteriores === totalPagesAnteriores}
+                  onClick={() => setPageAnteriores(pageAnteriores + 1)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialog for Expense Deletion */}
       <Dialog open={!!deleteConfirmGasto} onOpenChange={(open) => { if (!open) setDeleteConfirmGasto(null); }}>

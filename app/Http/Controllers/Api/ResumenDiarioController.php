@@ -190,10 +190,10 @@ class ResumenDiarioController extends Controller
 
         $salidaId = $request->get('salida_id') ?: ($salidaActiva ? $salidaActiva->id : null);
 
-        // Entregas de dinero aprobadas desde MoneyDelivery (estado ACEPTADA estrictamente)
+        // Entregas de dinero desde MoneyDelivery (estado ACEPTADA o PENDIENTE, excluyendo anuladas/rechazadas).
         $entregasDinero = EntregaDinero::with('items')
             ->where('usuario_id', $vendedor->usuario_id)
-            ->where('estado', 'ACEPTADA')
+            ->whereIn('estado', ['ACEPTADA', 'ACEPTADO', 'PENDIENTE'])
             ->whereDate('created_at', $fecha)
             ->get();
         $totalEntregasDinero = (float) $entregasDinero->sum('monto_total');
@@ -354,7 +354,7 @@ class ResumenDiarioController extends Controller
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
         $vendedor = $isVendedor ? \App\Models\Vendedor::where('usuario_id', $user->id)->first() : null;
 
-        $query = Gasto::with('vendedor.usuario')->orderBy('fecha', 'desc');
+        $query = Gasto::with(['vendedor.usuario', 'resumenDiario.salida'])->orderBy('fecha', 'desc');
 
         if ($vendedor) {
             $query->where('vendedor_id', $vendedor->id);

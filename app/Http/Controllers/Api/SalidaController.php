@@ -219,7 +219,8 @@ class SalidaController
 
     public function updateEstado(Request $request, $id){
         $request->validate([
-            'estado' => 'required|in:PENDIENTE,EN_RUTA,COMPLETADO'
+            'estado' => 'required|in:PENDIENTE,EN_RUTA,COMPLETADO',
+            'confirmar_sobrantes' => 'nullable|boolean'
         ]);
 
         $salida = Salida::findOrFail($id);
@@ -244,7 +245,28 @@ class SalidaController
             $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
             $vehiculo->estado = 'EN_RUTA';
             $vehiculo->save();
-        }else if($request->estado == 'COMPLETADO'){
+        } else if ($request->estado == 'COMPLETADO') {
+            // Verificar si aún hay productos sobrantes no vendidos ni devueltos
+            $sobrantes = StockVendedor::where('salida_id', $salida->id)
+                ->where('cantidad', '>', 0)
+                ->with('producto')
+                ->get();
+
+            if ($sobrantes->count() > 0 && !$request->boolean('confirmar_sobrantes')) {
+                return response()->json([
+                    'requiere_confirmacion' => true,
+                    'sobrantes' => $sobrantes->map(function ($s) {
+                        return [
+                            'producto_id' => $s->producto_id,
+                            'producto' => $s->producto->nombre ?? ('Producto #' . $s->producto_id),
+                            'sku' => $s->producto->sku ?? '',
+                            'cantidad' => (float) $s->cantidad
+                        ];
+                    }),
+                    'error' => 'Hay productos sobrantes en la salida que no han sido reportados como vendidos o devueltos.'
+                ], 400);
+            }
+
             //Cambiar estado del vehiculo a DISPONIBLE.
             $vehiculo = Vehiculo::findOrFail($salida->vehiculo_id);
             $vehiculo->estado = 'DISPONIBLE';
@@ -253,8 +275,6 @@ class SalidaController
         
         $salida->estado = $request->estado;
         $salida->save();
-
-
 
         return response()->json(['message' => 'Estado Actualizado']);
     }

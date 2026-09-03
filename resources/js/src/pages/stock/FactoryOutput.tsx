@@ -36,6 +36,10 @@ const FactoryOutput = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState('all');
 
+  const [sobrantesConfirmModalOpen, setSobrantesConfirmModalOpen] = useState(false);
+  const [pendingSalidaIdToComplete, setPendingSalidaIdToComplete] = useState<number | null>(null);
+  const [sobrantesList, setSobrantesList] = useState<Array<{ producto: string; sku?: string; cantidad: number }>>([]);
+
   const [form, setForm] = useState({ fecha: new Date().toISOString().split('T')[0], vendedor_id: '', conductor: '', vehiculo_id: '', zona: '', ruta_ids: [] as number[] });
   const [items, setItems] = useState<SalidaItemPayload[]>([]);
   const [tempItem, setTempItem] = useState({ producto_id: '', cantidad: '', ruma_id: '' });
@@ -346,17 +350,27 @@ const FactoryOutput = () => {
     }
   };
 
-  const handleUpdateEstado = async (id: number, nuevoEstado: string) => {
+  const handleUpdateEstado = async (id: number, nuevoEstado: string, confirmarSobrantes: boolean = false) => {
     try {
-      await salidaService.updateEstado(id, nuevoEstado);
+      await salidaService.updateEstado(id, nuevoEstado, confirmarSobrantes);
 
       toast.success("Estado actualizado");
+      setSobrantesConfirmModalOpen(false);
+      setPendingSalidaIdToComplete(null);
+      setSobrantesList([]);
 
       // refrescar lista
       await fetchSalidas();
 
-    } catch (error) {
-      toast.error(formatErrorMessage('Error al actualizar estado', error, 'No se pudo actualizar el estado.'));
+    } catch (error: any) {
+      const responseData = error?.response?.data;
+      if (responseData?.requiere_confirmacion && responseData?.sobrantes) {
+        setPendingSalidaIdToComplete(id);
+        setSobrantesList(responseData.sobrantes);
+        setSobrantesConfirmModalOpen(true);
+      } else {
+        toast.error(formatErrorMessage('Error al actualizar estado', error, 'No se pudo actualizar el estado.'));
+      }
     }
   };
 
@@ -795,6 +809,66 @@ const FactoryOutput = () => {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sobrantesConfirmModalOpen} onOpenChange={setSobrantesConfirmModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Productos Sobrantes Detectados
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Existen productos sobrantes que aún no han sido reportados como vendidos o devueltos en esta salida:
+            </p>
+
+            <div className="border rounded-md overflow-hidden max-h-48 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Producto</TableHead>
+                    <TableHead className="text-right">Cantidad Sobrante</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sobrantesList.map((s, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-medium text-sm">
+                        {s.producto} {s.sku ? `(${s.sku})` : ''}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-amber-600 dark:text-amber-400">
+                        {s.cantidad}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <p className="text-sm font-medium text-foreground pt-1">
+              ¿Desea proceder con la culminación de la salida?
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setSobrantesConfirmModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => {
+                if (pendingSalidaIdToComplete) {
+                  handleUpdateEstado(pendingSalidaIdToComplete, 'COMPLETADO', true);
+                }
+              }}
+            >
+              Sí, Culminar Salida
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

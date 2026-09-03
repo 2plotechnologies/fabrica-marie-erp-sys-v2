@@ -78,8 +78,8 @@ export const salidaService = {
     return response.data;
   },
   //Actualizar estado.
-  async updateEstado(id: number, estado: string) {
-    const response = await api.put(`/inventario/salidas/estado/${id}`, { estado });
+  async updateEstado(id: number, estado: string, confirmarSobrantes: boolean = false) {
+    const response = await api.put(`/inventario/salidas/estado/${id}`, { estado, confirmar_sobrantes: confirmarSobrantes });
     return response.data;
   },
   //Anular salida.

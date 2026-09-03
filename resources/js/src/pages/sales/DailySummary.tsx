@@ -981,30 +981,40 @@ const DailySummaryPage = () => {
                   </div>
                 </div>
 
-                {/* Entregas de Dinero Aprobadas desde MoneyDelivery */}
+                {/* Entregas de Dinero (MoneyDelivery) */}
                 {Boolean(resumenVendedor?.totalEntregasDinero && resumenVendedor.totalEntregasDinero > 0) && (
                   <>
                     <Separator />
                     <div>
                       <h4 className="font-medium text-sm mb-2 text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                         <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                        Entregas de Dinero Aprobadas (MoneyDelivery)
+                        Entregas de Dinero (MoneyDelivery)
                       </h4>
                       <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs space-y-2">
                         <div className="flex justify-between items-center font-semibold text-emerald-800 dark:text-emerald-300">
-                          <span>Total Entregado / Depositado (Aprobado):</span>
+                          <span>Total Entregado / Depositado:</span>
                           <span className="text-sm font-bold text-emerald-600">
                             - S/ {Number(resumenVendedor.totalEntregasDinero).toFixed(2)}
                           </span>
                         </div>
-                        {Array.isArray(resumenVendedor.entregasDinero) && resumenVendedor.entregasDinero.map((e: any) => (
-                          <div key={e.id} className="flex justify-between items-center text-muted-foreground pt-1 border-t border-emerald-500/10">
-                            <span>Entrega #{e.id} {e.nombre_receptor ? `(Receptor: ${e.nombre_receptor})` : ''}</span>
-                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-                              S/ {Number(e.monto_total).toFixed(2)}
-                            </Badge>
-                          </div>
-                        ))}
+                        {Array.isArray(resumenVendedor.entregasDinero) && resumenVendedor.entregasDinero.map((e: any) => {
+                          const isPendiente = (e.estado || '').toUpperCase() === 'PENDIENTE';
+                          return (
+                            <div key={e.id} className="flex justify-between items-center text-muted-foreground pt-1 border-t border-emerald-500/10">
+                              <span className="flex items-center gap-2">
+                                Entrega #{e.id} {e.nombre_receptor ? `(Receptor: ${e.nombre_receptor})` : ''}
+                                {isPendiente && (
+                                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 font-semibold text-[10px]">
+                                    PENDIENTE
+                                  </Badge>
+                                )}
+                              </span>
+                              <Badge variant="outline" className={isPendiente ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'}>
+                                S/ {Number(e.monto_total).toFixed(2)}
+                              </Badge>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </>
@@ -1017,7 +1027,7 @@ const DailySummaryPage = () => {
                   <CardContent className="pt-4 space-y-2">
                     <h4 className="font-semibold text-sm">Saldo Entregado (Cálculo Automático)</h4>
                     <p className="text-xs text-muted-foreground">
-                      = Venta Contado + Cobranzas + Adelantos + Caja Chica − Gastos − Depósitos − Yape/Plin {resumenVendedor?.totalEntregasDinero > 0 ? `− MoneyDelivery Aprobado (S/ ${Number(resumenVendedor.totalEntregasDinero).toFixed(2)})` : ''}
+                      = Venta Contado + Cobranzas + Adelantos + Caja Chica − Gastos − Depósitos − Yape/Plin {resumenVendedor?.totalEntregasDinero > 0 ? `− MoneyDelivery (S/ ${Number(resumenVendedor.totalEntregasDinero).toFixed(2)})` : ''}
                     </p>
                     {(() => {
                       const totalGastosForm = totalGastosBackend;

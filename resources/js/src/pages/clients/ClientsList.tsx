@@ -53,6 +53,8 @@ import { Label } from '@/components/ui/label';
 interface ClientUI {
   id: number;
   razon_social: string;
+  nombre_comercial?: string | null;
+  persona_juridica?: string | null;
   codigo: string;
   phone: string;
   address: string;
@@ -74,6 +76,8 @@ interface ClientDetail {
   id: number;
   codigo_cliente: string;
   razon_social: string;
+  nombre_comercial?: string | null;
+  persona_juridica?: string | null;
   tipo_cliente?: string;
   direccion?: string;
   departamento_id?: number | null;
@@ -115,10 +119,21 @@ const ClientsList = () => {
   const [editClientId, setEditClientId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<ClientDetail | null>(null);
 
-  // Estados de Ubigeo para edición
   const [editDepartamentos, setEditDepartamentos] = useState<Departamento[]>([]);
   const [editProvincias, setEditProvincias] = useState<Provincia[]>([]);
   const [editDistritos, setEditDistritos] = useState<Distrito[]>([]);
+  const [editSelectedZona, setEditSelectedZona] = useState<string>('');
+
+  // 🔹 Limpieza de pointer-events / overflow al cerrar modales para evitar que el cuerpo quede congelado
+  useEffect(() => {
+    if (!isDetailOpen && !isEditOpen) {
+      const timer = setTimeout(() => {
+        document.body.style.pointerEvents = '';
+        document.body.style.overflow = '';
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isDetailOpen, isEditOpen]);
 
   useEffect(() => {
     ubigeoService.getDepartamentos().then(setEditDepartamentos).catch(console.error);
@@ -158,6 +173,8 @@ const ClientsList = () => {
   const mapToUIClient = (c: any): ClientUI => ({
     id: c.id,
     razon_social: c.razon_social,
+    nombre_comercial: c.nombre_comercial || null,
+    persona_juridica: c.persona_juridica || null,
     codigo: c.codigo_cliente,
     phone: c.telefono || '',
     address: formatDireccionCompleta(c) || c.direccion || '',
@@ -187,6 +204,21 @@ const ClientsList = () => {
     return rutas.filter((r) => r.zona === selectedZona);
   }, [rutas, selectedZona]);
 
+  // Lista única de zonas para edición
+  const editZonas = useMemo(() => {
+    const zoneSet = new Set<string>();
+    rutas.forEach((r) => {
+      if (r.zona && r.zona.trim()) zoneSet.add(r.zona.trim());
+    });
+    return Array.from(zoneSet).sort();
+  }, [rutas]);
+
+  // Lista de rutas filtradas por la zona seleccionada en edición
+  const editFilteredRutas = useMemo(() => {
+    if (!editSelectedZona) return rutas;
+    return rutas.filter((r) => r.zona === editSelectedZona);
+  }, [rutas, editSelectedZona]);
+
   const handleZonaChange = (val: string) => {
     setSelectedZona(val);
     setPage(1);
@@ -205,9 +237,12 @@ const ClientsList = () => {
 
   // 🔹 Filtros
   const filteredClients = clients.filter(client => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
-      client.razon_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.codigo.toLowerCase().includes(searchTerm.toLowerCase());
+      client.razon_social.toLowerCase().includes(searchLower) ||
+      (client.nombre_comercial && client.nombre_comercial.toLowerCase().includes(searchLower)) ||
+      (client.persona_juridica && client.persona_juridica.toLowerCase().includes(searchLower)) ||
+      client.codigo.toLowerCase().includes(searchLower);
     const matchesStatus = !statusFilter || client.status === statusFilter;
     const matchesZona = selectedZona === 'ALL' || client.zona === selectedZona;
     const matchesRuta = selectedRuta === 'ALL' || String(client.ruta_id) === selectedRuta;
@@ -269,6 +304,7 @@ const ClientsList = () => {
     if (data) {
       setEditClientId(clientId);
       setEditForm(data);
+      setEditSelectedZona(data.ruta?.zona || '');
       if (data.departamento_id) {
         ubigeoService.getProvincias(Number(data.departamento_id)).then(setEditProvincias).catch(console.error);
       }
@@ -323,6 +359,8 @@ const ClientsList = () => {
       const payload = {
         codigo_cliente: editForm.codigo_cliente,
         razon_social: editForm.razon_social,
+        nombre_comercial: editForm.nombre_comercial ? editForm.nombre_comercial.trim() : null,
+        persona_juridica: editForm.persona_juridica ? editForm.persona_juridica.trim() : null,
         tipo_cliente: editForm.tipo_cliente || '',
         direccion: editForm.direccion || '',
         departamento_id: editForm.departamento_id ? Number(editForm.departamento_id) : null,
@@ -595,8 +633,8 @@ const ClientsList = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleViewDetail(client.id)}>Ver detalle</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenEdit(client.id)}>Editar</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTimeout(() => handleViewDetail(client.id), 50)}>Ver detalle</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTimeout(() => handleOpenEdit(client.id), 50)}>Editar</DropdownMenuItem>
                       <DropdownMenuItem
                         disabled={client.status === 'INACTIVO'}
                         onClick={() => handleDeactivate(client.id)}
@@ -673,8 +711,8 @@ const ClientsList = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleViewDetail(client.id)}>Ver detalle</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenEdit(client.id)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTimeout(() => handleViewDetail(client.id), 50)}>Ver detalle</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTimeout(() => handleOpenEdit(client.id), 50)}>Editar</DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={client.status === 'INACTIVO'}
                           onClick={() => handleDeactivate(client.id)}
@@ -715,7 +753,18 @@ const ClientsList = () => {
       </div>
 
       {/* Modales responsivos */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+      <Dialog
+        open={isDetailOpen}
+        onOpenChange={(open) => {
+          setIsDetailOpen(open);
+          if (!open) {
+            setTimeout(() => {
+              document.body.style.pointerEvents = '';
+              document.body.style.overflow = '';
+            }, 50);
+          }
+        }}
+      >
         <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-md p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">Detalle del cliente</DialogTitle>
@@ -728,6 +777,12 @@ const ClientsList = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm break-words min-w-0">
               <p><strong>Código:</strong> {detailClient.codigo_cliente}</p>
               <p><strong>Razón social:</strong> {detailClient.razon_social}</p>
+              {detailClient.nombre_comercial && (
+                <p><strong>Nombre comercial:</strong> {detailClient.nombre_comercial}</p>
+              )}
+              {detailClient.persona_juridica && (
+                <p><strong>Persona jurídica:</strong> {detailClient.persona_juridica}</p>
+              )}
               <p><strong>Tipo:</strong> {detailClient.tipo_cliente || '-'}</p>
               <p><strong>Teléfono:</strong> {detailClient.telefono || '-'}</p>
               <p className="sm:col-span-2"><strong>Dirección:</strong> {formatDireccionCompleta(detailClient) || detailClient.direccion || '-'}</p>
@@ -744,7 +799,18 @@ const ClientsList = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+      <Dialog
+        open={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open);
+          if (!open) {
+            setTimeout(() => {
+              document.body.style.pointerEvents = '';
+              document.body.style.overflow = '';
+            }, 50);
+          }
+        }}
+      >
         <DialogContent className="w-[calc(100vw-1rem)] sm:max-w-xl p-3 sm:p-6 rounded-xl max-h-[92vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">Editar cliente</DialogTitle>
@@ -762,6 +828,14 @@ const ClientsList = () => {
               <div className="space-y-2">
                 <Label>Razón Social</Label>
                 <Input value={editForm.razon_social} onChange={(e) => handleEditChange('razon_social', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Nombre Comercial</Label>
+                <Input value={editForm.nombre_comercial || ''} onChange={(e) => handleEditChange('nombre_comercial', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Persona Jurídica</Label>
+                <Input value={editForm.persona_juridica || ''} onChange={(e) => handleEditChange('persona_juridica', e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Teléfono</Label>
@@ -822,6 +896,58 @@ const ClientsList = () => {
                     {editDistritos.map((dist) => (
                       <SelectItem key={dist.idDist} value={String(dist.idDist)}>
                         {dist.distrito}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 🔹 Reasignación de Zona y Ruta */}
+              <div className="space-y-2">
+                <Label>Zona</Label>
+                <Select
+                  value={editSelectedZona || "ALL_ZONAS"}
+                  onValueChange={(val) => {
+                    const newZona = val === 'ALL_ZONAS' ? '' : val;
+                    setEditSelectedZona(newZona);
+                    if (editForm?.ruta_id) {
+                      const belongsToZona = rutas.some(
+                        (r) => String(r.id) === String(editForm.ruta_id) && (!newZona || r.zona === newZona)
+                      );
+                      if (!belongsToZona) {
+                        handleEditChange('ruta_id', null);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas las zonas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_ZONAS">Todas las zonas</SelectItem>
+                    {editZonas.map((z) => (
+                      <SelectItem key={z} value={z}>
+                        {z}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Ruta</Label>
+                <Select
+                  value={editForm.ruta_id ? String(editForm.ruta_id) : 'NONE'}
+                  onValueChange={(v) => handleEditChange('ruta_id', v === 'NONE' ? null : Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar ruta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NONE">Sin Ruta</SelectItem>
+                    {editFilteredRutas.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        {r.nombre} {r.zona && !editSelectedZona ? `(${r.zona})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

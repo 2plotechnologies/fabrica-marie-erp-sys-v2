@@ -4,6 +4,8 @@ import api from './api';
 export interface ClientePayload {
   codigo_cliente: string;
   razon_social: string;
+  nombre_comercial?: string | null;
+  persona_juridica?: string | null;
   tipo_cliente?: string;
   direccion?: string;
   departamento_id?: number | null;

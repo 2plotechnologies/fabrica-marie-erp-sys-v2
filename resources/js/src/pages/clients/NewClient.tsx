@@ -44,6 +44,8 @@ const NewClient = () => {
   const [formData, setFormData] = useState({
     codigo_cliente: '',
     razon_social: '',
+    nombre_comercial: '',
+    persona_juridica: '',
     tipo_cliente: '',
     direccion: '',
     departamento_id: '',
@@ -180,6 +182,8 @@ const NewClient = () => {
     try {
       const payload = {
         ...formData,
+        nombre_comercial: formData.nombre_comercial ? formData.nombre_comercial.trim() : null,
+        persona_juridica: formData.persona_juridica ? formData.persona_juridica.trim() : null,
         departamento_id: formData.departamento_id ? Number(formData.departamento_id) : null,
         provincia_id: formData.provincia_id ? Number(formData.provincia_id) : null,
         distrito_id: formData.distrito_id ? Number(formData.distrito_id) : null,
@@ -283,6 +287,28 @@ const NewClient = () => {
                     {formErrors.razon_social[0]}
                   </p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Nombre Comercial</Label>
+                <Input
+                  value={formData.nombre_comercial}
+                  placeholder="Ej: Comercial Don Juan (Opcional)"
+                  onChange={(e) =>
+                    handleInputChange('nombre_comercial', e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Persona Jurídica</Label>
+                <Input
+                  value={formData.persona_juridica}
+                  placeholder="Ej: SAC, EIRL, Persona Natural (Opcional)"
+                  onChange={(e) =>
+                    handleInputChange('persona_juridica', e.target.value)
+                  }
+                />
               </div>
 
               <div className="space-y-2">
