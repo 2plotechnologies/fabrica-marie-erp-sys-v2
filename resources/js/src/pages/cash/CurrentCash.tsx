@@ -52,6 +52,11 @@ const CurrentCash = () => {
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; movId: number | null }>({ open: false, movId: null });
   const [rejectMotivo, setRejectMotivo] = useState('');
 
+  // Por Definir Dialog State
+  const [porDefinirDialog, setPorDefinirDialog] = useState<{ open: boolean; mov: any | null }>({ open: false, mov: null });
+  const [pdTipoComprobante, setPdTipoComprobante] = useState('');
+  const [pdComprobante, setPdComprobante] = useState('');
+
   const [cajaActual, setCajaActual] = useState<any | null>(null);
   const movimientos: any[] = cajaActual?.movimientos ?? [];
   const saldoInicial = Number(cajaActual?.saldo_inicial) || 0;
@@ -200,7 +205,7 @@ const CurrentCash = () => {
     return ingresosMetodo - egresosMetodo;
   };
 
-  const handleConciliar = async (movId: number, estado: 'APROBADO' | 'RECHAZADO' | 'PENDIENTE', motivo?: string) => {
+  const handleConciliar = async (movId: number, estado: 'APROBADO' | 'RECHAZADO' | 'PENDIENTE', motivo?: string, tipo_comprobante?: string, comprobante?: string) => {
     const targetMov = movimientos.find(m => m.id === movId);
 
     // Validación preventiva en cliente al conciliar un egreso de cualquier método de pago
@@ -217,7 +222,7 @@ const CurrentCash = () => {
 
     setConciliandoId(movId);
     try {
-      await cajaService.conciliarMovimiento(movId, { estado, motivo });
+      await cajaService.conciliarMovimiento(movId, { estado, motivo, tipo_comprobante, comprobante });
       toast.success(
         estado === 'APROBADO'
           ? "Movimiento conciliado / verificado correctamente"
@@ -695,7 +700,16 @@ const CurrentCash = () => {
                               size="sm"
                               variant="outline"
                               disabled={conciliandoId === mov.id}
-                              onClick={() => handleConciliar(mov.id, 'APROBADO')}
+                              onClick={() => {
+                                const isPorDefinir = mov.gasto?.tipo_comprobante === 'Por Definir' || mov.tipo_comprobante === 'Por Definir';
+                                if (isPorDefinir) {
+                                  setPorDefinirDialog({ open: true, mov });
+                                  setPdTipoComprobante('');
+                                  setPdComprobante('');
+                                } else {
+                                  handleConciliar(mov.id, 'APROBADO');
+                                }
+                              }}
                               className="border-emerald-600 text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-semibold"
                             >
                               {conciliandoId === mov.id ? (
@@ -822,6 +836,59 @@ const CurrentCash = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Por Definir dialog */}
+      <Dialog open={porDefinirDialog.open} onOpenChange={(o) => setPorDefinirDialog({ open: o, mov: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Completar Información del Comprobante</DialogTitle>
+            <DialogDescription>
+              El comprobante de este movimiento fue registrado como "Por Definir". Por favor, indique el tipo y número de comprobante para conciliarlo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Tipo Comprobante *</Label>
+              <Select value={pdTipoComprobante} onValueChange={setPdTipoComprobante}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar tipo comprobante..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Boleta">Boleta</SelectItem>
+                  <SelectItem value="Factura">Factura</SelectItem>
+                  <SelectItem value="Ticket">Ticket</SelectItem>
+                  <SelectItem value="Comprobante de Caja">Comprobante de Caja</SelectItem>
+                  <SelectItem value="Otro/Ninguno">Otro/Ninguno</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Comprobante / Referencia</Label>
+              <Input
+                placeholder="Número de boleta, serie, etc."
+                value={pdComprobante}
+                onChange={(e) => setPdComprobante(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPorDefinirDialog({ open: false, mov: null })}>Cancelar</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              disabled={!pdTipoComprobante}
+              onClick={() => {
+                if (porDefinirDialog.mov) {
+                  handleConciliar(porDefinirDialog.mov.id, 'APROBADO', undefined, pdTipoComprobante, pdComprobante);
+                  setPorDefinirDialog({ open: false, mov: null });
+                }
+              }}
+            >
+              Confirmar y Conciliar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog para cerrar cajas sin cerrar de días anteriores */}
       <Dialog open={isOpenCajasSinCerrarDialog} onOpenChange={setIsOpenCajasSinCerrarDialog}>
         <DialogContent className="max-w-lg">

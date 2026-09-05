@@ -322,6 +322,7 @@ const ExpenseList = () => {
                     <SelectItem value="Ticket">Ticket</SelectItem>
                     <SelectItem value="Comprobante de Caja">Comprobante de Caja</SelectItem>
                     <SelectItem value="Otro/Ninguno">Otro/Ninguno</SelectItem>
+                    <SelectItem value="Por Definir">Por Definir</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -649,7 +650,7 @@ const ExpenseList = () => {
         </div>
       )}
 
-      {/* Confirmation Dialog for Expense Deletion */}
+      {/* Confirmation Dialog for Expense Deletion. */}
       <Dialog open={!!deleteConfirmGasto} onOpenChange={(open) => { if (!open) setDeleteConfirmGasto(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -673,7 +674,7 @@ const ExpenseList = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Caja Cerrada */}
+      {/* Modal de Caja Cerrada. */}
       <Dialog open={isCajaCerradaModalOpen} onOpenChange={setIsCajaCerradaModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="flex flex-col items-center justify-center text-center pt-4">

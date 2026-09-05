@@ -51,6 +51,13 @@ const MoneyDelivery = () => {
     const [isCajaCerradaModalOpen, setIsCajaCerradaModalOpen] = useState(false);
     const [confirmWarningDialog, setConfirmWarningDialog] = useState<{ id: number, estado: string, message: string } | null>(null);
 
+    // Filter states
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterEndDate, setFilterEndDate] = useState('');
+    const [filterRole, setFilterRole] = useState('TODOS');
+    const [filterUser, setFilterUser] = useState('TODOS');
+    const [filterEstado, setFilterEstado] = useState('TODOS');
+
     // Form state
     const [nombreReceptor, setNombreReceptor] = useState('');
     const [observaciones, setObservaciones] = useState('');
@@ -258,16 +265,48 @@ const MoneyDelivery = () => {
         }
     };
 
+    // Extract unique roles and users from entregas
+    const availableRoles = Array.from(new Set(
+        entregas.flatMap(e => e.usuario?.roles?.map((r: any) => r.nombre) || [])
+    )).filter(Boolean).sort();
+
+    const allUsersFromEntregas = Array.from(new Map(entregas.map(e => [e.usuario?.id, e.usuario])).values()).filter(Boolean);
+
+    const availableUsers = filterRole === 'TODOS'
+        ? allUsersFromEntregas
+        : allUsersFromEntregas.filter((u: any) => u.roles?.some((r: any) => r.nombre === filterRole));
+
+    useEffect(() => {
+        setFilterUser('TODOS');
+    }, [filterRole]);
+
+    // Apply filters
+    const filteredEntregas = entregas.filter(e => {
+        if (filterStartDate && new Date(e.created_at) < new Date(filterStartDate + 'T00:00:00')) return false;
+        if (filterEndDate && new Date(e.created_at) > new Date(filterEndDate + 'T23:59:59')) return false;
+        if (filterRole !== 'TODOS') {
+            const userRoles = e.usuario?.roles?.map((r: any) => r.nombre) || [];
+            if (!userRoles.includes(filterRole)) return false;
+        }
+        if (filterUser !== 'TODOS' && String(e.usuario?.id) !== filterUser) return false;
+        if (filterEstado !== 'TODOS' && e.estado !== filterEstado) return false;
+        return true;
+    });
+
     // Calculate totals
-    const totalPendiente = entregas.filter(e => e.estado === 'PENDIENTE').reduce((acc, curr) => acc + Number(curr.monto_total), 0);
-    const totalAceptado = entregas.filter(e => e.estado === 'ACEPTADA').reduce((acc, curr) => acc + Number(curr.monto_total), 0);
-    const countPendientes = entregas.filter(e => e.estado === 'PENDIENTE').length;
+    const totalPendiente = filteredEntregas.filter(e => e.estado === 'PENDIENTE').reduce((acc, curr) => acc + Number(curr.monto_total), 0);
+    const totalAceptado = filteredEntregas.filter(e => e.estado === 'ACEPTADA').reduce((acc, curr) => acc + Number(curr.monto_total), 0);
+    const countPendientes = filteredEntregas.filter(e => e.estado === 'PENDIENTE').length;
 
     // Pagination
     const itemsPerPage = 8;
     const [page, setPage] = useState(1);
-    const totalPages = Math.ceil(entregas.length / itemsPerPage);
-    const paginatedEntregas = entregas.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+    const totalPages = Math.ceil(filteredEntregas.length / itemsPerPage);
+    const paginatedEntregas = filteredEntregas.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+    useEffect(() => {
+        setPage(1);
+    }, [filterStartDate, filterEndDate, filterRole, filterUser, filterEstado]);
 
     // Determines if current user can approve (has admin / caja roles)
     const canApprove = hasRole('ADMIN') || hasRole('GERENTE') || hasPermission('caja_verificar_entrega');
@@ -401,7 +440,7 @@ const MoneyDelivery = () => {
                 </Dialog>
             </div>
 
-            {/* KPIs */}
+            {/* KPIs.*/}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="shadow-card">
                     <CardContent className="pt-6">
@@ -431,6 +470,56 @@ const MoneyDelivery = () => {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Filters.*/}
+            <Card className="shadow-card mb-6">
+                <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="space-y-2">
+                        <Label>Fecha Inicio</Label>
+                        <Input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Fecha Fin</Label>
+                        <Input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Rol</Label>
+                        <Select value={filterRole} onValueChange={setFilterRole}>
+                            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="TODOS">Todos</SelectItem>
+                                {availableRoles.map(rol => (
+                                    <SelectItem key={rol} value={rol}>{rol}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Usuario</Label>
+                        <Select value={filterUser} onValueChange={setFilterUser}>
+                            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="TODOS">Todos</SelectItem>
+                                {availableUsers.map((u: any) => (
+                                    <SelectItem key={u.id} value={String(u.id)}>{u.nombre}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Estado</Label>
+                        <Select value={filterEstado} onValueChange={setFilterEstado}>
+                            <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="TODOS">Todos</SelectItem>
+                                <SelectItem value="PENDIENTE">Pendientes</SelectItem>
+                                <SelectItem value="ACEPTADA">Aceptadas</SelectItem>
+                                <SelectItem value="RECHAZADA">Rechazadas</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Table */}
             <Card className="shadow-card">

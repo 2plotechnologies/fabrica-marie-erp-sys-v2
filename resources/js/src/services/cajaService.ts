@@ -39,7 +39,7 @@ export const cajaService = {
     },
 
     // Conciliar movimiento (Ingreso o Egreso)
-    async conciliarMovimiento(id: number | string, data: { estado: string, motivo?: string }) {
+    async conciliarMovimiento(id: number | string, data: { estado: string, motivo?: string, tipo_comprobante?: string, comprobante?: string }) {
         const response = await api.post(`/caja/movimientos/${id}/conciliar`, data);
         return response.data;
     },

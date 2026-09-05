@@ -33,4 +33,9 @@ class MovimientoCaja extends Model
     {
         return $this->belongsTo(Usuario::class, 'conciliado_by');
     }
+
+    public function gasto()
+    {
+        return $this->belongsTo(Gasto::class, 'referencia_id'); // We'll conditionally check referencia_tipo in queries if needed, but this is fine since it's a direct reference.
+    }
 }

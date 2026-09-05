@@ -351,10 +351,10 @@ class VentaController extends Controller
                 }
             }
 
-            // Crear cuenta si es crédito
+            // Crear cuenta si es crédito.
             if ($venta->tipo_pago === 'CREDITO') {
 
-                // Generar fecha de vencimiento usando el valor "Dias credito" del cliente (Solo si es diferente de cero)
+                // Generar fecha de vencimiento usando el valor "Dias credito" del cliente (Solo si es diferente de cero).
                 $cliente = Cliente::findOrFail($venta->cliente_id);
                 $diasCredito = $cliente->dias_credito;
 

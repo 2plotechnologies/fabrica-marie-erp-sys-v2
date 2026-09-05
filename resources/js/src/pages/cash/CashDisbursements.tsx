@@ -31,7 +31,7 @@ const CashDisbursements = () => {
     const [selectedSalida, setSelectedSalida] = useState<any>(null);
 
     const [newSalida, setNewSalida] = useState({ destinatario: '', motivo: '', entregado: 0, observaciones: '' });
-    const [liquidacion, setLiquidacion] = useState({ usado: 0, vuelto: 0, comprobante: '' });
+    const [liquidacion, setLiquidacion] = useState({ usado: 0, vuelto: 0, tipo_comprobante: '', comprobante: '' });
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchSalidas = async () => {
@@ -72,7 +72,7 @@ const CashDisbursements = () => {
     });
 
     const liquidarSalida = useMutation({
-        mutationFn: async (data: { id: number; usado: number; vuelto: number; comprobante: string }) => {
+        mutationFn: async (data: { id: number; usado: number; vuelto: number; tipo_comprobante: string; comprobante: string }) => {
             try {
                 const response = await cajaService.liquidarSalidaCaja(data);
                 return response;
@@ -115,11 +115,12 @@ const CashDisbursements = () => {
                 id: selectedSalida.id,
                 usado: liquidacion.usado,
                 vuelto: liquidacion.vuelto,
+                tipo_comprobante: liquidacion.tipo_comprobante,
                 comprobante: liquidacion.comprobante,
             });
             setIsLiquidarDialog(false);
             setSelectedSalida(null);
-            setLiquidacion({ usado: 0, vuelto: 0, comprobante: '' });
+            setLiquidacion({ usado: 0, vuelto: 0, tipo_comprobante: '', comprobante: '' });
         } catch (error) {
             console.log("ERROR COMPLETO:", error);
             console.log("RESPUESTA DEL SERVIDOR:", error.response?.data);
@@ -142,7 +143,7 @@ const CashDisbursements = () => {
     const openLiquidar = (salida: any) => {
         setSelectedSalida(salida);
         const montoEntregado = Number(salida.entregado);
-        setLiquidacion({ usado: montoEntregado, vuelto: 0, comprobante: '' });
+        setLiquidacion({ usado: montoEntregado, vuelto: 0, tipo_comprobante: '', comprobante: '' });
         setIsLiquidarDialog(true);
     };
 
@@ -350,7 +351,7 @@ const CashDisbursements = () => {
                 </CardContent>
             </Card>
 
-            {/* Liquidar Dialog */}
+            {/* Liquidar Dialog.*/}
             <Dialog open={isLiquidarDialog} onOpenChange={setIsLiquidarDialog}>
                 <DialogContent>
                     <DialogHeader><DialogTitle>Liquidar Salida de Caja</DialogTitle></DialogHeader>
@@ -386,6 +387,21 @@ const CashDisbursements = () => {
                                 <Input type="number" readOnly className="bg-muted" value={Number(liquidacion.vuelto).toFixed(2)} />
                             </div>
                             <div className="space-y-2">
+                                <Label>Tipo Comprobante</Label>
+                                <Select value={liquidacion.tipo_comprobante} onValueChange={(v) => setLiquidacion({ ...liquidacion, tipo_comprobante: v })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar tipo..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Boleta">Boleta</SelectItem>
+                                        <SelectItem value="Factura">Factura</SelectItem>
+                                        <SelectItem value="Ticket">Ticket</SelectItem>
+                                        <SelectItem value="Comprobante de Caja">Comprobante de Caja</SelectItem>
+                                        <SelectItem value="Otro/Ninguno">Otro/Ninguno</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
                                 <Label>Comprobante / Referencia</Label>
                                 <Input placeholder="Nro. de boleta, etc." value={liquidacion.comprobante} onChange={(e) => setLiquidacion({ ...liquidacion, comprobante: e.target.value })} />
                             </div>
@@ -393,7 +409,11 @@ const CashDisbursements = () => {
                     )}
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsLiquidarDialog(false)}>Cancelar</Button>
-                        <Button onClick={handleLiquidar} disabled={liquidarSalida.isPending} className="bg-emerald-600 hover:bg-emerald-700">
+                        <Button 
+                            onClick={handleLiquidar} 
+                            disabled={liquidarSalida.isPending || !liquidacion.tipo_comprobante || !liquidacion.comprobante} 
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                        >
                             {liquidarSalida.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                             Confirmar Liquidación
                         </Button>

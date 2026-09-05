@@ -16,7 +16,7 @@ class EntregaDineroController
         $user = auth()->user();
         $isVendedor = $user && $user->roles()->where('nombre', 'VENDEDOR')->exists();
 
-        $query = EntregaDinero::with('usuario', 'items');
+        $query = EntregaDinero::with(['usuario.roles', 'items']);
 
         if ($isVendedor) {
             $query->where('usuario_id', $user->id);

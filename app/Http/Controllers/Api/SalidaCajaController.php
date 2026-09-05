@@ -104,13 +104,23 @@ class SalidaCajaController
         ], 400);
 }
 
+        $comprobanteFinal = $request->filled('tipo_comprobante') 
+            ? $request->tipo_comprobante . ' - ' . $request->comprobante 
+            : $request->comprobante;
+
         $salida->update([
             'usado' => $request->usado,
             'vuelto' => $request->vuelto,
             'estado' => 'LIQUIDADO',
-            'comprobante' => $request->comprobante,
+            'comprobante' => $comprobanteFinal,
             'liquidado_by' => auth()->id()
         ]);
+
+        // Actualizar el comprobante en el movimiento original (EGRESO) de la salida
+        \App\Models\MovimientoCaja::where('referencia_tipo', 'SALIDA')
+            ->where('referencia_id', $id)
+            ->where('tipo', 'EGRESO')
+            ->update(['comprobante' => $comprobanteFinal]);
 
         if($request->vuelto > 0){
             $movimiento = CajaService::registrarMovimiento([
@@ -120,7 +130,8 @@ class SalidaCajaController
                 'categoria' => 'VUELTO',
                 'descripcion' => 'Salida Liquidada. Salida #' . $salida->id,
                 'referencia_tipo' => 'SALIDA',
-                'referencia_id' => $id
+                'referencia_id' => $id,
+                'comprobante' => $comprobanteFinal
             ]);
         }
 

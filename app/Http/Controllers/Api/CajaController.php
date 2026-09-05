@@ -47,7 +47,7 @@ class CajaController extends Controller
     public function getCaja()
     {
         return Caja::with(['usuario', 'movimientos' => function ($query) {
-            $query->with('conciliador')->orderBy('created_at', 'desc');
+            $query->with(['conciliador', 'gasto'])->orderBy('created_at', 'desc');
         }])
             ->where('estado', 'ABIERTA')
             ->latest('id')
@@ -56,12 +56,12 @@ class CajaController extends Controller
 
     public function obtenerMovimientos()
     {
-        return MovimientoCaja::with(['caja.usuario', 'conciliador'])->orderBy('created_at', 'desc')->get();
+        return MovimientoCaja::with(['caja.usuario', 'conciliador', 'gasto'])->orderBy('created_at', 'desc')->get();
     }
 
     public function obtenerEgresos()
     {
-        return MovimientoCaja::with(['caja.usuario', 'conciliador'])
+        return MovimientoCaja::with(['caja.usuario', 'conciliador', 'gasto'])
         ->where('tipo', 'EGRESO')
         ->orderBy('created_at', 'desc')->get();
     }
@@ -136,12 +136,32 @@ class CajaController extends Controller
             $movimiento->descripcion = $movimiento->descripcion . ' | ANULACIÓN: ' . $request->motivo;
         }
 
+        if ($request->filled('comprobante')) {
+            if (!empty($movimiento->comprobante) && trim($movimiento->comprobante) !== '') {
+                $movimiento->comprobante = $movimiento->comprobante . ' | ' . $request->comprobante;
+            } else {
+                $movimiento->comprobante = $request->comprobante;
+            }
+        }
+
         $movimiento->save();
 
         // Si este movimiento pertenece a un gasto de vendedor, actualizar su estado.
         if ($movimiento->referencia_tipo === 'GASTO' && $movimiento->referencia_id) {
             $gasto = \App\Models\Gasto::find($movimiento->referencia_id);
             if ($gasto) {
+                if ($request->filled('tipo_comprobante')) {
+                    $gasto->tipo_comprobante = $request->tipo_comprobante;
+                }
+                
+                if ($request->filled('comprobante')) {
+                    if (!empty($gasto->comprobante) && trim($gasto->comprobante) !== '') {
+                        $gasto->comprobante = $gasto->comprobante . ' | ' . $request->comprobante;
+                    } else {
+                        $gasto->comprobante = $request->comprobante;
+                    }
+                }
+
                 if ($request->estado === 'APROBADO') {
                     $gasto->estado = 'CONFIRMADO';
                 } elseif ($request->estado === 'RECHAZADO') {
@@ -155,7 +175,7 @@ class CajaController extends Controller
 
         return response()->json([
             'message' => $request->estado === 'PENDIENTE' ? 'Conciliación anulada / devuelta a pendiente correctamente.' : 'Movimiento conciliado correctamente.',
-            'data' => $movimiento->load('caja.usuario', 'conciliador')
+            'data' => $movimiento->load('caja.usuario', 'conciliador', 'gasto')
         ]);
     }
 
